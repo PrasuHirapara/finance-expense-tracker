@@ -11,7 +11,10 @@ class ExpenseSettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Expense Settings')),
-      body: const ExpenseSettingsBody(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: const ExpenseSettingsBody(),
+      ),
     );
   }
 }
@@ -22,16 +25,29 @@ class ExpenseSettingsBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<BankBloc, BankState>(
-        builder: (context, state) {
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      builder: (context, state) {
+        return AppPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Row(
                 children: <Widget>[
                   Expanded(
-                    child: Text(
-                      'Bank Name Management',
-                      style: Theme.of(context).textTheme.titleLarge,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Expense Settings',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Bank configuration',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   FilledButton.icon(
@@ -42,41 +58,66 @@ class ExpenseSettingsBody extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              ...state.banks.map(
-                (bank) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: AppPanel(
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            bank.name,
-                            style: Theme.of(context).textTheme.titleMedium,
+              if (state.banks.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Text('No banks added yet.'),
+                )
+              else
+                ...state.banks.map(
+                  (bank) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest
+                            .withValues(alpha: 0.42),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Text(
+                              bank.name,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          onPressed: () => _showBankDialog(
-                            context,
-                            bankId: bank.id,
-                            initialName: bank.name,
+                          IconButton(
+                            onPressed: () => _showBankDialog(
+                              context,
+                              bankId: bank.id,
+                              initialName: bank.name,
+                            ),
+                            icon: const Icon(Icons.edit_rounded),
                           ),
-                          icon: const Icon(Icons.edit_rounded),
-                        ),
-                        IconButton(
-                          onPressed: () {
-                            context.read<BankBloc>().add(BankDeleted(bank.id));
-                          },
-                          icon: const Icon(Icons.delete_outline_rounded),
-                        ),
-                      ],
+                          IconButton(
+                            onPressed: () {
+                              context.read<BankBloc>().add(BankDeleted(bank.id));
+                            },
+                            icon: const Icon(Icons.delete_outline_rounded),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
-          );
-        },
-      );
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _showBankDialog(
@@ -87,7 +128,7 @@ class ExpenseSettingsBody extends StatelessWidget {
     final controller = TextEditingController(text: initialName);
     await showDialog<void>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: Text(bankId == null ? 'Add Bank' : 'Edit Bank'),
           content: TextField(
@@ -96,7 +137,7 @@ class ExpenseSettingsBody extends StatelessWidget {
           ),
           actions: <Widget>[
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Cancel'),
             ),
             FilledButton(
@@ -112,7 +153,7 @@ class ExpenseSettingsBody extends StatelessWidget {
                     BankUpdated(id: bankId, name: name),
                   );
                 }
-                Navigator.of(context).pop();
+                Navigator.of(dialogContext).pop();
               },
               child: const Text('Save'),
             ),

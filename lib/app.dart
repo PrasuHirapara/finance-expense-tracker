@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/blocs/module_navigation_bloc.dart';
 import 'core/blocs/theme_cubit.dart';
 import 'core/router/app_router.dart';
+import 'core/services/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/app_shell.dart';
 import 'data/database/app_database.dart';
@@ -18,6 +19,7 @@ import 'features/expense/data/repositories/expense_repository.dart';
 import 'features/expense/presentation/blocs/bank/bank_bloc.dart';
 import 'features/expense/presentation/blocs/expense/expense_bloc.dart';
 import 'features/tasks/data/repositories/task_repository.dart';
+import 'features/tasks/data/repositories/task_category_repository.dart';
 import 'features/tasks/presentation/blocs/tasks/task_bloc.dart';
 
 class DailyUseApp extends StatefulWidget {
@@ -33,6 +35,8 @@ class _DailyUseAppState extends State<DailyUseApp> {
   late final FinanceRepository _financeRepository;
   late final ExportRepository _exportRepository;
   late final TaskRepository _taskRepository;
+  late final NotificationService _notificationService;
+  late final TaskCategoryRepository _taskCategoryRepository;
   late final Future<void> _bootstrap;
 
   @override
@@ -49,7 +53,9 @@ class _DailyUseAppState extends State<DailyUseApp> {
       pdfExportService: PdfExportService(),
     );
     _taskRepository = TaskRepository(_database);
-    _bootstrap = _expenseRepository.seedDefaults();
+    _taskCategoryRepository = TaskCategoryRepository(_taskRepository);
+    _notificationService = NotificationService();
+    _bootstrap = _bootstrapApp();
   }
 
   @override
@@ -67,6 +73,10 @@ class _DailyUseAppState extends State<DailyUseApp> {
         RepositoryProvider<FinanceRepository>.value(value: _financeRepository),
         RepositoryProvider<ExportRepository>.value(value: _exportRepository),
         RepositoryProvider<TaskRepository>.value(value: _taskRepository),
+        RepositoryProvider<TaskCategoryRepository>.value(
+          value: _taskCategoryRepository,
+        ),
+        RepositoryProvider<NotificationService>.value(value: _notificationService),
       ],
       child: FutureBuilder<void>(
         future: _bootstrap,
@@ -138,5 +148,12 @@ class _DailyUseAppState extends State<DailyUseApp> {
         },
       ),
     );
+  }
+
+  Future<void> _bootstrapApp() async {
+    await _expenseRepository.seedDefaults();
+    await _taskCategoryRepository.ensureSeeded();
+    await _notificationService.initialize();
+    await _notificationService.scheduleDailyReminders();
   }
 }

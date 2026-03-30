@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/app_select_field.dart';
 import '../../data/repositories/expense_repository.dart';
 import '../../domain/models/expense_models.dart';
 
@@ -34,6 +36,7 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
             stream: repository.watchEntries(filter: _filter),
             builder: (context, entrySnapshot) {
               final entries = entrySnapshot.data ?? const <ExpenseRecord>[];
+
               return ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                 children: <Widget>[
@@ -105,19 +108,18 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        DropdownButtonFormField<int?>(
-                          key: ValueKey<int?>(_filter.bankId),
-                          initialValue: _filter.bankId,
-                          decoration: const InputDecoration(labelText: 'Bank'),
-                          items: <DropdownMenuItem<int?>>[
-                            const DropdownMenuItem<int?>(
+                        AppSelectField<int?>(
+                          label: 'Bank',
+                          value: _filter.bankId,
+                          options: <AppSelectOption<int?>>[
+                            const AppSelectOption<int?>(
                               value: null,
-                              child: Text('All Banks'),
+                              label: 'All Banks',
                             ),
                             ...options.banks.map(
-                              (bank) => DropdownMenuItem<int?>(
+                              (bank) => AppSelectOption<int?>(
                                 value: bank.id,
-                                child: Text(bank.name),
+                                label: bank.name,
                               ),
                             ),
                           ],
@@ -128,21 +130,18 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        DropdownButtonFormField<int?>(
-                          key: ValueKey<int?>(_filter.categoryId),
-                          initialValue: _filter.categoryId,
-                          decoration: const InputDecoration(
-                            labelText: 'Category',
-                          ),
-                          items: <DropdownMenuItem<int?>>[
-                            const DropdownMenuItem<int?>(
+                        AppSelectField<int?>(
+                          label: 'Category',
+                          value: _filter.categoryId,
+                          options: <AppSelectOption<int?>>[
+                            const AppSelectOption<int?>(
                               value: null,
-                              child: Text('All Categories'),
+                              label: 'All Categories',
                             ),
                             ...options.categories.map(
-                              (category) => DropdownMenuItem<int?>(
+                              (category) => AppSelectOption<int?>(
                                 value: category.id,
-                                child: Text(category.name),
+                                label: category.name,
                               ),
                             ),
                           ],
@@ -153,30 +152,27 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        DropdownButtonFormField<ExpenseFlowFilter>(
-                          key: ValueKey<ExpenseFlowFilter>(_filter.flow),
-                          initialValue: _filter.flow,
-                          decoration: const InputDecoration(labelText: 'Type'),
-                          items: const <DropdownMenuItem<ExpenseFlowFilter>>[
-                            DropdownMenuItem(
+                        AppSelectField<ExpenseFlowFilter>(
+                          label: 'Type',
+                          value: _filter.flow,
+                          options: const <AppSelectOption<ExpenseFlowFilter>>[
+                            AppSelectOption(
                               value: ExpenseFlowFilter.all,
-                              child: Text('All'),
+                              label: 'All',
                             ),
-                            DropdownMenuItem(
+                            AppSelectOption(
                               value: ExpenseFlowFilter.credit,
-                              child: Text('Credit'),
+                              label: 'Credit',
                             ),
-                            DropdownMenuItem(
+                            AppSelectOption(
                               value: ExpenseFlowFilter.debit,
-                              child: Text('Debit'),
+                              label: 'Debit',
                             ),
                           ],
                           onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _filter = _filter.copyWith(flow: value);
-                              });
-                            }
+                            setState(() {
+                              _filter = _filter.copyWith(flow: value);
+                            });
                           },
                         ),
                       ],
@@ -195,32 +191,83 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                       (entry) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: AppPanel(
-                          child: ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: CircleAvatar(
-                              backgroundColor: Color(
-                                entry.category.colorValue,
-                              ).withValues(alpha: 0.14),
-                              child: Icon(
-                                AppConstants.categoryIconFromCodePoint(
-                                  entry.category.iconCodePoint,
-                                ),
-                                color: Color(entry.category.colorValue),
+                          child: Column(
+                            children: <Widget>[
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  CircleAvatar(
+                                    backgroundColor: Color(
+                                      entry.category.colorValue,
+                                    ).withValues(alpha: 0.14),
+                                    child: Icon(
+                                      AppConstants.categoryIconFromCodePoint(
+                                        entry.category.iconCodePoint,
+                                      ),
+                                      color: Color(entry.category.colorValue),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: <Widget>[
+                                        Text(
+                                          entry.title,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleMedium,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          [
+                                            entry.category.name,
+                                            if (entry.bank != null) entry.bank!.name,
+                                            AppConstants.shortDateFormat.format(
+                                              entry.date,
+                                            ),
+                                            entry.isCredit ? 'Credit' : 'Debit',
+                                          ].join(' • '),
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    '${entry.isCredit ? '+' : '-'}${AppConstants.currency(entry.amount)}',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                ],
                               ),
-                            ),
-                            title: Text(entry.title),
-                            subtitle: Text(
-                              [
-                                entry.category.name,
-                                if (entry.bank != null) entry.bank!.name,
-                                AppConstants.shortDateFormat.format(entry.date),
-                                entry.isCredit ? 'Credit' : 'Debit',
-                              ].join(' - '),
-                            ),
-                            trailing: Text(
-                              '${entry.isCredit ? '+' : '-'}${AppConstants.currency(entry.amount)}',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: <Widget>[
+                                  TextButton.icon(
+                                    onPressed: () => Navigator.of(context).pushNamed(
+                                      AppRoutes.expenseAdd,
+                                      arguments: ExpenseEditorArgs(entry: entry),
+                                    ),
+                                    icon: const Icon(Icons.edit_rounded),
+                                    label: const Text('Edit'),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () => _deleteEntry(entry),
+                                    icon: const Icon(Icons.delete_outline_rounded),
+                                    label: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -238,6 +285,39 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
     final categories = await repository.watchCategories().first;
     final banks = await repository.watchBanks().first;
     return _ExpenseFilterOptions(categories: categories, banks: banks);
+  }
+
+  Future<void> _deleteEntry(ExpenseRecord entry) async {
+    final repository = context.read<ExpenseRepository>();
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete transaction'),
+        content: Text('Delete "${entry.title}"?'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true || !mounted) {
+      return;
+    }
+
+    await repository.deleteExpense(entry.id);
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('"${entry.title}" deleted.')),
+    );
   }
 }
 

@@ -7,6 +7,7 @@ import '../../../../presentation/widgets/charts/borrowed_lent_bar_chart.dart';
 import '../../../../presentation/widgets/charts/category_pie_chart.dart';
 import '../../../../presentation/widgets/charts/trend_line_chart.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/app_select_field.dart';
 import '../../../../shared/widgets/metric_tile.dart';
 import '../../domain/models/expense_models.dart';
 import '../blocs/bank/bank_bloc.dart';
@@ -51,18 +52,18 @@ class ExpenseAnalyticsPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  DropdownButtonFormField<int?>(
-                    initialValue: state.selectedBankId,
-                    decoration: const InputDecoration(labelText: 'Bank filter'),
-                    items: <DropdownMenuItem<int?>>[
-                      const DropdownMenuItem<int?>(
+                  AppSelectField<int?>(
+                    label: 'Bank filter',
+                    value: state.selectedBankId,
+                    options: <AppSelectOption<int?>>[
+                      const AppSelectOption<int?>(
                         value: null,
-                        child: Text('All Banks'),
+                        label: 'All Banks',
                       ),
                       ...bankState.banks.map(
-                        (bank) => DropdownMenuItem<int?>(
+                        (bank) => AppSelectOption<int?>(
                           value: bank.id,
-                          child: Text(bank.name),
+                          label: bank.name,
                         ),
                       ),
                     ],

@@ -137,12 +137,12 @@ class TaskAnalyticsPage extends StatelessWidget {
       (sum, item) => sum + item.count,
     );
     if (total == 0) {
-      return 'Priority: 1: 0%  2: 0%  3: 0%  4: 0%  5: 0%';
+      return '1: 0%  2: 0%  3: 0%  4: 0%  5: 0%';
     }
 
     final values = analytics.priorityDistribution
         .map((item) => '${item.priority}: ${((item.count / total) * 100).round()}%')
         .join('   ');
-    return 'Priority: $values';
+    return values;
   }
 }

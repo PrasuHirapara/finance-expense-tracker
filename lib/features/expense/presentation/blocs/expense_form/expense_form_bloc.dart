@@ -8,6 +8,7 @@ import '../../../domain/models/expense_models.dart';
 class ExpenseFormState extends Equatable {
   const ExpenseFormState({
     this.status = ExpenseFormStatus.initial,
+    this.expenseId,
     this.type = 'expense',
     this.title = '',
     this.amount = '',
@@ -24,6 +25,7 @@ class ExpenseFormState extends Equatable {
   });
 
   final ExpenseFormStatus status;
+  final int? expenseId;
   final String type;
   final String title;
   final String amount;
@@ -44,9 +46,11 @@ class ExpenseFormState extends Equatable {
       (parsedAmount ?? 0) > 0 &&
       categoryId != null &&
       date != null;
+  bool get isEditing => expenseId != null;
 
   ExpenseFormState copyWith({
     ExpenseFormStatus? status,
+    int? expenseId,
     String? type,
     String? title,
     String? amount,
@@ -65,6 +69,7 @@ class ExpenseFormState extends Equatable {
   }) {
     return ExpenseFormState(
       status: status ?? this.status,
+      expenseId: expenseId ?? this.expenseId,
       type: type ?? this.type,
       title: title ?? this.title,
       amount: amount ?? this.amount,
@@ -84,6 +89,7 @@ class ExpenseFormState extends Equatable {
   @override
   List<Object?> get props => <Object?>[
     status,
+    expenseId,
     type,
     title,
     amount,
@@ -110,7 +116,12 @@ sealed class ExpenseFormEvent extends Equatable {
 }
 
 class ExpenseFormInitialized extends ExpenseFormEvent {
-  const ExpenseFormInitialized();
+  const ExpenseFormInitialized({this.existingExpense});
+
+  final ExpenseRecord? existingExpense;
+
+  @override
+  List<Object?> get props => <Object?>[existingExpense];
 }
 
 class ExpenseTypeChanged extends ExpenseFormEvent {
@@ -235,9 +246,22 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
     emit(
       state.copyWith(
         status: ExpenseFormStatus.ready,
+        expenseId: event.existingExpense?.id,
         categories: categories,
         banks: banks,
-        categoryId: categories.isEmpty ? null : categories.first.id,
+        type: event.existingExpense?.type ?? state.type,
+        title: event.existingExpense?.title ?? state.title,
+        amount: _formatAmount(event.existingExpense?.amount),
+        categoryId:
+            event.existingExpense?.category.id ??
+            (categories.isEmpty ? null : categories.first.id),
+        bankId: event.existingExpense?.bank?.id,
+        paymentMode:
+            event.existingExpense?.paymentMode ?? state.paymentMode,
+        date: event.existingExpense?.date ?? state.date,
+        notes: event.existingExpense?.notes ?? state.notes,
+        counterparty:
+            event.existingExpense?.counterparty ?? state.counterparty,
       ),
     );
   }
@@ -260,21 +284,24 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
     );
 
     try {
-      await _repository.addExpense(
-        ExpenseDraft(
-          title: state.title,
-          amount: state.parsedAmount!,
-          type: state.type,
-          categoryId: state.categoryId!,
-          bankId: state.bankId,
-          date: state.date!,
-          paymentMode: state.paymentMode,
-          notes: state.notes,
-          counterparty: state.counterparty.trim().isEmpty
-              ? null
-              : state.counterparty.trim(),
-        ),
+      final draft = ExpenseDraft(
+        title: state.title,
+        amount: state.parsedAmount!,
+        type: state.type,
+        categoryId: state.categoryId!,
+        bankId: state.bankId,
+        date: state.date!,
+        paymentMode: state.paymentMode,
+        notes: state.notes,
+        counterparty: state.counterparty.trim().isEmpty
+            ? null
+            : state.counterparty.trim(),
       );
+      if (state.isEditing) {
+        await _repository.updateExpense(id: state.expenseId!, draft: draft);
+      } else {
+        await _repository.addExpense(draft);
+      }
       emit(state.copyWith(status: ExpenseFormStatus.success));
     } catch (error) {
       emit(
@@ -284,5 +311,14 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
         ),
       );
     }
+  }
+
+  String _formatAmount(double? amount) {
+    if (amount == null) {
+      return state.amount;
+    }
+    return amount == amount.roundToDouble()
+        ? amount.toStringAsFixed(0)
+        : amount.toString();
   }
 }

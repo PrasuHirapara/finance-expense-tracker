@@ -81,6 +81,24 @@ class TaskRepository {
     )..where((table) => table.id.equals(id))).go();
   }
 
+  Future<void> renameCategory({
+    required String oldName,
+    required String newName,
+  }) async {
+    await (_database.update(_database.dbTasks)
+          ..where((table) => table.category.equals(oldName)))
+        .write(DbTasksCompanion(category: Value(newName.trim())));
+  }
+
+  Future<void> replaceCategory({
+    required String oldName,
+    required String replacement,
+  }) async {
+    await (_database.update(_database.dbTasks)
+          ..where((table) => table.category.equals(oldName)))
+        .write(DbTasksCompanion(category: Value(replacement.trim())));
+  }
+
   Future<void> setTaskCompletion({
     required int id,
     required bool isCompleted,

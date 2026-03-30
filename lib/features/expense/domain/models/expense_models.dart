@@ -160,28 +160,28 @@ class ExpenseEntryFilter extends Equatable {
 
 class ExpenseDashboardData extends Equatable {
   const ExpenseDashboardData({
-    required this.todaysExpense,
-    required this.totalExpense,
     required this.totalCredit,
     required this.totalDebit,
-    required this.recentEntries,
+    required this.totalLent,
+    required this.totalBorrowed,
+    required this.entries,
   });
 
-  final double todaysExpense;
-  final double totalExpense;
   final double totalCredit;
   final double totalDebit;
-  final List<ExpenseRecord> recentEntries;
+  final double totalLent;
+  final double totalBorrowed;
+  final List<ExpenseRecord> entries;
 
   double get totalNet => totalCredit - totalDebit;
 
   @override
   List<Object?> get props => <Object?>[
-    todaysExpense,
-    totalExpense,
     totalCredit,
     totalDebit,
-    recentEntries,
+    totalLent,
+    totalBorrowed,
+    entries,
   ];
 }
 

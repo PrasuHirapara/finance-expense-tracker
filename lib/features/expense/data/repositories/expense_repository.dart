@@ -97,25 +97,48 @@ class ExpenseRepository {
     );
   }
 
+  Future<void> updateExpense({
+    required int id,
+    required ExpenseDraft draft,
+  }) async {
+    await (_database.update(
+      _database.dbFinanceEntries,
+    )..where((table) => table.id.equals(id))).write(
+      DbFinanceEntriesCompanion(
+        title: Value(draft.title.trim()),
+        amount: Value(draft.amount),
+        type: Value(draft.type),
+        categoryId: Value(draft.categoryId),
+        bankId: Value(draft.bankId),
+        entryDate: Value(draft.date),
+        paymentMode: Value(draft.paymentMode),
+        notes: Value(draft.notes.trim()),
+        counterparty: Value(draft.counterparty),
+      ),
+    );
+  }
+
+  Future<void> deleteExpense(int id) async {
+    await (_database.delete(
+      _database.dbFinanceEntries,
+    )..where((table) => table.id.equals(id))).go();
+  }
+
   Stream<List<ExpenseRecord>> watchEntries({ExpenseEntryFilter? filter}) {
     final query = _entryJoin(filter: filter);
     return query.watch().map(_mapExpenseRows);
   }
 
   Stream<ExpenseDashboardData> watchDashboard({int? bankId}) {
-    final anchor = DateTime.now();
     return watchEntries(
       filter: ExpenseEntryFilter(bankId: bankId),
     ).map((entries) {
       return ExpenseDashboardData(
-        todaysExpense: _sum(
-          entries,
-          (entry) => entry.type == 'expense' && entry.date.isSameDate(anchor),
-        ),
-        totalExpense: _sum(entries, (entry) => entry.type == 'expense'),
         totalCredit: _sum(entries, (entry) => entry.isCredit),
         totalDebit: _sum(entries, (entry) => entry.isDebit),
-        recentEntries: entries.take(8).toList(growable: false),
+        totalLent: _sum(entries, (entry) => entry.type == 'lent'),
+        totalBorrowed: _sum(entries, (entry) => entry.type == 'borrowed'),
+        entries: entries,
       );
     });
   }

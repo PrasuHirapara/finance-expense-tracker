@@ -11,6 +11,8 @@ class TasksModulePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return BlocBuilder<TaskBloc, TaskState>(
       builder: (context, state) {
         return SafeArea(
@@ -20,19 +22,9 @@ class TasksModulePage extends StatelessWidget {
               Row(
                 children: <Widget>[
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          'Tasks Module',
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Manage tasks by date, priority, completion, and daily carry-forward.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
+                    child: Text(
+                      'Tasks Module',
+                      style: theme.textTheme.headlineMedium,
                     ),
                   ),
                   IconButton(
@@ -65,9 +57,7 @@ class TasksModulePage extends StatelessWidget {
                 const AppPanel(
                   child: Padding(
                     padding: EdgeInsets.all(12),
-                    child: Center(
-                      child: Text('No tasks for the selected date.'),
-                    ),
+                    child: Center(child: Text('No tasks for the selected date.')),
                   ),
                 )
               else
@@ -75,7 +65,7 @@ class TasksModulePage extends StatelessWidget {
                   (task) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: AppPanel(
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
@@ -83,90 +73,83 @@ class TasksModulePage extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                               Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                child: Text(
+                                  task.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.titleMedium,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Flexible(
+                                child: Wrap(
+                                  alignment: WrapAlignment.end,
+                                  spacing: 8,
+                                  runSpacing: 8,
                                   children: <Widget>[
-                                    Text(
-                                      task.title,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: <Widget>[
-                                        Chip(label: Text(task.category)),
-                                        Chip(
-                                          label: Text('Priority ${task.priority}'),
-                                        ),
-                                        if (task.isDaily)
-                                          const Chip(label: Text('Daily')),
-                                      ],
-                                    ),
+                                    _TaskBadge(label: task.category),
+                                    _TaskBadge(label: task.priority.toString()),
+                                    if (task.isDaily)
+                                      const _TaskBadge(label: 'Daily'),
                                   ],
                                 ),
                               ),
                             ],
                           ),
-                          if (task.description.trim().isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 8),
-                            Text(
-                              task.description,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                          const SizedBox(height: 8),
-                          Row(
-                            children: <Widget>[
-                              Checkbox(
-                                value: task.isCompleted,
-                                onChanged: (value) {
-                                  context.read<TaskBloc>().add(
-                                    TaskCompletionChanged(
-                                      id: task.id,
-                                      isCompleted: value ?? false,
-                                    ),
-                                  );
-                                },
-                              ),
-                              const Text('Complete'),
-                              const Spacer(),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
+                          const SizedBox(height: 10),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              context.read<TaskBloc>().add(
+                                TaskCompletionChanged(
+                                  id: task.id,
+                                  isCompleted: !task.isCompleted,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: task.isCompleted
-                                      ? const Color(0xFFD8F3E3)
-                                      : const Color(0xFFFDE8E6),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  task.isCompleted ? 'Complete' : 'Pending',
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () =>
-                                    Navigator.of(context).pushNamed(
-                                      AppRoutes.taskEditor,
-                                      arguments: TaskEditorArgs(
-                                        selectedDate: state.selectedDate,
-                                        task: task,
+                              );
+                            },
+                            child: Row(
+                              children: <Widget>[
+                                Checkbox.adaptive(
+                                  value: task.isCompleted,
+                                  onChanged: (value) {
+                                    context.read<TaskBloc>().add(
+                                      TaskCompletionChanged(
+                                        id: task.id,
+                                        isCompleted: value ?? false,
                                       ),
-                                    ),
+                                    );
+                                  },
+                                ),
+                                Text(
+                                  task.isCompleted ? 'Completed' : 'Complete',
+                                  style: theme.textTheme.bodyLarge,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: <Widget>[
+                              TextButton.icon(
+                                onPressed: () => Navigator.of(context).pushNamed(
+                                  AppRoutes.taskEditor,
+                                  arguments: TaskEditorArgs(
+                                    selectedDate: state.selectedDate,
+                                    task: task,
+                                  ),
+                                ),
                                 icon: const Icon(Icons.edit_rounded),
+                                label: const Text('Edit'),
                               ),
-                              IconButton(
+                              TextButton.icon(
                                 onPressed: () {
                                   context.read<TaskBloc>().add(
                                     TaskDeleted(task.id),
                                   );
                                 },
                                 icon: const Icon(Icons.delete_outline_rounded),
+                                label: const Text('Delete'),
                               ),
                             ],
                           ),
@@ -179,6 +162,34 @@ class TasksModulePage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _TaskBadge extends StatelessWidget {
+  const _TaskBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 110),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }

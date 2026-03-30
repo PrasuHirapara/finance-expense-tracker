@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../features/expense/data/repositories/expense_repository.dart';
+import '../../features/expense/domain/models/expense_models.dart';
 import '../../features/expense/presentation/blocs/expense_analytics/expense_analytics_bloc.dart';
 import '../../features/expense/presentation/blocs/expense_form/expense_form_bloc.dart';
 import '../../features/expense/presentation/pages/expense_analytics_page.dart';
@@ -33,17 +34,24 @@ class TaskEditorArgs {
   final TaskItem? task;
 }
 
+class ExpenseEditorArgs {
+  const ExpenseEditorArgs({this.entry});
+
+  final ExpenseRecord? entry;
+}
+
 class AppRouter {
   AppRouter._();
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case AppRoutes.expenseAdd:
+        final args = settings.arguments as ExpenseEditorArgs?;
         return MaterialPageRoute<void>(
           builder: (context) => BlocProvider(
             create: (context) =>
                 ExpenseFormBloc(context.read<ExpenseRepository>())
-                  ..add(const ExpenseFormInitialized()),
+                  ..add(ExpenseFormInitialized(existingExpense: args?.entry)),
             child: const ExpenseEntryPage(),
           ),
         );

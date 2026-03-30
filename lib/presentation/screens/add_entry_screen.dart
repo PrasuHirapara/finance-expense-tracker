@@ -1,0 +1,200 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/constants/app_constants.dart';
+import '../../domain/entities/transaction_type.dart';
+import '../controllers/add_entry_form_controller.dart';
+import '../controllers/app_providers.dart';
+
+class AddEntryScreen extends ConsumerWidget {
+  const AddEntryScreen({super.key});
+
+  static const String routeName = 'add-entry';
+  static const String routePath = '/add-entry';
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final formState = ref.watch(addEntryFormControllerProvider);
+    final controller = ref.read(addEntryFormControllerProvider.notifier);
+    final categoriesAsync = ref.watch(categoriesProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Add Entry')),
+      body: categoriesAsync.when(
+        data: (categories) {
+          controller.setDefaultCategoryIfMissing(categories);
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            children: <Widget>[
+              SegmentedButton<TransactionType>(
+                segments: const <ButtonSegment<TransactionType>>[
+                  ButtonSegment(
+                    value: TransactionType.expense(),
+                    label: Text('Expense'),
+                    icon: Icon(Icons.arrow_downward_rounded),
+                  ),
+                  ButtonSegment(
+                    value: TransactionType.income(),
+                    label: Text('Income'),
+                    icon: Icon(Icons.arrow_upward_rounded),
+                  ),
+                  ButtonSegment(
+                    value: TransactionType.borrowed(),
+                    label: Text('Borrowed'),
+                    icon: Icon(Icons.account_balance_wallet_rounded),
+                  ),
+                  ButtonSegment(
+                    value: TransactionType.lent(),
+                    label: Text('Lent'),
+                    icon: Icon(Icons.savings_rounded),
+                  ),
+                ],
+                selected: <TransactionType>{formState.type},
+                onSelectionChanged: (selection) {
+                  controller.setType(selection.first);
+                },
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                decoration: InputDecoration(
+                  labelText:
+                      formState.type.isLiability || formState.type.isReceivable
+                      ? 'Title or purpose'
+                      : 'Title',
+                  errorText:
+                      formState.showValidation && !formState.hasValidTitle
+                      ? 'Enter a title'
+                      : null,
+                ),
+                onChanged: controller.setTitle,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Amount',
+                  prefixText: 'Rs ',
+                  errorText:
+                      formState.showValidation && !formState.hasValidAmount
+                      ? 'Enter a valid amount'
+                      : null,
+                ),
+                onChanged: controller.setAmount,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int>(
+                initialValue: formState.selectedCategoryId,
+                decoration: InputDecoration(
+                  labelText: 'Category',
+                  errorText:
+                      formState.showValidation &&
+                          formState.selectedCategoryId == null
+                      ? 'Select a category'
+                      : null,
+                ),
+                items: categories
+                    .map(
+                      (category) => DropdownMenuItem<int>(
+                        value: category.id,
+                        child: Text(category.name),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: controller.setCategory,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: formState.paymentMode,
+                decoration: const InputDecoration(labelText: 'Payment Mode'),
+                items: AppConstants.paymentModes
+                    .map(
+                      (mode) => DropdownMenuItem<String>(
+                        value: mode,
+                        child: Text(mode),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: (value) {
+                  if (value != null) {
+                    controller.setPaymentMode(value);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () async {
+                  final selectedDate = await showDatePicker(
+                    context: context,
+                    initialDate: formState.date,
+                    firstDate: DateTime(2022),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (selectedDate != null) {
+                    controller.setDate(selectedDate);
+                  }
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Date'),
+                  child: Text(
+                    AppConstants.shortDateFormat.format(formState.date),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                decoration: InputDecoration(
+                  labelText: formState.type.isLiability
+                      ? 'Borrowed from'
+                      : formState.type.isReceivable
+                      ? 'Lent to'
+                      : 'Counterparty (optional)',
+                ),
+                onChanged: controller.setCounterparty,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                minLines: 3,
+                maxLines: 4,
+                decoration: const InputDecoration(labelText: 'Notes'),
+                onChanged: controller.setNotes,
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: formState.isSaving
+                    ? null
+                    : () async {
+                        final success = await controller.submit();
+                        if (success && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Entry added successfully.'),
+                            ),
+                          );
+                          Navigator.of(context).pop();
+                        }
+                      },
+                icon: formState.isSaving
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.check_rounded),
+                label: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  child: Text('Save Entry'),
+                ),
+              ),
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stackTrace) => Center(child: Text(error.toString())),
+      ),
+    );
+  }
+}

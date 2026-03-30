@@ -120,6 +120,10 @@ class TaskCategoryRepository {
     await _commit(remaining);
   }
 
+  Future<void> resetToDefaults() async {
+    await _commit(List<String>.from(AppConstants.taskCategoryChoices));
+  }
+
   Future<void> _commit(List<String> categories) async {
     _cachedCategories = categories.toSet().toList(growable: false);
     await _writeCategories(_cachedCategories!);

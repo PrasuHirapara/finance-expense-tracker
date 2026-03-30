@@ -5,12 +5,15 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import 'reminder_settings_repository.dart';
+
 class NotificationService {
-  NotificationService();
+  NotificationService(this._reminderSettingsRepository);
 
   static const int _expenseReminderId = 8001;
   static const int _taskReminderId = 8002;
 
+  final ReminderSettingsRepository _reminderSettingsRepository;
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
 
@@ -55,6 +58,8 @@ class NotificationService {
       return;
     }
 
+    final reminderSettings = await _reminderSettingsRepository.getSettings();
+
     await _notifications.cancel(id: _expenseReminderId);
     await _notifications.cancel(id: _taskReminderId);
 
@@ -65,7 +70,7 @@ class NotificationService {
       title: 'Write today\'s expenses',
       body:
           'Add today\'s spending before the day ends. Update income, lent, or borrowed entries if needed.',
-      scheduledDate: _nextInstanceOf(hour: 20),
+      scheduledDate: _nextInstanceOf(reminderSettings.expenseReminder),
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_use_expense_reminders',
@@ -86,8 +91,8 @@ class NotificationService {
       id: _taskReminderId,
       title: 'Review today\'s tasks',
       body:
-          'Plan your day at 8 AM. Add tasks, review priorities, and mark finished work in Daily Use.',
-      scheduledDate: _nextInstanceOf(hour: 8),
+          'Plan your day, review priorities, and mark finished work in Daily Use.',
+      scheduledDate: _nextInstanceOf(reminderSettings.taskReminder),
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'daily_use_task_reminders',
@@ -138,14 +143,15 @@ class NotificationService {
     return AndroidScheduleMode.exactAllowWhileIdle;
   }
 
-  tz.TZDateTime _nextInstanceOf({required int hour}) {
+  tz.TZDateTime _nextInstanceOf(ReminderTime reminderTime) {
     final now = tz.TZDateTime.now(tz.local);
     var scheduled = tz.TZDateTime(
       tz.local,
       now.year,
       now.month,
       now.day,
-      hour,
+      reminderTime.hour,
+      reminderTime.minute,
     );
 
     if (!scheduled.isAfter(now)) {

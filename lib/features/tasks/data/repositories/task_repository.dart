@@ -81,6 +81,10 @@ class TaskRepository {
     )..where((table) => table.id.equals(id))).go();
   }
 
+  Future<void> clearSectionData() async {
+    await _database.delete(_database.dbTasks).go();
+  }
+
   Future<void> renameCategory({
     required String oldName,
     required String newName,
@@ -232,9 +236,11 @@ class TaskRepository {
     final startDate = focusDate.startOfDay.subtract(const Duration(days: 6));
     final completedByDate = <DateTime, int>{};
 
-    for (var cursor = startDate;
-        !cursor.isAfter(focusDate.startOfDay);
-        cursor = cursor.add(const Duration(days: 1))) {
+    for (
+      var cursor = startDate;
+      !cursor.isAfter(focusDate.startOfDay);
+      cursor = cursor.add(const Duration(days: 1))
+    ) {
       completedByDate[cursor] = 0;
     }
 

@@ -124,15 +124,21 @@ class ExpenseRepository {
     )..where((table) => table.id.equals(id))).go();
   }
 
+  Future<void> clearSectionData() async {
+    await _database.delete(_database.dbFinanceEntries).go();
+    await _database.delete(_database.dbBanks).go();
+    await seedDefaults();
+  }
+
   Stream<List<ExpenseRecord>> watchEntries({ExpenseEntryFilter? filter}) {
     final query = _entryJoin(filter: filter);
     return query.watch().map(_mapExpenseRows);
   }
 
   Stream<ExpenseDashboardData> watchDashboard({int? bankId}) {
-    return watchEntries(
-      filter: ExpenseEntryFilter(bankId: bankId),
-    ).map((entries) {
+    return watchEntries(filter: ExpenseEntryFilter(bankId: bankId)).map((
+      entries,
+    ) {
       return ExpenseDashboardData(
         totalCredit: _sum(entries, (entry) => entry.isCredit),
         totalDebit: _sum(entries, (entry) => entry.isDebit),
@@ -150,16 +156,15 @@ class ExpenseRepository {
   }) async {
     final anchor = anchorDate ?? DateTime.now();
     final range = _resolveRange(window, anchor);
-    final entries = (await _entryJoin(
-      filter: ExpenseEntryFilter(bankId: bankId),
-    ).get())
-        .map(_mapExpenseRow)
-        .where(
-          (entry) =>
-              !entry.date.isBefore(range.start) &&
-              !entry.date.isAfter(range.end),
-        )
-        .toList(growable: false);
+    final entries =
+        (await _entryJoin(filter: ExpenseEntryFilter(bankId: bankId)).get())
+            .map(_mapExpenseRow)
+            .where(
+              (entry) =>
+                  !entry.date.isBefore(range.start) &&
+                  !entry.date.isAfter(range.end),
+            )
+            .toList(growable: false);
 
     final expenseEntries = entries
         .where((entry) => entry.type == 'expense')
@@ -337,14 +342,13 @@ class ExpenseRepository {
     ];
 
     for (final demoEntry in demoEntries) {
-      await (_database.delete(_database.dbFinanceEntries)
-            ..where(
-              (table) =>
-                  table.title.equals(demoEntry.title) &
-                  table.amount.equals(demoEntry.amount) &
-                  table.type.equals(demoEntry.type) &
-                  table.notes.equals(demoEntry.notes),
-            ))
+      await (_database.delete(_database.dbFinanceEntries)..where(
+            (table) =>
+                table.title.equals(demoEntry.title) &
+                table.amount.equals(demoEntry.amount) &
+                table.type.equals(demoEntry.type) &
+                table.notes.equals(demoEntry.notes),
+          ))
           .go();
     }
   }

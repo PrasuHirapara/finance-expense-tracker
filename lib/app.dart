@@ -5,6 +5,7 @@ import 'core/blocs/module_navigation_bloc.dart';
 import 'core/blocs/theme_cubit.dart';
 import 'core/router/app_router.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/reminder_settings_repository.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/app_shell.dart';
 import 'data/database/app_database.dart';
@@ -37,6 +38,7 @@ class _DailyUseAppState extends State<DailyUseApp> {
   late final TaskRepository _taskRepository;
   late final NotificationService _notificationService;
   late final TaskCategoryRepository _taskCategoryRepository;
+  late final ReminderSettingsRepository _reminderSettingsRepository;
   late final Future<void> _bootstrap;
 
   @override
@@ -54,12 +56,14 @@ class _DailyUseAppState extends State<DailyUseApp> {
     );
     _taskRepository = TaskRepository(_database);
     _taskCategoryRepository = TaskCategoryRepository(_taskRepository);
-    _notificationService = NotificationService();
+    _reminderSettingsRepository = ReminderSettingsRepository();
+    _notificationService = NotificationService(_reminderSettingsRepository);
     _bootstrap = _bootstrapApp();
   }
 
   @override
   void dispose() {
+    _reminderSettingsRepository.dispose();
     _database.close();
     super.dispose();
   }
@@ -76,7 +80,12 @@ class _DailyUseAppState extends State<DailyUseApp> {
         RepositoryProvider<TaskCategoryRepository>.value(
           value: _taskCategoryRepository,
         ),
-        RepositoryProvider<NotificationService>.value(value: _notificationService),
+        RepositoryProvider<ReminderSettingsRepository>.value(
+          value: _reminderSettingsRepository,
+        ),
+        RepositoryProvider<NotificationService>.value(
+          value: _notificationService,
+        ),
       ],
       child: FutureBuilder<void>(
         future: _bootstrap,

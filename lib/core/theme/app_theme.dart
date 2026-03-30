@@ -5,11 +5,36 @@ class AppTheme {
   AppTheme._();
 
   static ThemeData light() {
-    const seed = Color(0xFF1B5E5A);
+    return _buildTheme(
+      brightness: Brightness.light,
+      seed: const Color(0xFF1B5E5A),
+      surface: const Color(0xFFFAFBF7),
+      scaffoldBackground: const Color(0xFFF4F6F3),
+      panelColor: Colors.white,
+    );
+  }
+
+  static ThemeData dark() {
+    return _buildTheme(
+      brightness: Brightness.dark,
+      seed: const Color(0xFF5EC7BE),
+      surface: const Color(0xFF101717),
+      scaffoldBackground: const Color(0xFF091111),
+      panelColor: const Color(0xFF132020),
+    );
+  }
+
+  static ThemeData _buildTheme({
+    required Brightness brightness,
+    required Color seed,
+    required Color surface,
+    required Color scaffoldBackground,
+    required Color panelColor,
+  }) {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: seed,
-      brightness: Brightness.light,
-      surface: const Color(0xFFFAFBF7),
+      brightness: brightness,
+      surface: surface,
     );
 
     final textTheme = GoogleFonts.manropeTextTheme().copyWith(
@@ -45,7 +70,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       textTheme: textTheme,
-      scaffoldBackgroundColor: const Color(0xFFF4F6F3),
+      scaffoldBackgroundColor: scaffoldBackground,
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
@@ -54,7 +79,7 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white,
+        fillColor: panelColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
@@ -71,12 +96,12 @@ class AppTheme {
       cardTheme: CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
-        color: Colors.white,
+        color: panelColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 72,
-        backgroundColor: Colors.white,
+        backgroundColor: panelColor,
         indicatorColor: colorScheme.primaryContainer,
       ),
       snackBarTheme: SnackBarThemeData(

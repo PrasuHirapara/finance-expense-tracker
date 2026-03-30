@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/constants/app_constants.dart';
 import '../../../data/repositories/task_repository.dart';
 import '../../../domain/models/task_models.dart';
 
@@ -185,7 +186,12 @@ class TaskEditorBloc extends Bloc<TaskEditorEvent, TaskEditorState> {
   ) {
     final task = event.existingTask;
     if (task == null) {
-      emit(state.copyWith(date: event.selectedDate));
+      emit(
+        state.copyWith(
+          date: event.selectedDate,
+          category: AppConstants.taskCategoryChoices.first,
+        ),
+      );
       return;
     }
 

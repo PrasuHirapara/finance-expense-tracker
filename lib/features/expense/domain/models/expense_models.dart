@@ -107,29 +107,80 @@ class ExpenseDraft extends Equatable {
   ];
 }
 
+enum ExpenseFlowFilter { all, credit, debit }
+
+class ExpenseEntryFilter extends Equatable {
+  const ExpenseEntryFilter({
+    this.fromDate,
+    this.toDate,
+    this.bankId,
+    this.categoryId,
+    this.flow = ExpenseFlowFilter.all,
+  });
+
+  final DateTime? fromDate;
+  final DateTime? toDate;
+  final int? bankId;
+  final int? categoryId;
+  final ExpenseFlowFilter flow;
+
+  ExpenseEntryFilter copyWith({
+    Object? fromDate = _expenseFilterUnset,
+    Object? toDate = _expenseFilterUnset,
+    Object? bankId = _expenseFilterUnset,
+    Object? categoryId = _expenseFilterUnset,
+    ExpenseFlowFilter? flow,
+  }) {
+    return ExpenseEntryFilter(
+      fromDate: identical(fromDate, _expenseFilterUnset)
+          ? this.fromDate
+          : fromDate as DateTime?,
+      toDate: identical(toDate, _expenseFilterUnset)
+          ? this.toDate
+          : toDate as DateTime?,
+      bankId: identical(bankId, _expenseFilterUnset)
+          ? this.bankId
+          : bankId as int?,
+      categoryId: identical(categoryId, _expenseFilterUnset)
+          ? this.categoryId
+          : categoryId as int?,
+      flow: flow ?? this.flow,
+    );
+  }
+
+  @override
+  List<Object?> get props => <Object?>[
+    fromDate,
+    toDate,
+    bankId,
+    categoryId,
+    flow,
+  ];
+}
+
 class ExpenseDashboardData extends Equatable {
   const ExpenseDashboardData({
     required this.todaysExpense,
-    required this.weeklyExpense,
-    required this.weeklyCredit,
-    required this.weeklyDebit,
+    required this.totalExpense,
+    required this.totalCredit,
+    required this.totalDebit,
     required this.recentEntries,
   });
 
   final double todaysExpense;
-  final double weeklyExpense;
-  final double weeklyCredit;
-  final double weeklyDebit;
+  final double totalExpense;
+  final double totalCredit;
+  final double totalDebit;
   final List<ExpenseRecord> recentEntries;
 
-  double get weeklyNet => weeklyCredit - weeklyDebit;
+  double get totalNet => totalCredit - totalDebit;
 
   @override
   List<Object?> get props => <Object?>[
     todaysExpense,
-    weeklyExpense,
-    weeklyCredit,
-    weeklyDebit,
+    totalExpense,
+    totalCredit,
+    totalDebit,
     recentEntries,
   ];
 }
@@ -205,3 +256,5 @@ class ExpenseAnalyticsData extends Equatable {
     trend,
   ];
 }
+
+const Object _expenseFilterUnset = Object();

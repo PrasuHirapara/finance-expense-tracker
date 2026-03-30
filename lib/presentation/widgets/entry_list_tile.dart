@@ -18,13 +18,13 @@ class EntryListTile extends StatelessWidget {
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.14),
         child: Icon(
-          IconData(entry.category.iconCodePoint, fontFamily: 'MaterialIcons'),
+          AppConstants.categoryIconFromCodePoint(entry.category.iconCodePoint),
           color: color,
         ),
       ),
       title: Text(entry.title),
       subtitle: Text(
-        '${entry.category.name} • ${AppConstants.shortDateFormat.format(entry.date)}',
+        '${entry.category.name} - ${AppConstants.shortDateFormat.format(entry.date)}',
       ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,

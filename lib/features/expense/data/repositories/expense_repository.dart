@@ -40,74 +40,7 @@ class ExpenseRepository {
           .toList(growable: false),
     );
 
-    if (await _database.countEntries() > 0) {
-      return;
-    }
-
-    final categories = await watchCategories().first;
-    final banks = await watchBanks().first;
-    final categoryByName = <String, ExpenseCategory>{
-      for (final category in categories) category.name: category,
-    };
-    final bankByName = <String, BankName>{
-      for (final bank in banks) bank.name: bank,
-    };
-    final now = DateTime.now();
-
-    await _database.insertEntries(<DbFinanceEntriesCompanion>[
-      DbFinanceEntriesCompanion.insert(
-        title: 'Salary credit',
-        amount: 48000,
-        type: 'income',
-        categoryId: categoryByName['Miscellaneous']!.id,
-        bankId: Value(bankByName['HDFC']?.id),
-        entryDate: now.subtract(const Duration(days: 12)),
-        paymentMode: 'Bank Transfer',
-        notes: const Value('Monthly salary'),
-      ),
-      DbFinanceEntriesCompanion.insert(
-        title: 'SIP contribution',
-        amount: 6000,
-        type: 'expense',
-        categoryId: categoryByName['Investment']!.id,
-        bankId: Value(bankByName['SBI']?.id),
-        entryDate: now.subtract(const Duration(days: 2)),
-        paymentMode: 'Bank Transfer',
-        notes: const Value('Mutual fund SIP'),
-      ),
-      DbFinanceEntriesCompanion.insert(
-        title: 'Groceries',
-        amount: 1400,
-        type: 'expense',
-        categoryId: categoryByName['Food']!.id,
-        bankId: Value(bankByName['Axis']?.id),
-        entryDate: now.subtract(const Duration(days: 1)),
-        paymentMode: 'UPI',
-        notes: const Value('Weekly groceries'),
-      ),
-      DbFinanceEntriesCompanion.insert(
-        title: 'Borrowed for repairs',
-        amount: 3000,
-        type: 'borrowed',
-        categoryId: categoryByName['Miscellaneous']!.id,
-        bankId: Value(bankByName['Kotak']?.id),
-        entryDate: now.subtract(const Duration(days: 4)),
-        paymentMode: 'UPI',
-        notes: const Value('Short term liability'),
-        counterparty: const Value('Rahul'),
-      ),
-      DbFinanceEntriesCompanion.insert(
-        title: 'Lent to friend',
-        amount: 1800,
-        type: 'lent',
-        categoryId: categoryByName['Miscellaneous']!.id,
-        bankId: Value(bankByName['BOB']?.id),
-        entryDate: now.subtract(const Duration(days: 5)),
-        paymentMode: 'UPI',
-        notes: const Value('Receivable'),
-        counterparty: const Value('Neha'),
-      ),
-    ]);
+    await _removeLegacyDemoEntries();
   }
 
   Stream<List<ExpenseCategory>> watchCategories() {
@@ -164,31 +97,24 @@ class ExpenseRepository {
     );
   }
 
-  Stream<List<ExpenseRecord>> watchEntries({int? bankId}) {
-    final query = _entryJoin(bankId: bankId);
+  Stream<List<ExpenseRecord>> watchEntries({ExpenseEntryFilter? filter}) {
+    final query = _entryJoin(filter: filter);
     return query.watch().map(_mapExpenseRows);
   }
 
   Stream<ExpenseDashboardData> watchDashboard({int? bankId}) {
     final anchor = DateTime.now();
-    return watchEntries(bankId: bankId).map((entries) {
-      final weekStart = anchor.startOfWeek;
-      final weekEnd = anchor.endOfWeek;
-      final weeklyEntries = entries
-          .where(
-            (entry) =>
-                !entry.date.isBefore(weekStart) && !entry.date.isAfter(weekEnd),
-          )
-          .toList(growable: false);
-
+    return watchEntries(
+      filter: ExpenseEntryFilter(bankId: bankId),
+    ).map((entries) {
       return ExpenseDashboardData(
         todaysExpense: _sum(
           entries,
           (entry) => entry.type == 'expense' && entry.date.isSameDate(anchor),
         ),
-        weeklyExpense: _sum(weeklyEntries, (entry) => entry.type == 'expense'),
-        weeklyCredit: _sum(weeklyEntries, (entry) => entry.isCredit),
-        weeklyDebit: _sum(weeklyEntries, (entry) => entry.isDebit),
+        totalExpense: _sum(entries, (entry) => entry.type == 'expense'),
+        totalCredit: _sum(entries, (entry) => entry.isCredit),
+        totalDebit: _sum(entries, (entry) => entry.isDebit),
         recentEntries: entries.take(8).toList(growable: false),
       );
     });
@@ -201,7 +127,9 @@ class ExpenseRepository {
   }) async {
     final anchor = anchorDate ?? DateTime.now();
     final range = _resolveRange(window, anchor);
-    final entries = (await _entryJoin(bankId: bankId).get())
+    final entries = (await _entryJoin(
+      filter: ExpenseEntryFilter(bankId: bankId),
+    ).get())
         .map(_mapExpenseRow)
         .where(
           (entry) =>
@@ -250,7 +178,9 @@ class ExpenseRepository {
     );
   }
 
-  JoinedSelectStatement<HasResultSet, dynamic> _entryJoin({int? bankId}) {
+  JoinedSelectStatement<HasResultSet, dynamic> _entryJoin({
+    ExpenseEntryFilter? filter,
+  }) {
     final query =
         (_database.select(_database.dbFinanceEntries)
               ..orderBy(<OrderingTerm Function($DbFinanceEntriesTable)>[
@@ -272,8 +202,50 @@ class ExpenseRepository {
               ),
             ]);
 
-    if (bankId != null) {
-      query.where(_database.dbFinanceEntries.bankId.equals(bankId));
+    if (filter != null) {
+      if (filter.bankId != null) {
+        query.where(_database.dbFinanceEntries.bankId.equals(filter.bankId!));
+      }
+
+      if (filter.categoryId != null) {
+        query.where(
+          _database.dbFinanceEntries.categoryId.equals(filter.categoryId!),
+        );
+      }
+
+      if (filter.fromDate != null) {
+        query.where(
+          _database.dbFinanceEntries.entryDate.isBiggerOrEqualValue(
+            filter.fromDate!.startOfDay,
+          ),
+        );
+      }
+
+      if (filter.toDate != null) {
+        query.where(
+          _database.dbFinanceEntries.entryDate.isSmallerOrEqualValue(
+            filter.toDate!.endOfDay,
+          ),
+        );
+      }
+
+      switch (filter.flow) {
+        case ExpenseFlowFilter.all:
+          break;
+        case ExpenseFlowFilter.credit:
+          query.where(
+            _database.dbFinanceEntries.type.isIn(<String>[
+              'income',
+              'borrowed',
+            ]),
+          );
+          break;
+        case ExpenseFlowFilter.debit:
+          query.where(
+            _database.dbFinanceEntries.type.isIn(<String>['expense', 'lent']),
+          );
+          break;
+      }
     }
 
     return query;
@@ -305,6 +277,53 @@ class ExpenseRepository {
       counterparty: entry.counterparty,
       bank: bank == null ? null : BankName(id: bank.id, name: bank.name),
     );
+  }
+
+  Future<void> _removeLegacyDemoEntries() async {
+    const demoEntries = <_SeededExpenseEntry>[
+      _SeededExpenseEntry(
+        title: 'Salary credit',
+        amount: 48000,
+        type: 'income',
+        notes: 'Monthly salary',
+      ),
+      _SeededExpenseEntry(
+        title: 'SIP contribution',
+        amount: 6000,
+        type: 'expense',
+        notes: 'Mutual fund SIP',
+      ),
+      _SeededExpenseEntry(
+        title: 'Groceries',
+        amount: 1400,
+        type: 'expense',
+        notes: 'Weekly groceries',
+      ),
+      _SeededExpenseEntry(
+        title: 'Borrowed for repairs',
+        amount: 3000,
+        type: 'borrowed',
+        notes: 'Short term liability',
+      ),
+      _SeededExpenseEntry(
+        title: 'Lent to friend',
+        amount: 1800,
+        type: 'lent',
+        notes: 'Receivable',
+      ),
+    ];
+
+    for (final demoEntry in demoEntries) {
+      await (_database.delete(_database.dbFinanceEntries)
+            ..where(
+              (table) =>
+                  table.title.equals(demoEntry.title) &
+                  table.amount.equals(demoEntry.amount) &
+                  table.type.equals(demoEntry.type) &
+                  table.notes.equals(demoEntry.notes),
+            ))
+          .go();
+    }
   }
 
   double _sum(
@@ -386,4 +405,18 @@ class _ExpenseDateRange {
 
   final DateTime start;
   final DateTime end;
+}
+
+class _SeededExpenseEntry {
+  const _SeededExpenseEntry({
+    required this.title,
+    required this.amount,
+    required this.type,
+    required this.notes,
+  });
+
+  final String title;
+  final double amount;
+  final String type;
+  final String notes;
 }

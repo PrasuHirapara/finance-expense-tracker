@@ -88,6 +88,21 @@ class TaskCategoryStat extends Equatable {
   List<Object?> get props => <Object?>[category, count];
 }
 
+class TaskConsistencyPoint extends Equatable {
+  const TaskConsistencyPoint({
+    required this.date,
+    required this.completedCount,
+    required this.label,
+  });
+
+  final DateTime date;
+  final int completedCount;
+  final String label;
+
+  @override
+  List<Object?> get props => <Object?>[date, completedCount, label];
+}
+
 class TaskAnalyticsData extends Equatable {
   const TaskAnalyticsData({
     required this.completedCount,
@@ -95,6 +110,7 @@ class TaskAnalyticsData extends Equatable {
     required this.dailyTaskStreak,
     required this.priorityDistribution,
     required this.categoryBreakdown,
+    required this.consistencyTrend,
   });
 
   final int completedCount;
@@ -102,6 +118,7 @@ class TaskAnalyticsData extends Equatable {
   final int dailyTaskStreak;
   final List<TaskPriorityStat> priorityDistribution;
   final List<TaskCategoryStat> categoryBreakdown;
+  final List<TaskConsistencyPoint> consistencyTrend;
 
   @override
   List<Object?> get props => <Object?>[
@@ -110,5 +127,6 @@ class TaskAnalyticsData extends Equatable {
     dailyTaskStreak,
     priorityDistribution,
     categoryBreakdown,
+    consistencyTrend,
   ];
 }

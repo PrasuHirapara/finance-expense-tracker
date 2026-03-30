@@ -73,19 +73,67 @@ class TasksModulePage extends StatelessWidget {
               else
                 ...state.tasks.map(
                   (task) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.only(bottom: 10),
                     child: AppPanel(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                               Expanded(
-                                child: Text(
-                                  task.title,
-                                  style: Theme.of(context).textTheme.titleLarge,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Text(
+                                      task.title,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: <Widget>[
+                                        Chip(label: Text(task.category)),
+                                        Chip(
+                                          label: Text('Priority ${task.priority}'),
+                                        ),
+                                        if (task.isDaily)
+                                          const Chip(label: Text('Daily')),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
+                            ],
+                          ),
+                          if (task.description.trim().isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 8),
+                            Text(
+                              task.description,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                          const SizedBox(height: 8),
+                          Row(
+                            children: <Widget>[
+                              Checkbox(
+                                value: task.isCompleted,
+                                onChanged: (value) {
+                                  context.read<TaskBloc>().add(
+                                    TaskCompletionChanged(
+                                      id: task.id,
+                                      isCompleted: value ?? false,
+                                    ),
+                                  );
+                                },
+                              ),
+                              const Text('Complete'),
+                              const Spacer(),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -98,64 +146,9 @@ class TasksModulePage extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
-                                  task.isCompleted ? 'Completed' : 'Pending',
+                                  task.isCompleted ? 'Complete' : 'Pending',
                                 ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(task.description),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: <Widget>[
-                              Chip(label: Text(task.category)),
-                              Chip(label: Text('Priority ${task.priority}')),
-                              if (task.isDaily)
-                                const Chip(label: Text('Daily Task')),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: <Widget>[
-                              Expanded(
-                                child: CheckboxListTile(
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Completed'),
-                                  value: task.isCompleted,
-                                  onChanged: (value) {
-                                    context.read<TaskBloc>().add(
-                                      TaskCompletionChanged(
-                                        id: task.id,
-                                        isCompleted: value ?? false,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                              Expanded(
-                                child: CheckboxListTile(
-                                  dense: true,
-                                  contentPadding: EdgeInsets.zero,
-                                  title: const Text('Not Completed'),
-                                  value: !task.isCompleted,
-                                  onChanged: (value) {
-                                    context.read<TaskBloc>().add(
-                                      TaskCompletionChanged(
-                                        id: task.id,
-                                        isCompleted: !(value ?? false),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: <Widget>[
                               IconButton(
                                 onPressed: () =>
                                     Navigator.of(context).pushNamed(

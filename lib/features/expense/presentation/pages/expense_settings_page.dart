@@ -11,7 +11,17 @@ class ExpenseSettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Expense Settings')),
-      body: BlocBuilder<BankBloc, BankState>(
+      body: const ExpenseSettingsBody(),
+    );
+  }
+}
+
+class ExpenseSettingsBody extends StatelessWidget {
+  const ExpenseSettingsBody({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<BankBloc, BankState>(
         builder: (context, state) {
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -66,8 +76,7 @@ class ExpenseSettingsPage extends StatelessWidget {
             ],
           );
         },
-      ),
-    );
+      );
   }
 
   Future<void> _showBankDialog(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/blocs/module_navigation_bloc.dart';
+import 'core/blocs/theme_cubit.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/app_shell.dart';
@@ -100,6 +101,7 @@ class _DailyUseAppState extends State<DailyUseApp> {
 
           return MultiBlocProvider(
             providers: <BlocProvider<dynamic>>[
+              BlocProvider<ThemeCubit>(create: (_) => ThemeCubit()),
               BlocProvider<ModuleNavigationBloc>(
                 create: (_) => ModuleNavigationBloc(),
               ),
@@ -119,12 +121,18 @@ class _DailyUseAppState extends State<DailyUseApp> {
                       ..add(const TasksSubscriptionRequested()),
               ),
             ],
-            child: MaterialApp(
-              title: 'Daily Use',
-              debugShowCheckedModeBanner: false,
-              theme: AppTheme.light(),
-              onGenerateRoute: AppRouter.onGenerateRoute,
-              home: const AppShell(),
+            child: BlocBuilder<ThemeCubit, ThemeMode>(
+              builder: (context, themeMode) {
+                return MaterialApp(
+                  title: 'Daily Use',
+                  debugShowCheckedModeBanner: false,
+                  theme: AppTheme.light(),
+                  darkTheme: AppTheme.dark(),
+                  themeMode: themeMode,
+                  onGenerateRoute: AppRouter.onGenerateRoute,
+                  home: const AppShell(),
+                );
+              },
             ),
           );
         },

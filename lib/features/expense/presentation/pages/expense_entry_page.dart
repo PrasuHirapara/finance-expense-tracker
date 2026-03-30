@@ -25,10 +25,26 @@ class ExpenseEntryPage extends StatelessWidget {
               children: <Widget>[
                 SegmentedButton<String>(
                   segments: const <ButtonSegment<String>>[
-                    ButtonSegment(value: 'expense', label: Text('Expense')),
-                    ButtonSegment(value: 'income', label: Text('Income')),
-                    ButtonSegment(value: 'borrowed', label: Text('Borrowed')),
-                    ButtonSegment(value: 'lent', label: Text('Lent')),
+                    ButtonSegment(
+                      value: 'expense',
+                      icon: Icon(Icons.arrow_circle_down_rounded),
+                      label: Text('Expense'),
+                    ),
+                    ButtonSegment(
+                      value: 'income',
+                      icon: Icon(Icons.arrow_circle_up_rounded),
+                      label: Text('Income'),
+                    ),
+                    ButtonSegment(
+                      value: 'borrowed',
+                      icon: Icon(Icons.account_balance_wallet_rounded),
+                      label: Text('Borrowed'),
+                    ),
+                    ButtonSegment(
+                      value: 'lent',
+                      icon: Icon(Icons.savings_rounded),
+                      label: Text('Lent'),
+                    ),
                   ],
                   selected: <String>{state.type},
                   onSelectionChanged: (selection) {
@@ -40,7 +56,10 @@ class ExpenseEntryPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 TextField(
                   decoration: InputDecoration(
-                    labelText: 'Title',
+                    labelText:
+                        state.type == 'borrowed' || state.type == 'lent'
+                        ? 'Title or purpose'
+                        : 'Title',
                     errorText:
                         state.showValidation && state.title.trim().isEmpty
                         ? 'Enter a title'
@@ -156,7 +175,13 @@ class ExpenseEntryPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 TextField(
-                  decoration: const InputDecoration(labelText: 'Counterparty'),
+                  decoration: InputDecoration(
+                    labelText: switch (state.type) {
+                      'borrowed' => 'Borrowed from',
+                      'lent' => 'Lent to',
+                      _ => 'Counterparty (optional)',
+                    },
+                  ),
                   onChanged: (value) => context.read<ExpenseFormBloc>().add(
                     ExpenseCounterpartyChanged(value),
                   ),

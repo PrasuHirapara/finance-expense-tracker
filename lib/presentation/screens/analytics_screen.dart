@@ -98,11 +98,7 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: report != null && !exportState.isLoading
-                          ? () => _exportCsv(
-                              context,
-                              analyticsState.window,
-                              report,
-                            )
+                          ? () => _exportCsv(analyticsState.window, report)
                           : null,
                       icon: const Icon(Icons.table_chart_rounded),
                       label: const Text('Export CSV'),
@@ -112,11 +108,7 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
                   Expanded(
                     child: FilledButton.tonalIcon(
                       onPressed: report != null && !exportState.isLoading
-                          ? () => _exportPdf(
-                              context,
-                              analyticsState.window,
-                              report,
-                            )
+                          ? () => _exportPdf(analyticsState.window, report)
                           : null,
                       icon: exportState.isLoading
                           ? const SizedBox(
@@ -157,27 +149,24 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
     );
   }
 
-  Future<void> _exportCsv(
-    BuildContext context,
-    AnalyticsWindow window,
-    AnalyticsReport report,
-  ) async {
+  Future<void> _exportCsv(AnalyticsWindow window, AnalyticsReport report) async {
     try {
-      final path = await context.read<ExportCubit>().exportCsv(
+      final exportCubit = context.read<ExportCubit>();
+      final path = await exportCubit.exportCsv(
         window: window,
         report: report,
       );
-      if (!context.mounted) {
+      if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('CSV exported to $path')));
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(SnackBar(content: Text('CSV exported to $path')));
     } catch (_) {
-      if (!context.mounted) {
+      if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             context.read<ExportCubit>().state.errorMessage ??
@@ -188,34 +177,31 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
     }
   }
 
-  Future<void> _exportPdf(
-    BuildContext context,
-    AnalyticsWindow window,
-    AnalyticsReport report,
-  ) async {
+  Future<void> _exportPdf(AnalyticsWindow window, AnalyticsReport report) async {
     try {
+      final exportCubit = context.read<ExportCubit>();
       await Future<void>.delayed(const Duration(milliseconds: 80));
       final snapshots = ExportChartSnapshots(
         pieChart: await _captureChart(_pieChartKey),
         lineChart: await _captureChart(_lineChartKey),
         barChart: await _captureChart(_barChartKey),
       );
-      final path = await context.read<ExportCubit>().exportPdf(
+      final path = await exportCubit.exportPdf(
         window: window,
         report: report,
         snapshots: snapshots,
       );
-      if (!context.mounted) {
+      if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('PDF exported to $path')));
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(SnackBar(content: Text('PDF exported to $path')));
     } catch (_) {
-      if (!context.mounted) {
+      if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             context.read<ExportCubit>().state.errorMessage ??

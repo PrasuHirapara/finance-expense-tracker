@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/extensions/date_time_x.dart';
 import '../../../../data/database/app_database.dart';
@@ -187,6 +188,7 @@ class TaskRepository {
               )
               .toList(growable: false)
             ..sort((a, b) => b.count.compareTo(a.count)),
+      consistencyTrend: _buildConsistencyTrend(tasks, focusDate),
     );
   }
 
@@ -203,5 +205,37 @@ class TaskRepository {
       cursor = cursor.subtract(const Duration(days: 1));
     }
     return streak;
+  }
+
+  List<TaskConsistencyPoint> _buildConsistencyTrend(
+    List<DbTask> tasks,
+    DateTime focusDate,
+  ) {
+    final startDate = focusDate.startOfDay.subtract(const Duration(days: 6));
+    final completedByDate = <DateTime, int>{};
+
+    for (var cursor = startDate;
+        !cursor.isAfter(focusDate.startOfDay);
+        cursor = cursor.add(const Duration(days: 1))) {
+      completedByDate[cursor] = 0;
+    }
+
+    for (final task in tasks.where((task) => task.isCompleted)) {
+      final date = task.taskDate.startOfDay;
+      if (date.isBefore(startDate) || date.isAfter(focusDate.startOfDay)) {
+        continue;
+      }
+      completedByDate.update(date, (value) => value + 1);
+    }
+
+    return completedByDate.entries
+        .map(
+          (entry) => TaskConsistencyPoint(
+            date: entry.key,
+            completedCount: entry.value,
+            label: DateFormat('E').format(entry.key),
+          ),
+        )
+        .toList(growable: false);
   }
 }

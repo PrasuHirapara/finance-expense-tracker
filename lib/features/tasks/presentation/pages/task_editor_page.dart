@@ -20,6 +20,11 @@ class TaskEditorPage extends StatelessWidget {
         appBar: AppBar(title: const Text('Task Editor')),
         body: BlocBuilder<TaskEditorBloc, TaskEditorState>(
           builder: (context, state) {
+            final categoryOptions = <String>{
+              ...AppConstants.taskCategoryChoices,
+              if (state.category.trim().isNotEmpty) state.category.trim(),
+            }.toList(growable: false);
+
             return ListView(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               children: <Widget>[
@@ -45,17 +50,32 @@ class TaskEditorPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                DropdownButtonFormField<String>(
+                  initialValue: state.category.trim().isEmpty
+                      ? categoryOptions.first
+                      : state.category,
                   decoration: InputDecoration(
                     labelText: 'Category',
                     errorText:
                         state.showValidation && state.category.trim().isEmpty
-                        ? 'Enter a category'
+                        ? 'Select a category'
                         : null,
                   ),
-                  onChanged: (value) => context.read<TaskEditorBloc>().add(
-                    TaskCategoryChanged(value),
-                  ),
+                  items: categoryOptions
+                      .map(
+                        (category) => DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(category),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (value) {
+                    if (value != null) {
+                      context.read<TaskEditorBloc>().add(
+                        TaskCategoryChanged(value),
+                      );
+                    }
+                  },
                 ),
                 const SizedBox(height: 16),
                 InkWell(
@@ -112,13 +132,6 @@ class TaskEditorPage extends StatelessWidget {
                   title: const Text('Completed'),
                   onChanged: (value) => context.read<TaskEditorBloc>().add(
                     TaskCompletionStatusChanged(value ?? false),
-                  ),
-                ),
-                CheckboxListTile(
-                  value: !state.isCompleted,
-                  title: const Text('Not Completed'),
-                  onChanged: (value) => context.read<TaskEditorBloc>().add(
-                    TaskCompletionStatusChanged(!(value ?? false)),
                   ),
                 ),
                 const SizedBox(height: 20),

@@ -71,12 +71,6 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                           ).pushNamed(AppRoutes.expenseAnalytics),
                           icon: const Icon(Icons.insights_rounded),
                         ),
-                        IconButton(
-                          onPressed: () => Navigator.of(
-                            context,
-                          ).pushNamed(AppRoutes.expenseSettings),
-                          icon: const Icon(Icons.settings_rounded),
-                        ),
                       ],
                     ),
                     const SizedBox(height: 18),
@@ -134,7 +128,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Weekly net: ${AppConstants.currency(dashboard.weeklyNet)}',
+                              'Total net: ${AppConstants.currency(dashboard.totalNet)}',
                             ),
                           ],
                         ),
@@ -149,24 +143,24 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                         physics: const NeverScrollableScrollPhysics(),
                         children: <Widget>[
                           MetricTile(
-                            label: 'Weekly Expense',
+                            label: 'Total Expense',
                             value: AppConstants.currency(
-                              dashboard.weeklyExpense,
+                              dashboard.totalExpense,
                             ),
                             icon: Icons.arrow_circle_down_rounded,
                             color: const Color(0xFFC0392B),
                           ),
                           MetricTile(
-                            label: 'Weekly Credit',
+                            label: 'Total Credit',
                             value: AppConstants.currency(
-                              dashboard.weeklyCredit,
+                              dashboard.totalCredit,
                             ),
                             icon: Icons.arrow_circle_up_rounded,
                             color: const Color(0xFF1F8B4C),
                           ),
                           MetricTile(
-                            label: 'Weekly Debit',
-                            value: AppConstants.currency(dashboard.weeklyDebit),
+                            label: 'Total Debit',
+                            value: AppConstants.currency(dashboard.totalDebit),
                             icon: Icons.payments_rounded,
                             color: const Color(0xFF8E44AD),
                           ),
@@ -183,9 +177,23 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            Text(
-                              'Recent Entries',
-                              style: Theme.of(context).textTheme.titleLarge,
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: Text(
+                                    'Recent Entries',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleLarge,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.of(
+                                    context,
+                                  ).pushNamed(AppRoutes.expenseEntries),
+                                  child: const Text('Show More'),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 12),
                             ...dashboard.recentEntries.map(
@@ -196,9 +204,8 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                                     entry.category.colorValue,
                                   ).withValues(alpha: 0.14),
                                   child: Icon(
-                                    IconData(
+                                    AppConstants.categoryIconFromCodePoint(
                                       entry.category.iconCodePoint,
-                                      fontFamily: 'MaterialIcons',
                                     ),
                                     color: Color(entry.category.colorValue),
                                   ),

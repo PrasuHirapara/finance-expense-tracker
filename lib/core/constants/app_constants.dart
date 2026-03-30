@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 class AppConstants {
   AppConstants._();
 
-  static const String appName = 'Ledger Lens';
+  static const String appName = 'Daily Use';
 
   static const List<String> paymentModes = <String>[
     'Cash',
@@ -110,6 +110,61 @@ class AppConstants {
     0xFFD35400,
     0xFF1ABC9C,
   ];
+
+  static const List<String> taskCategoryChoices = <String>[
+    'Work',
+    'Study',
+    'Health',
+    'Finance',
+    'Home',
+    'Shopping',
+    'Fitness',
+    'Reading',
+    'Family',
+    'Travel',
+    'Calls',
+    'Personal',
+  ];
+
+  static IconData categoryIconFromCodePoint(int codePoint) {
+    if (codePoint == Icons.restaurant_rounded.codePoint) {
+      return Icons.restaurant_rounded;
+    }
+    if (codePoint == Icons.school_rounded.codePoint) {
+      return Icons.school_rounded;
+    }
+    if (codePoint == Icons.directions_bus_rounded.codePoint) {
+      return Icons.directions_bus_rounded;
+    }
+    if (codePoint == Icons.health_and_safety_rounded.codePoint) {
+      return Icons.health_and_safety_rounded;
+    }
+    if (codePoint == Icons.shopping_bag_rounded.codePoint) {
+      return Icons.shopping_bag_rounded;
+    }
+    if (codePoint == Icons.receipt_long_rounded.codePoint) {
+      return Icons.receipt_long_rounded;
+    }
+    if (codePoint == Icons.movie_creation_rounded.codePoint) {
+      return Icons.movie_creation_rounded;
+    }
+    if (codePoint == Icons.home_rounded.codePoint) {
+      return Icons.home_rounded;
+    }
+    if (codePoint == Icons.trending_up_rounded.codePoint) {
+      return Icons.trending_up_rounded;
+    }
+    if (codePoint == Icons.category_rounded.codePoint) {
+      return Icons.category_rounded;
+    }
+    if (codePoint == Icons.pets_rounded.codePoint) {
+      return Icons.pets_rounded;
+    }
+    if (codePoint == Icons.savings_rounded.codePoint) {
+      return Icons.savings_rounded;
+    }
+    return Icons.category_rounded;
+  }
 
   static String currency(double value) => currencyFormatter.format(value);
 }

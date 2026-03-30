@@ -38,7 +38,7 @@ class PdfExportService {
         pageTheme: const pw.PageTheme(margin: pw.EdgeInsets.all(28)),
         build: (context) => <pw.Widget>[
           pw.Text(
-            'Ledger Lens Analytics Export',
+            'Daily Use Analytics Export',
             style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 8),

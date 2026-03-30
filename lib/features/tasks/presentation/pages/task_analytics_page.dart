@@ -3,7 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/metric_tile.dart';
+import '../../domain/models/task_models.dart';
 import '../blocs/task_analytics/task_analytics_bloc.dart';
+import '../widgets/task_consistency_chart.dart';
 
 class TaskAnalyticsPage extends StatelessWidget {
   const TaskAnalyticsPage({super.key});
@@ -48,7 +50,7 @@ class TaskAnalyticsPage extends StatelessWidget {
                       color: const Color(0xFF2E86DE),
                     ),
                     MetricTile(
-                      label: 'Tracked Categories',
+                      label: 'Categories',
                       value: analytics.categoryBreakdown.length.toString(),
                       icon: Icons.category_rounded,
                       color: const Color(0xFF8E44AD),
@@ -65,27 +67,29 @@ class TaskAnalyticsPage extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 12),
-                      ...analytics.priorityDistribution.map(
-                        (item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text('Priority ${item.priority}: ${item.count}'),
-                              const SizedBox(height: 6),
-                              LinearProgressIndicator(
-                                value: analytics.priorityDistribution.isEmpty
-                                    ? 0
-                                    : item.count /
-                                          analytics.priorityDistribution
-                                              .fold<int>(
-                                                0,
-                                                (sum, entry) =>
-                                                    sum + entry.count,
-                                              ),
-                              ),
-                            ],
-                          ),
+                      Text(_prioritySummary(analytics)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                AppPanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Daily Consistency',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Completed tasks over the last 7 days.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 220,
+                        child: TaskConsistencyChart(
+                          points: analytics.consistencyTrend,
                         ),
                       ),
                     ],
@@ -104,7 +108,11 @@ class TaskAnalyticsPage extends StatelessWidget {
                       ...analytics.categoryBreakdown.map(
                         (item) => ListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: Text(item.category),
+                          title: Text(
+                            item.category,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           trailing: Text(item.count.toString()),
                         ),
                       ),
@@ -121,5 +129,20 @@ class TaskAnalyticsPage extends StatelessWidget {
         },
       ),
     );
+  }
+
+  String _prioritySummary(TaskAnalyticsData analytics) {
+    final total = analytics.priorityDistribution.fold<int>(
+      0,
+      (sum, item) => sum + item.count,
+    );
+    if (total == 0) {
+      return 'Priority: 1: 0%  2: 0%  3: 0%  4: 0%  5: 0%';
+    }
+
+    final values = analytics.priorityDistribution
+        .map((item) => '${item.priority}: ${((item.count / total) * 100).round()}%')
+        .join('   ');
+    return 'Priority: $values';
   }
 }

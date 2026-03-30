@@ -62,9 +62,8 @@ class _CategoriesView extends StatelessWidget {
                           CircleAvatar(
                             backgroundColor: color.withValues(alpha: 0.14),
                             child: Icon(
-                              IconData(
+                              AppConstants.categoryIconFromCodePoint(
                                 category.iconCodePoint,
-                                fontFamily: 'MaterialIcons',
                               ),
                               color: color,
                             ),

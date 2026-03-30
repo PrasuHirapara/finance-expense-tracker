@@ -6,6 +6,7 @@ import '../../features/expense/presentation/blocs/expense_analytics/expense_anal
 import '../../features/expense/presentation/blocs/expense_form/expense_form_bloc.dart';
 import '../../features/expense/presentation/pages/expense_analytics_page.dart';
 import '../../features/expense/presentation/pages/expense_entry_page.dart';
+import '../../features/expense/presentation/pages/expense_entries_page.dart';
 import '../../features/expense/presentation/pages/expense_settings_page.dart';
 import '../../features/tasks/data/repositories/task_repository.dart';
 import '../../features/tasks/domain/models/task_models.dart';
@@ -19,6 +20,7 @@ class AppRoutes {
 
   static const String expenseAdd = '/expense/add';
   static const String expenseAnalytics = '/expense/analytics';
+  static const String expenseEntries = '/expense/entries';
   static const String expenseSettings = '/expense/settings';
   static const String taskAnalytics = '/tasks/analytics';
   static const String taskEditor = '/tasks/editor';
@@ -53,6 +55,10 @@ class AppRouter {
                   ..add(const ExpenseAnalyticsRequested()),
             child: const ExpenseAnalyticsPage(),
           ),
+        );
+      case AppRoutes.expenseEntries:
+        return MaterialPageRoute<void>(
+          builder: (context) => const ExpenseEntriesPage(),
         );
       case AppRoutes.expenseSettings:
         return MaterialPageRoute<void>(

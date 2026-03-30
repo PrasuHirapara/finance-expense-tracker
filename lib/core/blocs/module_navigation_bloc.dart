@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-enum AppModule { expense, tasks }
+enum AppModule { expense, tasks, settings }
 
 class ModuleNavigationState extends Equatable {
   const ModuleNavigationState({required this.module});

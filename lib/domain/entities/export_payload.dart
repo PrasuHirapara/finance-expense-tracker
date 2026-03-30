@@ -1,14 +1,18 @@
 import 'dart:typed_data';
 
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:equatable/equatable.dart';
 
-part 'export_payload.freezed.dart';
+class ExportChartSnapshots extends Equatable {
+  const ExportChartSnapshots({
+    this.pieChart,
+    this.lineChart,
+    this.barChart,
+  });
 
-@freezed
-abstract class ExportChartSnapshots with _$ExportChartSnapshots {
-  const factory ExportChartSnapshots({
-    Uint8List? pieChart,
-    Uint8List? lineChart,
-    Uint8List? barChart,
-  }) = _ExportChartSnapshots;
+  final Uint8List? pieChart;
+  final Uint8List? lineChart;
+  final Uint8List? barChart;
+
+  @override
+  List<Object?> get props => <Object?>[pieChart, lineChart, barChart];
 }

@@ -3,12 +3,14 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../domain/entities/analytics_models.dart';
 import '../../domain/entities/export_payload.dart';
-import '../controllers/app_providers.dart';
+import '../../domain/repositories/export_repository.dart';
+import '../../domain/repositories/finance_repository.dart';
+import '../controllers/analytics_controller.dart';
 import '../controllers/export_controller.dart';
 import '../widgets/charts/borrowed_lent_bar_chart.dart';
 import '../widgets/charts/category_pie_chart.dart';
@@ -17,110 +19,141 @@ import '../widgets/empty_state.dart';
 import '../widgets/section_card.dart';
 import '../widgets/summary_tile.dart';
 
-class AnalyticsScreen extends ConsumerStatefulWidget {
+class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
 
   static const String routeName = 'analytics';
   static const String routePath = '/analytics';
 
   @override
-  ConsumerState<AnalyticsScreen> createState() => _AnalyticsScreenState();
+  Widget build(BuildContext context) {
+    return MultiBlocProvider(
+      providers: <BlocProvider<dynamic>>[
+        BlocProvider<AnalyticsCubit>(
+          create: (context) =>
+              AnalyticsCubit(context.read<FinanceRepository>())..initialize(),
+        ),
+        BlocProvider<ExportCubit>(
+          create: (context) => ExportCubit(context.read<ExportRepository>()),
+        ),
+      ],
+      child: const _AnalyticsView(),
+    );
+  }
 }
 
-class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
+class _AnalyticsView extends StatefulWidget {
+  const _AnalyticsView();
+
+  @override
+  State<_AnalyticsView> createState() => _AnalyticsViewState();
+}
+
+class _AnalyticsViewState extends State<_AnalyticsView> {
   final GlobalKey _pieChartKey = GlobalKey();
   final GlobalKey _lineChartKey = GlobalKey();
   final GlobalKey _barChartKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
-    final window = ref.watch(analyticsWindowProvider);
-    final reportAsync = ref.watch(analyticsReportProvider(window));
-    final exportState = ref.watch(exportControllerProvider);
+    return BlocBuilder<AnalyticsCubit, AnalyticsState>(
+      builder: (context, analyticsState) {
+        final report = analyticsState.report;
+        final exportState = context.watch<ExportCubit>().state;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text('Analytics', style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 8),
-          Text(
-            'Weekly, monthly, and yearly views with credit, debit, liability, and receivable signals.',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SegmentedButton<AnalyticsWindow>(
-            segments: AnalyticsWindow.values
-                .map(
-                  (value) => ButtonSegment<AnalyticsWindow>(
-                    value: value,
-                    label: Text(value.label),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Analytics',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Weekly, monthly, and yearly views with credit, debit, liability, and receivable signals.',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SegmentedButton<AnalyticsWindow>(
+                segments: AnalyticsWindow.values
+                    .map(
+                      (value) => ButtonSegment<AnalyticsWindow>(
+                        value: value,
+                        label: Text(value.label),
+                      ),
+                    )
+                    .toList(growable: false),
+                selected: <AnalyticsWindow>{analyticsState.window},
+                onSelectionChanged: (selection) {
+                  context.read<AnalyticsCubit>().selectWindow(selection.first);
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: report != null && !exportState.isLoading
+                          ? () => _exportCsv(
+                              context,
+                              analyticsState.window,
+                              report,
+                            )
+                          : null,
+                      icon: const Icon(Icons.table_chart_rounded),
+                      label: const Text('Export CSV'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      onPressed: report != null && !exportState.isLoading
+                          ? () => _exportPdf(
+                              context,
+                              analyticsState.window,
+                              report,
+                            )
+                          : null,
+                      icon: exportState.isLoading
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.picture_as_pdf_rounded),
+                      label: const Text('Export PDF'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              if (analyticsState.status == AnalyticsStatus.loading &&
+                  report == null)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (analyticsState.status == AnalyticsStatus.failure)
+                Center(
+                  child: Text(
+                    analyticsState.errorMessage ?? 'Unable to load analytics.',
                   ),
                 )
-                .toList(growable: false),
-            selected: <AnalyticsWindow>{window},
-            onSelectionChanged: (selection) {
-              ref.read(analyticsWindowProvider.notifier).state =
-                  selection.first;
-            },
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: reportAsync.hasValue && !exportState.isLoading
-                      ? () => _exportCsv(
-                          context,
-                          window,
-                          reportAsync.requireValue,
-                        )
-                      : null,
-                  icon: const Icon(Icons.table_chart_rounded),
-                  label: const Text('Export CSV'),
+              else if (report != null)
+                _AnalyticsBody(
+                  report: report,
+                  pieChartKey: _pieChartKey,
+                  lineChartKey: _lineChartKey,
+                  barChartKey: _barChartKey,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: reportAsync.hasValue && !exportState.isLoading
-                      ? () => _exportPdf(
-                          context,
-                          window,
-                          reportAsync.requireValue,
-                        )
-                      : null,
-                  icon: exportState.isLoading
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.picture_as_pdf_rounded),
-                  label: const Text('Export PDF'),
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 18),
-          reportAsync.when(
-            data: (report) => _AnalyticsBody(
-              report: report,
-              pieChartKey: _pieChartKey,
-              lineChartKey: _lineChartKey,
-              barChartKey: _barChartKey,
-            ),
-            loading: () => const Padding(
-              padding: EdgeInsets.all(32),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (error, stackTrace) => Center(child: Text(error.toString())),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -129,15 +162,30 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     AnalyticsWindow window,
     AnalyticsReport report,
   ) async {
-    final path = await ref
-        .read(exportControllerProvider.notifier)
-        .exportCsv(window: window, report: report);
-    if (!context.mounted) {
-      return;
+    try {
+      final path = await context.read<ExportCubit>().exportCsv(
+        window: window,
+        report: report,
+      );
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('CSV exported to $path')));
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.read<ExportCubit>().state.errorMessage ??
+                'Unable to export CSV.',
+          ),
+        ),
+      );
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('CSV exported to $path')));
   }
 
   Future<void> _exportPdf(
@@ -145,21 +193,37 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     AnalyticsWindow window,
     AnalyticsReport report,
   ) async {
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    final snapshots = ExportChartSnapshots(
-      pieChart: await _captureChart(_pieChartKey),
-      lineChart: await _captureChart(_lineChartKey),
-      barChart: await _captureChart(_barChartKey),
-    );
-    final path = await ref
-        .read(exportControllerProvider.notifier)
-        .exportPdf(window: window, report: report, snapshots: snapshots);
-    if (!context.mounted) {
-      return;
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      final snapshots = ExportChartSnapshots(
+        pieChart: await _captureChart(_pieChartKey),
+        lineChart: await _captureChart(_lineChartKey),
+        barChart: await _captureChart(_barChartKey),
+      );
+      final path = await context.read<ExportCubit>().exportPdf(
+        window: window,
+        report: report,
+        snapshots: snapshots,
+      );
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('PDF exported to $path')));
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.read<ExportCubit>().state.errorMessage ??
+                'Unable to export PDF.',
+          ),
+        ),
+      );
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('PDF exported to $path')));
   }
 
   Future<Uint8List?> _captureChart(GlobalKey key) async {
@@ -256,7 +320,7 @@ class _AnalyticsBody extends StatelessWidget {
                         .map(
                           (item) => _LegendChip(
                             label:
-                                '${item.categoryName} • ${AppConstants.currency(item.amount)}',
+                                '${item.categoryName} - ${AppConstants.currency(item.amount)}',
                             color: Color(item.colorValue),
                           ),
                         )
@@ -288,7 +352,7 @@ class _AnalyticsBody extends StatelessWidget {
                   .map(
                     (item) => _LegendChip(
                       label:
-                          '${item.categoryName} • ${AppConstants.currency(item.amount)}',
+                          '${item.categoryName} - ${AppConstants.currency(item.amount)}',
                       color: Color(item.colorValue),
                     ),
                   )

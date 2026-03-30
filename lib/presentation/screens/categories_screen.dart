@@ -1,82 +1,100 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/constants/app_constants.dart';
-import '../controllers/app_providers.dart';
+import '../../domain/repositories/finance_repository.dart';
 import '../controllers/categories_controller.dart';
 import '../widgets/section_card.dart';
 
-class CategoriesScreen extends ConsumerWidget {
+class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({super.key});
 
   static const String routeName = 'categories';
   static const String routePath = '/categories';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final categoriesAsync = ref.watch(categoriesProvider);
+  Widget build(BuildContext context) {
+    return BlocProvider<CategoriesCubit>(
+      create: (context) =>
+          CategoriesCubit(context.read<FinanceRepository>())..initialize(),
+      child: const _CategoriesView(),
+    );
+  }
+}
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Categories'),
-        actions: <Widget>[
-          IconButton(
-            onPressed: () => _showAddCategorySheet(context, ref),
-            icon: const Icon(Icons.add_circle_outline_rounded),
-          ),
-        ],
-      ),
-      body: categoriesAsync.when(
-        data: (categories) => ListView.separated(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
-          itemCount: categories.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final category = categories[index];
-            final color = Color(category.colorValue);
-            return SectionCard(
-              child: Row(
-                children: <Widget>[
-                  CircleAvatar(
-                    backgroundColor: color.withValues(alpha: 0.14),
-                    child: Icon(
-                      IconData(
-                        category.iconCodePoint,
-                        fontFamily: 'MaterialIcons',
-                      ),
-                      color: color,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      category.name,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ],
+class _CategoriesView extends StatelessWidget {
+  const _CategoriesView();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<CategoriesCubit, CategoriesState>(
+      builder: (context, state) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Categories'),
+            actions: <Widget>[
+              IconButton(
+                onPressed: state.isSaving
+                    ? null
+                    : () => _showAddCategorySheet(context),
+                icon: const Icon(Icons.add_circle_outline_rounded),
               ),
-            );
-          },
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(child: Text(error.toString())),
-      ),
+            ],
+          ),
+          body: state.isLoading && state.categories.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : state.status == CategoriesStatus.failure &&
+                    state.categories.isEmpty
+              ? Center(
+                  child: Text(state.errorMessage ?? 'Unable to load categories.'),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+                  itemCount: state.categories.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final category = state.categories[index];
+                    final color = Color(category.colorValue);
+                    return SectionCard(
+                      child: Row(
+                        children: <Widget>[
+                          CircleAvatar(
+                            backgroundColor: color.withValues(alpha: 0.14),
+                            child: Icon(
+                              IconData(
+                                category.iconCodePoint,
+                                fontFamily: 'MaterialIcons',
+                              ),
+                              color: color,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              category.name,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                          Container(
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              color: color,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        );
+      },
     );
   }
 
-  Future<void> _showAddCategorySheet(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
+  Future<void> _showAddCategorySheet(BuildContext context) async {
     final nameController = TextEditingController();
     var selectedIcon = AppConstants.categoryIconChoices.first;
     var selectedColor = AppConstants.categoryColorChoices.first;
@@ -84,7 +102,7 @@ class CategoriesScreen extends ConsumerWidget {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (context) {
+      builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setState) {
             return Padding(
@@ -180,25 +198,44 @@ class CategoriesScreen extends ConsumerWidget {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: () async {
-                        final name = nameController.text.trim();
-                        if (name.isEmpty) {
-                          return;
-                        }
-                        await ref
-                            .read(categoriesControllerProvider.notifier)
-                            .addCategory(
-                              name: name,
-                              colorValue: selectedColor,
-                              iconCodePoint: selectedIcon.codePoint,
-                            );
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Category added.')),
-                          );
-                        }
-                      },
+                      onPressed: context.watch<CategoriesCubit>().state.isSaving
+                          ? null
+                          : () async {
+                              final name = nameController.text.trim();
+                              if (name.isEmpty) {
+                                return;
+                              }
+
+                              try {
+                                await context.read<CategoriesCubit>().addCategory(
+                                  name: name,
+                                  colorValue: selectedColor,
+                                  iconCodePoint: selectedIcon.codePoint,
+                                );
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Category added.'),
+                                    ),
+                                  );
+                                }
+                              } catch (_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        context
+                                                .read<CategoriesCubit>()
+                                                .state
+                                                .errorMessage ??
+                                            'Unable to add category.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
                       child: const Padding(
                         padding: EdgeInsets.symmetric(vertical: 14),
                         child: Text('Save Category'),

@@ -1,8 +1,6 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:equatable/equatable.dart';
 
 import 'finance_entry.dart';
-
-part 'analytics_models.freezed.dart';
 
 enum AnalyticsWindow { weekly, monthly, yearly }
 
@@ -19,46 +17,88 @@ extension AnalyticsWindowX on AnalyticsWindow {
   }
 }
 
-@freezed
-abstract class CategorySpend with _$CategorySpend {
-  const factory CategorySpend({
-    required String categoryName,
-    required double amount,
-    required int colorValue,
-  }) = _CategorySpend;
+class CategorySpend extends Equatable {
+  const CategorySpend({
+    required this.categoryName,
+    required this.amount,
+    required this.colorValue,
+  });
+
+  final String categoryName;
+  final double amount;
+  final int colorValue;
+
+  @override
+  List<Object?> get props => <Object?>[categoryName, amount, colorValue];
 }
 
-@freezed
-abstract class TrendPoint with _$TrendPoint {
-  const factory TrendPoint({
-    required DateTime period,
-    required double amount,
-    required String label,
-  }) = _TrendPoint;
+class TrendPoint extends Equatable {
+  const TrendPoint({
+    required this.period,
+    required this.amount,
+    required this.label,
+  });
+
+  final DateTime period;
+  final double amount;
+  final String label;
+
+  @override
+  List<Object?> get props => <Object?>[period, amount, label];
 }
 
-@freezed
-abstract class AnalyticsReport with _$AnalyticsReport {
-  const AnalyticsReport._();
+class AnalyticsReport extends Equatable {
+  const AnalyticsReport({
+    required this.window,
+    required this.rangeStart,
+    required this.rangeEnd,
+    required this.totalExpense,
+    required this.totalIncome,
+    required this.totalBorrowed,
+    required this.totalLent,
+    required this.totalCredit,
+    required this.totalDebit,
+    required this.outstandingLiability,
+    required this.outstandingReceivable,
+    required this.categoryDistribution,
+    required this.trendPoints,
+    required this.entries,
+  });
 
-  const factory AnalyticsReport({
-    required AnalyticsWindow window,
-    required DateTime rangeStart,
-    required DateTime rangeEnd,
-    required double totalExpense,
-    required double totalIncome,
-    required double totalBorrowed,
-    required double totalLent,
-    required double totalCredit,
-    required double totalDebit,
-    required double outstandingLiability,
-    required double outstandingReceivable,
-    required List<CategorySpend> categoryDistribution,
-    required List<TrendPoint> trendPoints,
-    required List<FinanceEntry> entries,
-  }) = _AnalyticsReport;
+  final AnalyticsWindow window;
+  final DateTime rangeStart;
+  final DateTime rangeEnd;
+  final double totalExpense;
+  final double totalIncome;
+  final double totalBorrowed;
+  final double totalLent;
+  final double totalCredit;
+  final double totalDebit;
+  final double outstandingLiability;
+  final double outstandingReceivable;
+  final List<CategorySpend> categoryDistribution;
+  final List<TrendPoint> trendPoints;
+  final List<FinanceEntry> entries;
 
   double get netCashFlow => totalCredit - totalDebit;
   double get borrowedVsLentBalance =>
       outstandingReceivable - outstandingLiability;
+
+  @override
+  List<Object?> get props => <Object?>[
+    window,
+    rangeStart,
+    rangeEnd,
+    totalExpense,
+    totalIncome,
+    totalBorrowed,
+    totalLent,
+    totalCredit,
+    totalDebit,
+    outstandingLiability,
+    outstandingReceivable,
+    categoryDistribution,
+    trendPoints,
+    entries,
+  ];
 }

@@ -1,23 +1,39 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:equatable/equatable.dart';
 
 import 'finance_entry.dart';
 
-part 'dashboard_snapshot.freezed.dart';
+class DashboardSnapshot extends Equatable {
+  const DashboardSnapshot({
+    required this.todaysExpense,
+    required this.weeklyExpense,
+    required this.weeklyCredit,
+    required this.weeklyDebit,
+    required this.weeklyBorrowed,
+    required this.weeklyLent,
+    required this.categoryCount,
+    required this.recentEntries,
+  });
 
-@freezed
-abstract class DashboardSnapshot with _$DashboardSnapshot {
-  const DashboardSnapshot._();
-
-  const factory DashboardSnapshot({
-    required double todaysExpense,
-    required double weeklyExpense,
-    required double weeklyCredit,
-    required double weeklyDebit,
-    required double weeklyBorrowed,
-    required double weeklyLent,
-    required int categoryCount,
-    required List<FinanceEntry> recentEntries,
-  }) = _DashboardSnapshot;
+  final double todaysExpense;
+  final double weeklyExpense;
+  final double weeklyCredit;
+  final double weeklyDebit;
+  final double weeklyBorrowed;
+  final double weeklyLent;
+  final int categoryCount;
+  final List<FinanceEntry> recentEntries;
 
   double get weeklyNet => weeklyCredit - weeklyDebit;
+
+  @override
+  List<Object?> get props => <Object?>[
+    todaysExpense,
+    weeklyExpense,
+    weeklyCredit,
+    weeklyDebit,
+    weeklyBorrowed,
+    weeklyLent,
+    categoryCount,
+    recentEntries,
+  ];
 }

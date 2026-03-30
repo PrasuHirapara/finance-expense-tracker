@@ -6,22 +6,31 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/app_shell.dart';
 import 'data/database/app_database.dart';
+import 'data/repositories/export_repository_impl.dart';
+import 'data/repositories/finance_repository_impl.dart';
+import 'data/services/export/csv_export_service.dart';
+import 'data/services/export/pdf_export_service.dart';
+import 'data/services/seed_service.dart';
+import 'domain/repositories/export_repository.dart';
+import 'domain/repositories/finance_repository.dart';
 import 'features/expense/data/repositories/expense_repository.dart';
 import 'features/expense/presentation/blocs/bank/bank_bloc.dart';
 import 'features/expense/presentation/blocs/expense/expense_bloc.dart';
 import 'features/tasks/data/repositories/task_repository.dart';
 import 'features/tasks/presentation/blocs/tasks/task_bloc.dart';
 
-class FinanceAnalyticsApp extends StatefulWidget {
-  const FinanceAnalyticsApp({super.key});
+class DailyUseApp extends StatefulWidget {
+  const DailyUseApp({super.key});
 
   @override
-  State<FinanceAnalyticsApp> createState() => _FinanceAnalyticsAppState();
+  State<DailyUseApp> createState() => _DailyUseAppState();
 }
 
-class _FinanceAnalyticsAppState extends State<FinanceAnalyticsApp> {
+class _DailyUseAppState extends State<DailyUseApp> {
   late final AppDatabase _database;
   late final ExpenseRepository _expenseRepository;
+  late final FinanceRepository _financeRepository;
+  late final ExportRepository _exportRepository;
   late final TaskRepository _taskRepository;
   late final Future<void> _bootstrap;
 
@@ -30,6 +39,14 @@ class _FinanceAnalyticsAppState extends State<FinanceAnalyticsApp> {
     super.initState();
     _database = AppDatabase();
     _expenseRepository = ExpenseRepository(_database);
+    _financeRepository = FinanceRepositoryImpl(
+      database: _database,
+      seedService: SeedService(_database),
+    );
+    _exportRepository = ExportRepositoryImpl(
+      csvExportService: CsvExportService(),
+      pdfExportService: PdfExportService(),
+    );
     _taskRepository = TaskRepository(_database);
     _bootstrap = _expenseRepository.seedDefaults();
   }
@@ -46,6 +63,8 @@ class _FinanceAnalyticsAppState extends State<FinanceAnalyticsApp> {
       providers: <RepositoryProvider<Object>>[
         RepositoryProvider<AppDatabase>.value(value: _database),
         RepositoryProvider<ExpenseRepository>.value(value: _expenseRepository),
+        RepositoryProvider<FinanceRepository>.value(value: _financeRepository),
+        RepositoryProvider<ExportRepository>.value(value: _exportRepository),
         RepositoryProvider<TaskRepository>.value(value: _taskRepository),
       ],
       child: FutureBuilder<void>(
@@ -101,7 +120,7 @@ class _FinanceAnalyticsAppState extends State<FinanceAnalyticsApp> {
               ),
             ],
             child: MaterialApp(
-              title: 'Ledger Lens',
+              title: 'Daily Use',
               debugShowCheckedModeBanner: false,
               theme: AppTheme.light(),
               onGenerateRoute: AppRouter.onGenerateRoute,

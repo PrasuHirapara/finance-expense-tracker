@@ -1,13 +1,18 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:equatable/equatable.dart';
 
-part 'finance_category.freezed.dart';
+class FinanceCategory extends Equatable {
+  const FinanceCategory({
+    required this.id,
+    required this.name,
+    required this.iconCodePoint,
+    required this.colorValue,
+  });
 
-@freezed
-abstract class FinanceCategory with _$FinanceCategory {
-  const factory FinanceCategory({
-    required int id,
-    required String name,
-    required int iconCodePoint,
-    required int colorValue,
-  }) = _FinanceCategory;
+  final int id;
+  final String name;
+  final int iconCodePoint;
+  final int colorValue;
+
+  @override
+  List<Object?> get props => <Object?>[id, name, iconCodePoint, colorValue];
 }

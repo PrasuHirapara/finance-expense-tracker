@@ -1,80 +1,85 @@
 # Ledger Lens
 
-Ledger Lens is a production-style Flutter personal finance analytics app built with clean architecture, Drift, Riverpod, Freezed, go_router, and fl_chart.
+Ledger Lens is a Flutter personal finance app with two isolated modules:
 
-## Features
+- `Expense`
+- `Tasks`
 
-- Expense tracking with title, amount, category, date, payment mode, and notes
-- Borrowed and lent transaction handling aligned with credit/debit logic
-- Weekly, monthly, and yearly analytics
-- Category distribution, trendline, credit/debit, and borrowed vs lent insights
-- CSV export
-- PDF export with timestamp, tables, transaction list, and chart snapshots
-- Material 3 UI with tablet-friendly responsive navigation
-- Seeded sample dataset for quick testing
+The app uses a fixed bottom navigation bar, feature-based architecture, Drift for local storage, and Bloc for state management.
 
 ## Architecture
 
 ```text
 lib/
   core/
-    constants/
-    extensions/
+    blocs/
     router/
     theme/
+    widgets/
   data/
     database/
-    mappers/
-    models/
-    repositories/
-    services/
-  domain/
-    entities/
-    repositories/
-    usecases/
-  presentation/
-    controllers/
-    screens/
+  features/
+    expense/
+      data/
+      domain/
+      presentation/
+    tasks/
+      data/
+      domain/
+      presentation/
+  shared/
     widgets/
 ```
 
-## Dependencies
+## Expense module
 
-- `flutter_riverpod`
-- `go_router`
+- Existing expense tracking flow retained under the `Expense` module
+- Added `Investment` category
+- Bank name CRUD in Expense Settings
+- Default banks: `Axis`, `BOB`, `SBI`, `HDFC`, `Kotak`
+- Optional bank selection on expense entries
+- Bank-based filtering on dashboard and analytics
+- Independent expense analytics for credit/debit, borrowed/lent, category spend, and trends
+
+## Tasks module
+
+- CRUD for tasks with title, description, category, date, priority, daily toggle, and completion state
+- Horizontally scrollable date selector
+- Date-filtered task list
+- Daily task auto-replication to the next day
+- Independent analytics for completed vs pending, priority distribution, daily streak, and category breakdown
+
+## State management
+
+Bloc is used for:
+
+- bottom module navigation
+- expense dashboard
+- expense form
+- bank CRUD
+- expense analytics
+- task list and selected date
+- task editor
+- task analytics
+
+## Key dependencies
+
+- `flutter_bloc`
+- `equatable`
 - `drift`
 - `sqlite3_flutter_libs`
-- `freezed_annotation`
-- `intl`
 - `fl_chart`
+- `intl`
+- `path_provider`
 - `pdf`
 - `csv`
 - `google_fonts`
-- `path`
-- `path_provider`
-- `cupertino_icons`
-
-### Dev dependencies
-
-- `build_runner`
-- `drift_dev`
-- `freezed`
-- `flutter_lints`
-- `flutter_test`
 
 ## Setup
 
-1. Install Flutter 3.38+ and Dart 3.10+.
-2. Run `flutter pub get`.
-3. Run `dart run build_runner build --delete-conflicting-outputs`.
-4. Launch with `flutter run`.
-
-## Notes
-
-- SQLite data is stored locally via Drift.
-- Export files are written to the app documents directory under `exports/`.
-- Default categories and sample transactions are seeded on first launch.
-- The current build targets mobile and desktop Flutter platforms with local SQLite storage.
+1. `flutter pub get`
+2. `dart run build_runner build --delete-conflicting-outputs`
+3. `flutter run`
 
 ## Validation
 

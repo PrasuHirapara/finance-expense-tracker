@@ -1,41 +1,90 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../presentation/screens/add_entry_screen.dart';
-import '../../presentation/screens/analytics_screen.dart';
-import '../../presentation/screens/categories_screen.dart';
-import '../../presentation/screens/dashboard_screen.dart';
-import '../../presentation/screens/shell_screen.dart';
+import '../../features/expense/data/repositories/expense_repository.dart';
+import '../../features/expense/presentation/blocs/expense_analytics/expense_analytics_bloc.dart';
+import '../../features/expense/presentation/blocs/expense_form/expense_form_bloc.dart';
+import '../../features/expense/presentation/pages/expense_analytics_page.dart';
+import '../../features/expense/presentation/pages/expense_entry_page.dart';
+import '../../features/expense/presentation/pages/expense_settings_page.dart';
+import '../../features/tasks/data/repositories/task_repository.dart';
+import '../../features/tasks/domain/models/task_models.dart';
+import '../../features/tasks/presentation/blocs/task_analytics/task_analytics_bloc.dart';
+import '../../features/tasks/presentation/blocs/task_editor/task_editor_bloc.dart';
+import '../../features/tasks/presentation/pages/task_analytics_page.dart';
+import '../../features/tasks/presentation/pages/task_editor_page.dart';
 
-final appRouterProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
-    initialLocation: DashboardScreen.routePath,
-    routes: <RouteBase>[
-      ShellRoute(
-        builder: (context, state, child) => ShellScreen(child: child),
-        routes: <RouteBase>[
-          GoRoute(
-            path: DashboardScreen.routePath,
-            name: DashboardScreen.routeName,
-            builder: (context, state) => const DashboardScreen(),
+class AppRoutes {
+  AppRoutes._();
+
+  static const String expenseAdd = '/expense/add';
+  static const String expenseAnalytics = '/expense/analytics';
+  static const String expenseSettings = '/expense/settings';
+  static const String taskAnalytics = '/tasks/analytics';
+  static const String taskEditor = '/tasks/editor';
+}
+
+class TaskEditorArgs {
+  const TaskEditorArgs({required this.selectedDate, this.task});
+
+  final DateTime selectedDate;
+  final TaskItem? task;
+}
+
+class AppRouter {
+  AppRouter._();
+
+  static Route<dynamic> onGenerateRoute(RouteSettings settings) {
+    switch (settings.name) {
+      case AppRoutes.expenseAdd:
+        return MaterialPageRoute<void>(
+          builder: (context) => BlocProvider(
+            create: (context) =>
+                ExpenseFormBloc(context.read<ExpenseRepository>())
+                  ..add(const ExpenseFormInitialized()),
+            child: const ExpenseEntryPage(),
           ),
-          GoRoute(
-            path: AnalyticsScreen.routePath,
-            name: AnalyticsScreen.routeName,
-            builder: (context, state) => const AnalyticsScreen(),
+        );
+      case AppRoutes.expenseAnalytics:
+        return MaterialPageRoute<void>(
+          builder: (context) => BlocProvider(
+            create: (context) =>
+                ExpenseAnalyticsBloc(context.read<ExpenseRepository>())
+                  ..add(const ExpenseAnalyticsRequested()),
+            child: const ExpenseAnalyticsPage(),
           ),
-          GoRoute(
-            path: CategoriesScreen.routePath,
-            name: CategoriesScreen.routeName,
-            builder: (context, state) => const CategoriesScreen(),
+        );
+      case AppRoutes.expenseSettings:
+        return MaterialPageRoute<void>(
+          builder: (context) => const ExpenseSettingsPage(),
+        );
+      case AppRoutes.taskAnalytics:
+        return MaterialPageRoute<void>(
+          builder: (context) => BlocProvider(
+            create: (context) =>
+                TaskAnalyticsBloc(context.read<TaskRepository>())
+                  ..add(const TaskAnalyticsRequested()),
+            child: const TaskAnalyticsPage(),
           ),
-        ],
-      ),
-      GoRoute(
-        path: AddEntryScreen.routePath,
-        name: AddEntryScreen.routeName,
-        builder: (context, state) => const AddEntryScreen(),
-      ),
-    ],
-  );
-});
+        );
+      case AppRoutes.taskEditor:
+        final args = settings.arguments as TaskEditorArgs;
+        return MaterialPageRoute<void>(
+          builder: (context) => BlocProvider(
+            create: (context) =>
+                TaskEditorBloc(context.read<TaskRepository>())..add(
+                  TaskEditorInitialized(
+                    selectedDate: args.selectedDate,
+                    existingTask: args.task,
+                  ),
+                ),
+            child: const TaskEditorPage(),
+          ),
+        );
+      default:
+        return MaterialPageRoute<void>(
+          builder: (context) => const SizedBox.shrink(),
+        );
+    }
+  }
+}

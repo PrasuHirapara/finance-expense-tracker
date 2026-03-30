@@ -1,67 +1,114 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'core/constants/app_constants.dart';
+import 'core/blocs/module_navigation_bloc.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
-import 'presentation/controllers/app_providers.dart';
+import 'core/widgets/app_shell.dart';
+import 'data/database/app_database.dart';
+import 'features/expense/data/repositories/expense_repository.dart';
+import 'features/expense/presentation/blocs/bank/bank_bloc.dart';
+import 'features/expense/presentation/blocs/expense/expense_bloc.dart';
+import 'features/tasks/data/repositories/task_repository.dart';
+import 'features/tasks/presentation/blocs/tasks/task_bloc.dart';
 
-class FinanceAnalyticsApp extends ConsumerWidget {
+class FinanceAnalyticsApp extends StatefulWidget {
   const FinanceAnalyticsApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final startup = ref.watch(appStartupProvider);
-
-    return startup.when(
-      data: (_) {
-        final router = ref.watch(appRouterProvider);
-        return MaterialApp.router(
-          title: AppConstants.appName,
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light(),
-          routerConfig: router,
-        );
-      },
-      loading: () => MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        home: const _BootstrapScreen(),
-      ),
-      error: (error, stackTrace) => MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        home: _BootstrapErrorScreen(error: error),
-      ),
-    );
-  }
+  State<FinanceAnalyticsApp> createState() => _FinanceAnalyticsAppState();
 }
 
-class _BootstrapScreen extends StatelessWidget {
-  const _BootstrapScreen();
+class _FinanceAnalyticsAppState extends State<FinanceAnalyticsApp> {
+  late final AppDatabase _database;
+  late final ExpenseRepository _expenseRepository;
+  late final TaskRepository _taskRepository;
+  late final Future<void> _bootstrap;
+
+  @override
+  void initState() {
+    super.initState();
+    _database = AppDatabase();
+    _expenseRepository = ExpenseRepository(_database);
+    _taskRepository = TaskRepository(_database);
+    _bootstrap = _expenseRepository.seedDefaults();
+  }
+
+  @override
+  void dispose() {
+    _database.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
-  }
-}
+    return MultiRepositoryProvider(
+      providers: <RepositoryProvider<Object>>[
+        RepositoryProvider<AppDatabase>.value(value: _database),
+        RepositoryProvider<ExpenseRepository>.value(value: _expenseRepository),
+        RepositoryProvider<TaskRepository>.value(value: _taskRepository),
+      ],
+      child: FutureBuilder<void>(
+        future: _bootstrap,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.light(),
+              home: const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              ),
+            );
+          }
 
-class _BootstrapErrorScreen extends StatelessWidget {
-  const _BootstrapErrorScreen({required this.error});
+          if (snapshot.hasError) {
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.light(),
+              home: Scaffold(
+                body: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      'Unable to initialise the app.\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
 
-  final Object error;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            'Unable to initialise ${AppConstants.appName}.\n$error',
-            textAlign: TextAlign.center,
-          ),
-        ),
+          return MultiBlocProvider(
+            providers: <BlocProvider<dynamic>>[
+              BlocProvider<ModuleNavigationBloc>(
+                create: (_) => ModuleNavigationBloc(),
+              ),
+              BlocProvider<ExpenseBloc>(
+                create: (context) =>
+                    ExpenseBloc(context.read<ExpenseRepository>())
+                      ..add(const ExpenseSubscriptionRequested()),
+              ),
+              BlocProvider<BankBloc>(
+                create: (context) =>
+                    BankBloc(context.read<ExpenseRepository>())
+                      ..add(const BanksSubscriptionRequested()),
+              ),
+              BlocProvider<TaskBloc>(
+                create: (context) =>
+                    TaskBloc(context.read<TaskRepository>())
+                      ..add(const TasksSubscriptionRequested()),
+              ),
+            ],
+            child: MaterialApp(
+              title: 'Ledger Lens',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.light(),
+              onGenerateRoute: AppRouter.onGenerateRoute,
+              home: const AppShell(),
+            ),
+          );
+        },
       ),
     );
   }

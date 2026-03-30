@@ -19,12 +19,20 @@ class DbCategories extends Table {
       dateTime().clientDefault(() => DateTime.now())();
 }
 
+class DbBanks extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().unique()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+}
+
 class DbFinanceEntries extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
   RealColumn get amount => real()();
   TextColumn get type => text()();
   IntColumn get categoryId => integer().references(DbCategories, #id)();
+  IntColumn get bankId => integer().nullable().references(DbBanks, #id)();
   DateTimeColumn get entryDate => dateTime()();
   TextColumn get paymentMode => text()();
   TextColumn get notes => text().withDefault(const Constant(''))();
@@ -33,15 +41,45 @@ class DbFinanceEntries extends Table {
       dateTime().clientDefault(() => DateTime.now())();
 }
 
-@DriftDatabase(tables: <Type>[DbCategories, DbFinanceEntries])
+class DbTasks extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get sourceTaskId => integer().nullable()();
+  TextColumn get title => text()();
+  TextColumn get description => text().withDefault(const Constant(''))();
+  TextColumn get category => text()();
+  DateTimeColumn get taskDate => dateTime()();
+  IntColumn get priority => integer().withDefault(const Constant(3))();
+  BoolColumn get isDaily => boolean().withDefault(const Constant(false))();
+  BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+}
+
+@DriftDatabase(tables: <Type>[DbCategories, DbBanks, DbFinanceEntries, DbTasks])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (Migrator m) async {
+      await m.createAll();
+    },
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 2) {
+        await m.createTable(dbBanks);
+        await m.addColumn(dbFinanceEntries, dbFinanceEntries.bankId);
+        await m.createTable(dbTasks);
+      }
+    },
+  );
 
   Future<int> countCategories() async =>
       (await select(dbCategories).get()).length;
+
+  Future<int> countBanks() async => (await select(dbBanks).get()).length;
 
   Future<int> countEntries() async =>
       (await select(dbFinanceEntries).get()).length;
@@ -86,6 +124,20 @@ class AppDatabase extends _$AppDatabase {
         );
   }
 
+  Future<List<DbBank>> getBanks() async {
+    return (select(dbBanks)..orderBy(<OrderingTerm Function($DbBanksTable)>[
+          (table) => OrderingTerm.asc(table.name),
+        ]))
+        .get();
+  }
+
+  Stream<List<DbBank>> watchBanks() {
+    return (select(dbBanks)..orderBy(<OrderingTerm Function($DbBanksTable)>[
+          (table) => OrderingTerm.asc(table.name),
+        ]))
+        .watch();
+  }
+
   Future<void> insertCategories(List<DbCategoriesCompanion> companions) async {
     await batch(
       (batch) => batch.insertAll(
@@ -96,8 +148,29 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  Future<void> insertBanks(List<DbBanksCompanion> companions) async {
+    await batch(
+      (batch) =>
+          batch.insertAll(dbBanks, companions, mode: InsertMode.insertOrIgnore),
+    );
+  }
+
   Future<int> insertCategory(DbCategoriesCompanion companion) {
     return into(dbCategories).insert(companion);
+  }
+
+  Future<int> insertBank(DbBanksCompanion companion) {
+    return into(dbBanks).insert(companion);
+  }
+
+  Future<int> updateBankName({required int bankId, required String name}) {
+    return (update(dbBanks)..where((table) => table.id.equals(bankId))).write(
+      DbBanksCompanion(name: Value(name)),
+    );
+  }
+
+  Future<int> deleteBankById(int bankId) {
+    return (delete(dbBanks)..where((table) => table.id.equals(bankId))).go();
   }
 
   Future<void> insertEntries(List<DbFinanceEntriesCompanion> companions) async {

@@ -126,7 +126,11 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin
           >();
       await androidNotifications?.requestNotificationsPermission();
-      await androidNotifications?.requestExactAlarmsPermission();
+      final canScheduleExact =
+          await androidNotifications?.canScheduleExactNotifications() ?? false;
+      if (!canScheduleExact) {
+        await androidNotifications?.requestExactAlarmsPermission();
+      }
     }
   }
 
@@ -139,8 +143,18 @@ class NotificationService {
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
-    await androidNotifications?.requestExactAlarmsPermission();
-    return AndroidScheduleMode.exactAllowWhileIdle;
+    var canScheduleExact =
+        await androidNotifications?.canScheduleExactNotifications() ?? false;
+    if (!canScheduleExact) {
+      canScheduleExact =
+          await androidNotifications?.requestExactAlarmsPermission() ?? false;
+    }
+
+    if (canScheduleExact) {
+      return AndroidScheduleMode.exactAllowWhileIdle;
+    }
+
+    return AndroidScheduleMode.inexactAllowWhileIdle;
   }
 
   tz.TZDateTime _nextInstanceOf(ReminderTime reminderTime) {

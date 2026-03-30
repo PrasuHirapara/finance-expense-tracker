@@ -46,12 +46,13 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
             }
 
             final filteredEntries = dashboard.entries
-                .where((entry) => _matchesSummaryFilter(entry, _activeSummaryFilter))
+                .where(
+                  (entry) => _matchesSummaryFilter(entry, _activeSummaryFilter),
+                )
                 .toList(growable: false);
             final groupedEntries = _groupEntries(filteredEntries);
-            final expandedDate = groupedEntries.keys.any(
-              (date) => date == _expandedDate,
-            )
+            final expandedDate =
+                groupedEntries.keys.any((date) => date == _expandedDate)
                 ? _expandedDate
                 : null;
             final summaryCards = <_SummaryCardData>[
@@ -170,10 +171,12 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                           _NetSummaryRow(
                             value: AppConstants.currency(dashboard.totalNet),
                             selected:
-                                _activeSummaryFilter == _ExpenseSummaryFilter.net,
+                                _activeSummaryFilter ==
+                                _ExpenseSummaryFilter.net,
                             onTap: () {
                               setState(() {
-                                _activeSummaryFilter = _ExpenseSummaryFilter.net;
+                                _activeSummaryFilter =
+                                    _ExpenseSummaryFilter.net;
                               });
                             },
                           ),
@@ -189,7 +192,8 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                                 .map(
                                   (item) => _SummaryMetricCard(
                                     data: item,
-                                    selected: item.filter == _activeSummaryFilter,
+                                    selected:
+                                        item.filter == _activeSummaryFilter,
                                     onTap: () {
                                       setState(() {
                                         _activeSummaryFilter = item.filter;
@@ -244,8 +248,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                                   expanded: expandedDate == group.key,
                                   onTap: () {
                                     setState(() {
-                                      _expandedDate =
-                                          expandedDate == group.key
+                                      _expandedDate = expandedDate == group.key
                                           ? null
                                           : group.key;
                                     });
@@ -253,7 +256,9 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                                   onEdit: (entry) {
                                     Navigator.of(context).pushNamed(
                                       AppRoutes.expenseAdd,
-                                      arguments: ExpenseEditorArgs(entry: entry),
+                                      arguments: ExpenseEditorArgs(
+                                        entry: entry,
+                                      ),
                                     );
                                   },
                                   onDelete: (entry) {
@@ -293,10 +298,14 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
     }
   }
 
-  Map<DateTime, List<ExpenseRecord>> _groupEntries(List<ExpenseRecord> entries) {
+  Map<DateTime, List<ExpenseRecord>> _groupEntries(
+    List<ExpenseRecord> entries,
+  ) {
     final grouped = <DateTime, List<ExpenseRecord>>{};
     for (final entry in entries) {
-      grouped.putIfAbsent(entry.date.startOfDay, () => <ExpenseRecord>[]).add(entry);
+      grouped
+          .putIfAbsent(entry.date.startOfDay, () => <ExpenseRecord>[])
+          .add(entry);
     }
     return grouped;
   }
@@ -328,9 +337,9 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
     if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('"${entry.title}" deleted.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('"${entry.title}" deleted.')));
   }
 }
 
@@ -380,43 +389,39 @@ class _SummaryMetricCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 18),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
         decoration: BoxDecoration(
           color: selected
               ? data.color.withValues(alpha: 0.14)
-              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+              : theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.42,
+                ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected ? data.color : theme.colorScheme.outlineVariant,
           ),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: data.color.withValues(alpha: 0.12),
-              child: Icon(Icons.tune_rounded, color: data.color, size: 18),
+            Text(
+              data.label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             const Spacer(),
             Text(
               data.value,
+              textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text(
-                data.label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -449,7 +454,9 @@ class _NetSummaryRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? const Color(0xFF2E86DE).withValues(alpha: 0.14)
-              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+              : theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.42,
+                ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected
@@ -461,10 +468,11 @@ class _NetSummaryRow extends StatelessWidget {
           children: <Widget>[
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
                   Text(
                     'Total Net',
+                    textAlign: TextAlign.center,
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -472,12 +480,15 @@ class _NetSummaryRow extends StatelessWidget {
                   const SizedBox(height: 8),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 2),
-                    child: Text(value, style: theme.textTheme.headlineSmall),
+                    child: Text(
+                      value,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.headlineSmall,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded),
           ],
         ),
       ),
@@ -512,7 +523,9 @@ class _DateTransactionGroup extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.32),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.32,
+        ),
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
@@ -627,26 +640,11 @@ class _ExpenseEntryCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              CircleAvatar(
-                backgroundColor: Color(entry.category.colorValue).withValues(
-                  alpha: 0.14,
-                ),
-                child: Icon(
-                  AppConstants.categoryIconFromCodePoint(
-                    entry.category.iconCodePoint,
-                  ),
-                  color: Color(entry.category.colorValue),
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      entry.title,
-                      style: theme.textTheme.titleMedium,
-                    ),
+                    Text(entry.title, style: theme.textTheme.titleMedium),
                     const SizedBox(height: 4),
                     Text(
                       [
@@ -673,10 +671,12 @@ class _ExpenseEntryCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Text(
                 '${entry.isCredit ? '+' : '-'}${AppConstants.currency(entry.amount)}',
-                style: theme.textTheme.titleMedium?.copyWith(color: amountColor),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: amountColor,
+                ),
               ),
             ],
           ),

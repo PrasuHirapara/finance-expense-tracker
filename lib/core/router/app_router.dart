@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../features/credentials/presentation/pages/credential_detail_page.dart';
+import '../../features/credentials/presentation/pages/credential_editor_page.dart';
 import '../../features/expense/data/repositories/expense_repository.dart';
 import '../../features/expense/domain/models/expense_models.dart';
 import '../../features/expense/presentation/blocs/expense_analytics/expense_analytics_bloc.dart';
@@ -24,6 +26,8 @@ class AppRoutes {
   static const String expenseAnalytics = '/expense/analytics';
   static const String expenseEntries = '/expense/entries';
   static const String expenseSettings = '/expense/settings';
+  static const String credentialEditor = '/credential/editor';
+  static const String credentialDetail = '/credential/detail';
   static const String taskAnalytics = '/tasks/analytics';
   static const String taskEditor = '/tasks/editor';
   static const String taskSettings = '/tasks/settings';
@@ -47,6 +51,18 @@ class AppRouter {
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
+      case AppRoutes.credentialEditor:
+        final args = settings.arguments as CredentialEditorArgs?;
+        return MaterialPageRoute<void>(
+          builder: (context) => CredentialEditorPage(
+            args: args ?? const CredentialEditorArgs(),
+          ),
+        );
+      case AppRoutes.credentialDetail:
+        final args = settings.arguments as CredentialDetailArgs;
+        return MaterialPageRoute<bool>(
+          builder: (context) => CredentialDetailPage(args: args),
+        );
       case AppRoutes.expenseAdd:
         final args = settings.arguments as ExpenseEditorArgs?;
         return MaterialPageRoute<void>(

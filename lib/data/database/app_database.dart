@@ -55,12 +55,32 @@ class DbTasks extends Table {
       dateTime().clientDefault(() => DateTime.now())();
 }
 
-@DriftDatabase(tables: <Type>[DbCategories, DbBanks, DbFinanceEntries, DbTasks])
+class DbCredentials extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text()();
+  TextColumn get encryptedPayload => text()();
+  TextColumn get saltBase64 => text()();
+  TextColumn get nonceBase64 => text()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+  DateTimeColumn get updatedAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+}
+
+@DriftDatabase(
+  tables: <Type>[
+    DbCategories,
+    DbBanks,
+    DbFinanceEntries,
+    DbTasks,
+    DbCredentials,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -72,6 +92,9 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(dbBanks);
         await m.addColumn(dbFinanceEntries, dbFinanceEntries.bankId);
         await m.createTable(dbTasks);
+      }
+      if (from < 3) {
+        await m.createTable(dbCredentials);
       }
     },
   );

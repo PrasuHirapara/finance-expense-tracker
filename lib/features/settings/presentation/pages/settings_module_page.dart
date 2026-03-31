@@ -9,6 +9,7 @@ import '../../../../core/models/app_preferences.dart';
 import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../widgets/credential_settings_section.dart';
 
 class SettingsModulePage extends StatefulWidget {
   const SettingsModulePage({super.key});
@@ -224,6 +225,8 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                   ],
                 ),
               ),
+              const SizedBox(height: 18),
+              const CredentialSettingsSection(),
             ],
           );
         },

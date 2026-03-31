@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum AppModule { expense, tasks, settings }
+enum AppModule { credential, expense, tasks, settings }
 
 class AppPreferences {
   const AppPreferences({

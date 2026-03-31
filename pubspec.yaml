@@ -18,13 +18,16 @@ dependencies:
   fl_chart: ^1.1.1
   flutter_bloc: ^9.1.1
   flutter_local_notifications: ^21.0.0
+  flutter_secure_storage: ^9.2.4
   flutter_timezone: ^5.0.1
   go_router: ^16.2.1
   google_fonts: ^6.3.2
   intl: ^0.20.2
+  local_auth: ^2.3.0
   path: ^1.9.1
   path_provider: ^2.1.5
   pdf: ^3.11.3
+  cryptography: ^2.7.0
   sqlite3_flutter_libs: ^0.5.39
   timezone: ^0.11.0
 

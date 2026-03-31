@@ -8,6 +8,8 @@ import 'core/blocs/theme_cubit.dart';
 import 'core/models/app_preferences.dart';
 import 'core/router/app_router.dart';
 import 'core/services/app_settings_repository.dart';
+import 'core/services/credential_crypto_service.dart';
+import 'core/services/credential_security_service.dart';
 import 'core/services/module_data_export_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/reminder_settings_repository.dart';
@@ -21,6 +23,8 @@ import 'data/services/export/pdf_export_service.dart';
 import 'data/services/seed_service.dart';
 import 'domain/repositories/export_repository.dart';
 import 'domain/repositories/finance_repository.dart';
+import 'features/credentials/data/repositories/credential_repository.dart';
+import 'features/credentials/data/services/credential_service.dart';
 import 'features/expense/data/repositories/expense_repository.dart';
 import 'features/expense/presentation/blocs/bank/bank_bloc.dart';
 import 'features/expense/presentation/blocs/expense/expense_bloc.dart';
@@ -39,6 +43,10 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   late final AppDatabase _database;
   late final AppSettingsRepository _appSettingsRepository;
   late final ExpenseRepository _expenseRepository;
+  late final CredentialRepository _credentialRepository;
+  late final CredentialCryptoService _credentialCryptoService;
+  late final CredentialSecurityService _credentialSecurityService;
+  late final CredentialService _credentialService;
   late final FinanceRepository _financeRepository;
   late final ExportRepository _exportRepository;
   late final TaskRepository _taskRepository;
@@ -56,6 +64,14 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _database = AppDatabase();
     _appSettingsRepository = AppSettingsRepository();
     _expenseRepository = ExpenseRepository(_database);
+    _credentialRepository = CredentialRepository(_database);
+    _credentialCryptoService = CredentialCryptoService();
+    _credentialSecurityService = CredentialSecurityService();
+    _credentialService = CredentialService(
+      repository: _credentialRepository,
+      cryptoService: _credentialCryptoService,
+      securityService: _credentialSecurityService,
+    );
     _financeRepository = FinanceRepositoryImpl(
       database: _database,
       seedService: SeedService(_database),
@@ -97,6 +113,10 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     return MultiRepositoryProvider(
       providers: <RepositoryProvider<Object>>[
         RepositoryProvider<AppDatabase>.value(value: _database),
+        RepositoryProvider<CredentialRepository>.value(
+          value: _credentialRepository,
+        ),
+        RepositoryProvider<CredentialService>.value(value: _credentialService),
         RepositoryProvider<ExpenseRepository>.value(value: _expenseRepository),
         RepositoryProvider<FinanceRepository>.value(value: _financeRepository),
         RepositoryProvider<ExportRepository>.value(value: _exportRepository),

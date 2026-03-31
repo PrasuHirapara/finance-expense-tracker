@@ -1861,6 +1861,466 @@ class DbTasksCompanion extends UpdateCompanion<DbTask> {
   }
 }
 
+class $DbCredentialsTable extends DbCredentials
+    with TableInfo<$DbCredentialsTable, DbCredential> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DbCredentialsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _encryptedPayloadMeta = const VerificationMeta(
+    'encryptedPayload',
+  );
+  @override
+  late final GeneratedColumn<String> encryptedPayload = GeneratedColumn<String>(
+    'encrypted_payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _saltBase64Meta = const VerificationMeta(
+    'saltBase64',
+  );
+  @override
+  late final GeneratedColumn<String> saltBase64 = GeneratedColumn<String>(
+    'salt_base64',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nonceBase64Meta = const VerificationMeta(
+    'nonceBase64',
+  );
+  @override
+  late final GeneratedColumn<String> nonceBase64 = GeneratedColumn<String>(
+    'nonce_base64',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    encryptedPayload,
+    saltBase64,
+    nonceBase64,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'db_credentials';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DbCredential> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('encrypted_payload')) {
+      context.handle(
+        _encryptedPayloadMeta,
+        encryptedPayload.isAcceptableOrUnknown(
+          data['encrypted_payload']!,
+          _encryptedPayloadMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_encryptedPayloadMeta);
+    }
+    if (data.containsKey('salt_base64')) {
+      context.handle(
+        _saltBase64Meta,
+        saltBase64.isAcceptableOrUnknown(data['salt_base64']!, _saltBase64Meta),
+      );
+    } else if (isInserting) {
+      context.missing(_saltBase64Meta);
+    }
+    if (data.containsKey('nonce_base64')) {
+      context.handle(
+        _nonceBase64Meta,
+        nonceBase64.isAcceptableOrUnknown(
+          data['nonce_base64']!,
+          _nonceBase64Meta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_nonceBase64Meta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DbCredential map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DbCredential(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      encryptedPayload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}encrypted_payload'],
+      )!,
+      saltBase64: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}salt_base64'],
+      )!,
+      nonceBase64: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nonce_base64'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DbCredentialsTable createAlias(String alias) {
+    return $DbCredentialsTable(attachedDatabase, alias);
+  }
+}
+
+class DbCredential extends DataClass implements Insertable<DbCredential> {
+  final int id;
+  final String title;
+  final String encryptedPayload;
+  final String saltBase64;
+  final String nonceBase64;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const DbCredential({
+    required this.id,
+    required this.title,
+    required this.encryptedPayload,
+    required this.saltBase64,
+    required this.nonceBase64,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['title'] = Variable<String>(title);
+    map['encrypted_payload'] = Variable<String>(encryptedPayload);
+    map['salt_base64'] = Variable<String>(saltBase64);
+    map['nonce_base64'] = Variable<String>(nonceBase64);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DbCredentialsCompanion toCompanion(bool nullToAbsent) {
+    return DbCredentialsCompanion(
+      id: Value(id),
+      title: Value(title),
+      encryptedPayload: Value(encryptedPayload),
+      saltBase64: Value(saltBase64),
+      nonceBase64: Value(nonceBase64),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DbCredential.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DbCredential(
+      id: serializer.fromJson<int>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      encryptedPayload: serializer.fromJson<String>(json['encryptedPayload']),
+      saltBase64: serializer.fromJson<String>(json['saltBase64']),
+      nonceBase64: serializer.fromJson<String>(json['nonceBase64']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'title': serializer.toJson<String>(title),
+      'encryptedPayload': serializer.toJson<String>(encryptedPayload),
+      'saltBase64': serializer.toJson<String>(saltBase64),
+      'nonceBase64': serializer.toJson<String>(nonceBase64),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DbCredential copyWith({
+    int? id,
+    String? title,
+    String? encryptedPayload,
+    String? saltBase64,
+    String? nonceBase64,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => DbCredential(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    encryptedPayload: encryptedPayload ?? this.encryptedPayload,
+    saltBase64: saltBase64 ?? this.saltBase64,
+    nonceBase64: nonceBase64 ?? this.nonceBase64,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DbCredential copyWithCompanion(DbCredentialsCompanion data) {
+    return DbCredential(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      encryptedPayload: data.encryptedPayload.present
+          ? data.encryptedPayload.value
+          : this.encryptedPayload,
+      saltBase64: data.saltBase64.present
+          ? data.saltBase64.value
+          : this.saltBase64,
+      nonceBase64: data.nonceBase64.present
+          ? data.nonceBase64.value
+          : this.nonceBase64,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbCredential(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('encryptedPayload: $encryptedPayload, ')
+          ..write('saltBase64: $saltBase64, ')
+          ..write('nonceBase64: $nonceBase64, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    encryptedPayload,
+    saltBase64,
+    nonceBase64,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DbCredential &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.encryptedPayload == this.encryptedPayload &&
+          other.saltBase64 == this.saltBase64 &&
+          other.nonceBase64 == this.nonceBase64 &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DbCredentialsCompanion extends UpdateCompanion<DbCredential> {
+  final Value<int> id;
+  final Value<String> title;
+  final Value<String> encryptedPayload;
+  final Value<String> saltBase64;
+  final Value<String> nonceBase64;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const DbCredentialsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.encryptedPayload = const Value.absent(),
+    this.saltBase64 = const Value.absent(),
+    this.nonceBase64 = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  DbCredentialsCompanion.insert({
+    this.id = const Value.absent(),
+    required String title,
+    required String encryptedPayload,
+    required String saltBase64,
+    required String nonceBase64,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : title = Value(title),
+       encryptedPayload = Value(encryptedPayload),
+       saltBase64 = Value(saltBase64),
+       nonceBase64 = Value(nonceBase64);
+  static Insertable<DbCredential> custom({
+    Expression<int>? id,
+    Expression<String>? title,
+    Expression<String>? encryptedPayload,
+    Expression<String>? saltBase64,
+    Expression<String>? nonceBase64,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (encryptedPayload != null) 'encrypted_payload': encryptedPayload,
+      if (saltBase64 != null) 'salt_base64': saltBase64,
+      if (nonceBase64 != null) 'nonce_base64': nonceBase64,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  DbCredentialsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? title,
+    Value<String>? encryptedPayload,
+    Value<String>? saltBase64,
+    Value<String>? nonceBase64,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return DbCredentialsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      encryptedPayload: encryptedPayload ?? this.encryptedPayload,
+      saltBase64: saltBase64 ?? this.saltBase64,
+      nonceBase64: nonceBase64 ?? this.nonceBase64,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (encryptedPayload.present) {
+      map['encrypted_payload'] = Variable<String>(encryptedPayload.value);
+    }
+    if (saltBase64.present) {
+      map['salt_base64'] = Variable<String>(saltBase64.value);
+    }
+    if (nonceBase64.present) {
+      map['nonce_base64'] = Variable<String>(nonceBase64.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbCredentialsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('encryptedPayload: $encryptedPayload, ')
+          ..write('saltBase64: $saltBase64, ')
+          ..write('nonceBase64: $nonceBase64, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1870,6 +2330,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $DbTasksTable dbTasks = $DbTasksTable(this);
+  late final $DbCredentialsTable dbCredentials = $DbCredentialsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1879,6 +2340,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     dbBanks,
     dbFinanceEntries,
     dbTasks,
+    dbCredentials,
   ];
 }
 
@@ -3265,6 +3727,244 @@ typedef $$DbTasksTableProcessedTableManager =
       DbTask,
       PrefetchHooks Function()
     >;
+typedef $$DbCredentialsTableCreateCompanionBuilder =
+    DbCredentialsCompanion Function({
+      Value<int> id,
+      required String title,
+      required String encryptedPayload,
+      required String saltBase64,
+      required String nonceBase64,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$DbCredentialsTableUpdateCompanionBuilder =
+    DbCredentialsCompanion Function({
+      Value<int> id,
+      Value<String> title,
+      Value<String> encryptedPayload,
+      Value<String> saltBase64,
+      Value<String> nonceBase64,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$DbCredentialsTableFilterComposer
+    extends Composer<_$AppDatabase, $DbCredentialsTable> {
+  $$DbCredentialsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get encryptedPayload => $composableBuilder(
+    column: $table.encryptedPayload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get saltBase64 => $composableBuilder(
+    column: $table.saltBase64,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nonceBase64 => $composableBuilder(
+    column: $table.nonceBase64,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DbCredentialsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DbCredentialsTable> {
+  $$DbCredentialsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get encryptedPayload => $composableBuilder(
+    column: $table.encryptedPayload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get saltBase64 => $composableBuilder(
+    column: $table.saltBase64,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nonceBase64 => $composableBuilder(
+    column: $table.nonceBase64,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DbCredentialsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DbCredentialsTable> {
+  $$DbCredentialsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get encryptedPayload => $composableBuilder(
+    column: $table.encryptedPayload,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get saltBase64 => $composableBuilder(
+    column: $table.saltBase64,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get nonceBase64 => $composableBuilder(
+    column: $table.nonceBase64,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$DbCredentialsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DbCredentialsTable,
+          DbCredential,
+          $$DbCredentialsTableFilterComposer,
+          $$DbCredentialsTableOrderingComposer,
+          $$DbCredentialsTableAnnotationComposer,
+          $$DbCredentialsTableCreateCompanionBuilder,
+          $$DbCredentialsTableUpdateCompanionBuilder,
+          (
+            DbCredential,
+            BaseReferences<_$AppDatabase, $DbCredentialsTable, DbCredential>,
+          ),
+          DbCredential,
+          PrefetchHooks Function()
+        > {
+  $$DbCredentialsTableTableManager(_$AppDatabase db, $DbCredentialsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DbCredentialsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DbCredentialsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DbCredentialsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> encryptedPayload = const Value.absent(),
+                Value<String> saltBase64 = const Value.absent(),
+                Value<String> nonceBase64 = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DbCredentialsCompanion(
+                id: id,
+                title: title,
+                encryptedPayload: encryptedPayload,
+                saltBase64: saltBase64,
+                nonceBase64: nonceBase64,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String title,
+                required String encryptedPayload,
+                required String saltBase64,
+                required String nonceBase64,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DbCredentialsCompanion.insert(
+                id: id,
+                title: title,
+                encryptedPayload: encryptedPayload,
+                saltBase64: saltBase64,
+                nonceBase64: nonceBase64,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DbCredentialsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DbCredentialsTable,
+      DbCredential,
+      $$DbCredentialsTableFilterComposer,
+      $$DbCredentialsTableOrderingComposer,
+      $$DbCredentialsTableAnnotationComposer,
+      $$DbCredentialsTableCreateCompanionBuilder,
+      $$DbCredentialsTableUpdateCompanionBuilder,
+      (
+        DbCredential,
+        BaseReferences<_$AppDatabase, $DbCredentialsTable, DbCredential>,
+      ),
+      DbCredential,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3277,4 +3977,6 @@ class $AppDatabaseManager {
       $$DbFinanceEntriesTableTableManager(_db, _db.dbFinanceEntries);
   $$DbTasksTableTableManager get dbTasks =>
       $$DbTasksTableTableManager(_db, _db.dbTasks);
+  $$DbCredentialsTableTableManager get dbCredentials =>
+      $$DbCredentialsTableTableManager(_db, _db.dbCredentials);
 }

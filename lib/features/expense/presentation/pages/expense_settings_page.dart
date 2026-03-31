@@ -117,8 +117,6 @@ class ExpenseSettingsBody extends StatelessWidget {
             const SizedBox(height: 18),
             ModuleExportPanel(
               title: 'Expense Export',
-              description:
-                  'Download expense data for a selected range as PDF or Excel.',
               onExport: (range, format) => _exportExpenseData(
                 context,
                 range: range,

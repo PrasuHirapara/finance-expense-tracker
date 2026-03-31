@@ -9,12 +9,12 @@ class ModuleExportPanel extends StatefulWidget {
   const ModuleExportPanel({
     super.key,
     required this.title,
-    required this.description,
     required this.onExport,
+    this.description,
   });
 
   final String title;
-  final String description;
+  final String? description;
   final Future<String> Function(
     DateTimeRange range,
     ModuleExportFormat format,
@@ -43,13 +43,15 @@ class _ModuleExportPanelState extends State<ModuleExportPanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(widget.title, style: theme.textTheme.titleLarge),
-          const SizedBox(height: 6),
-          Text(
-            widget.description,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          if (widget.description != null) ...<Widget>[
+            const SizedBox(height: 6),
+            Text(
+              widget.description!,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -145,13 +147,6 @@ class _ModuleExportPanelState extends State<ModuleExportPanel> {
                   ..removeLast(),
               );
             },
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Exports always use full numeric values with Indian grouping. Abbreviations like Lakh or Cr are only for UI display.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
           ),
         ],
       ),

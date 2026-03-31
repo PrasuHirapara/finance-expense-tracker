@@ -13,8 +13,13 @@ import '../../features/tasks/domain/models/task_models.dart';
 import '../constants/app_constants.dart';
 import '../formatters/indian_number_formatter.dart';
 import '../models/module_export_models.dart';
+import 'app_settings_repository.dart';
 
 class ModuleDataExportService {
+  ModuleDataExportService(this._appSettingsRepository);
+
+  final AppSettingsRepository _appSettingsRepository;
+
   Future<String> exportExpenseData({
     required DateTimeRange range,
     required ModuleExportFormat format,
@@ -572,9 +577,17 @@ class ModuleDataExportService {
     required String fileNamePrefix,
     required String extension,
   }) async {
-    final baseDirectory = await getApplicationDocumentsDirectory();
+    final settings = await _appSettingsRepository.getSettings();
+    final baseDirectory = settings.exportDirectoryPath == null
+        ? Directory(
+            path.join(
+              (await getApplicationDocumentsDirectory()).path,
+              'exports',
+            ),
+          )
+        : Directory(settings.exportDirectoryPath!);
     final exportDirectory = Directory(
-      path.join(baseDirectory.path, 'exports', moduleFolder),
+      path.join(baseDirectory.path, moduleFolder),
     );
     if (!await exportDirectory.exists()) {
       await exportDirectory.create(recursive: true);

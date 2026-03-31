@@ -48,14 +48,14 @@ class AppSettingsRepository {
     await _commit(settings.copyWith(themeMode: themeMode));
   }
 
-  Future<void> updateSelectedModule(AppModule module) async {
-    final settings = await getSettings();
-    await _commit(settings.copyWith(selectedModule: module));
-  }
-
   Future<void> updateNotificationsEnabled(bool enabled) async {
     final settings = await getSettings();
     await _commit(settings.copyWith(notificationsEnabled: enabled));
+  }
+
+  Future<void> updateExportDirectoryPath(String? pathValue) async {
+    final settings = await getSettings();
+    await _commit(settings.copyWith(exportDirectoryPath: pathValue));
   }
 
   Future<void> flush() => _pendingWrite;
@@ -84,8 +84,8 @@ class AppSettingsRepository {
   Map<String, dynamic> _toJson(AppPreferences settings) {
     return <String, dynamic>{
       'themeMode': settings.themeMode.name,
-      'selectedModule': settings.selectedModule.name,
       'notificationsEnabled': settings.notificationsEnabled,
+      'exportDirectoryPath': settings.exportDirectoryPath,
     };
   }
 
@@ -96,9 +96,11 @@ class AppSettingsRepository {
 
     return AppPreferences(
       themeMode: _themeModeFromString(json['themeMode']),
-      selectedModule: _moduleFromString(json['selectedModule']),
       notificationsEnabled: _notificationsEnabledFromJson(
         json['notificationsEnabled'],
+      ),
+      exportDirectoryPath: _exportDirectoryPathFromJson(
+        json['exportDirectoryPath'],
       ),
     );
   }
@@ -111,15 +113,11 @@ class AppSettingsRepository {
     };
   }
 
-  AppModule _moduleFromString(Object? value) {
-    return switch (value) {
-      'tasks' => AppModule.tasks,
-      'settings' => AppModule.settings,
-      _ => AppModule.expense,
-    };
-  }
-
   bool _notificationsEnabledFromJson(Object? value) {
     return value is bool ? value : true;
+  }
+
+  String? _exportDirectoryPathFromJson(Object? value) {
+    return value is String && value.trim().isNotEmpty ? value : null;
   }
 }

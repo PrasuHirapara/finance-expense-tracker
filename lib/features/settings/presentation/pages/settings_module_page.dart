@@ -1,15 +1,14 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
-import '../../../../core/blocs/module_navigation_bloc.dart';
 import '../../../../core/blocs/theme_cubit.dart';
 import '../../../../core/models/app_preferences.dart';
 import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
-import '../../../../shared/widgets/app_select_field.dart';
 
 class SettingsModulePage extends StatefulWidget {
   const SettingsModulePage({super.key});
@@ -108,31 +107,11 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    AppSelectField<AppModule>(
-                      label: 'Startup module',
-                      value: context
-                          .watch<ModuleNavigationBloc>()
-                          .state
-                          .module,
-                      options: const <AppSelectOption<AppModule>>[
-                        AppSelectOption(
-                          value: AppModule.expense,
-                          label: 'Expense',
-                        ),
-                        AppSelectOption(
-                          value: AppModule.tasks,
-                          label: 'Tasks',
-                        ),
-                        AppSelectOption(
-                          value: AppModule.settings,
-                          label: 'Settings',
-                        ),
-                      ],
-                      onChanged: (value) {
-                        context.read<ModuleNavigationBloc>().add(
-                          ModuleSelected(value),
-                        );
-                      },
+                    Text(
+                      'The app always opens in Expense.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -172,20 +151,6 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest
-                            .withValues(alpha: 0.42),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Text(
-                        'Reminder timing stays inside Expense Settings and Task Settings. This switch only turns all reminders on or off.',
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -206,6 +171,10 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                     FutureBuilder<String>(
                       future: _exportDirectoryPath,
                       builder: (context, snapshot) {
+                        final defaultPath = snapshot.data ?? 'Loading...';
+                        final activePath =
+                            preferences.exportDirectoryPath ?? defaultPath;
+
                         return Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(14),
@@ -223,8 +192,29 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                               ),
                               const SizedBox(height: 8),
                               SelectableText(
-                                snapshot.data ?? 'Loading...',
+                                activePath,
                                 style: theme.textTheme.bodyMedium,
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: <Widget>[
+                                  FilledButton.tonalIcon(
+                                    onPressed: snapshot.hasData
+                                        ? () => _chooseExportFolder(context)
+                                        : null,
+                                    icon: const Icon(Icons.folder_open_rounded),
+                                    label: const Text('Choose Folder'),
+                                  ),
+                                  if (preferences.exportDirectoryPath != null)
+                                    TextButton(
+                                      onPressed: () => _resetExportFolder(
+                                        context,
+                                      ),
+                                      child: const Text('Use Default'),
+                                    ),
+                                ],
                               ),
                             ],
                           ),
@@ -266,6 +256,24 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
         ),
       ),
     );
+  }
+
+  Future<void> _chooseExportFolder(BuildContext context) async {
+    final selectedPath = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: 'Choose export folder',
+    );
+
+    if (selectedPath == null || !context.mounted) {
+      return;
+    }
+
+    await context.read<AppSettingsRepository>().updateExportDirectoryPath(
+      selectedPath,
+    );
+  }
+
+  Future<void> _resetExportFolder(BuildContext context) async {
+    await context.read<AppSettingsRepository>().updateExportDirectoryPath(null);
   }
 
   Future<String> _resolveExportDirectoryPath() async {

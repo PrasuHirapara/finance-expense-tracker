@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_constants.dart';
 
-class TaskDateSelector extends StatelessWidget {
+class TaskDateSelector extends StatefulWidget {
   const TaskDateSelector({
     super.key,
     required this.selectedDate,
@@ -13,35 +13,70 @@ class TaskDateSelector extends StatelessWidget {
   final ValueChanged<DateTime> onDateSelected;
 
   @override
+  State<TaskDateSelector> createState() => _TaskDateSelectorState();
+}
+
+class _TaskDateSelectorState extends State<TaskDateSelector> {
+  static const double _itemWidth = 78;
+  static const double _itemSpacing = 10;
+
+  late final ScrollController _scrollController;
+  late final List<DateTime> _dates;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _dates = _buildDates();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _centerDate(widget.selectedDate);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant TaskDateSelector oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_isSameDate(oldWidget.selectedDate, widget.selectedDate)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _centerDate(widget.selectedDate);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final today = DateTime.now();
-    final dates = List<DateTime>.generate(
-      15,
-      (index) =>
-          today.subtract(const Duration(days: 7)).add(Duration(days: index)),
-    );
 
     return SizedBox(
       height: 82,
       child: ListView.separated(
+        controller: _scrollController,
         scrollDirection: Axis.horizontal,
-        itemCount: dates.length,
+        itemCount: _dates.length,
         separatorBuilder: (context, index) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
-          final date = dates[index];
-          final selected =
-              date.year == selectedDate.year &&
-              date.month == selectedDate.month &&
-              date.day == selectedDate.day;
+          final date = _dates[index];
+          final selected = _isSameDate(date, widget.selectedDate);
 
           return InkWell(
-            onTap: () => onDateSelected(date),
+            onTap: () {
+              widget.onDateSelected(date);
+              _centerDate(date);
+            },
             borderRadius: BorderRadius.circular(18),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              width: 78,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+              width: _itemWidth,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 12,
+              ),
               decoration: BoxDecoration(
                 color: selected
                     ? theme.colorScheme.primaryContainer
@@ -82,5 +117,45 @@ class TaskDateSelector extends StatelessWidget {
         },
       ),
     );
+  }
+
+  List<DateTime> _buildDates() {
+    final today = DateTime.now();
+    return List<DateTime>.generate(
+      15,
+      (index) => today.subtract(const Duration(days: 7)).add(Duration(days: index)),
+    );
+  }
+
+  void _centerDate(DateTime targetDate) {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+
+    final targetIndex = _dates.indexWhere((date) => _isSameDate(date, targetDate));
+    if (targetIndex == -1) {
+      return;
+    }
+
+    final viewportWidth = _scrollController.position.viewportDimension;
+    final itemExtent = _itemWidth + _itemSpacing;
+    final targetOffset =
+        (targetIndex * itemExtent) - ((viewportWidth - _itemWidth) / 2);
+    final clampedOffset = targetOffset.clamp(
+      0.0,
+      _scrollController.position.maxScrollExtent,
+    );
+
+    _scrollController.animateTo(
+      clampedOffset,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  bool _isSameDate(DateTime left, DateTime right) {
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
   }
 }

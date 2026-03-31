@@ -68,7 +68,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _taskCategoryRepository = TaskCategoryRepository(_taskRepository);
     _reminderSettingsRepository = ReminderSettingsRepository();
     _notificationService = NotificationService(_reminderSettingsRepository);
-    _moduleDataExportService = ModuleDataExportService();
+    _moduleDataExportService = ModuleDataExportService(_appSettingsRepository);
     _bootstrap = _bootstrapApp();
   }
 
@@ -163,10 +163,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
                 ),
               ),
               BlocProvider<ModuleNavigationBloc>(
-                create: (_) => ModuleNavigationBloc(
-                  settingsRepository: _appSettingsRepository,
-                  initialModule: _appPreferences.selectedModule,
-                ),
+                create: (_) => ModuleNavigationBloc(),
               ),
               BlocProvider<ExpenseBloc>(
                 create: (context) =>

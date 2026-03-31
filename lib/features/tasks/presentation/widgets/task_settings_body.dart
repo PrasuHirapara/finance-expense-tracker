@@ -89,8 +89,6 @@ class TaskSettingsBody extends StatelessWidget {
         const SizedBox(height: 18),
         ModuleExportPanel(
           title: 'Task Export',
-          description:
-              'Download task data for a selected range as PDF or Excel.',
           onExport: (range, format) => _exportTaskData(
             context,
             range: range,

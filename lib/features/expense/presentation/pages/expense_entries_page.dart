@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/formatters/indian_number_formatter.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_select_field.dart';
@@ -241,7 +242,7 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                                   ),
                                   const SizedBox(width: 12),
                                   Text(
-                                    '${entry.isCredit ? '+' : '-'}${AppConstants.currency(entry.amount)}',
+                                    '${entry.isCredit ? '+' : '-'}${IndianNumberFormatter.formatCompactCurrency(entry.amount)}',
                                     style: Theme.of(
                                       context,
                                     ).textTheme.titleMedium,

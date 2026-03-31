@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
@@ -10,6 +11,13 @@ import '../models/app_preferences.dart';
 class AppSettingsRepository {
   AppPreferences? _cachedPreferences;
   Future<void> _pendingWrite = Future<void>.value();
+  final StreamController<AppPreferences> _controller =
+      StreamController<AppPreferences>.broadcast();
+
+  Stream<AppPreferences> watchSettings() async* {
+    yield await getSettings();
+    yield* _controller.stream;
+  }
 
   Future<AppPreferences> getSettings() async {
     if (_cachedPreferences != null) {
@@ -45,12 +53,22 @@ class AppSettingsRepository {
     await _commit(settings.copyWith(selectedModule: module));
   }
 
+  Future<void> updateNotificationsEnabled(bool enabled) async {
+    final settings = await getSettings();
+    await _commit(settings.copyWith(notificationsEnabled: enabled));
+  }
+
   Future<void> flush() => _pendingWrite;
+
+  Future<void> dispose() async {
+    await _controller.close();
+  }
 
   Future<void> _commit(AppPreferences settings) async {
     _cachedPreferences = settings;
     _pendingWrite = _pendingWrite.then((_) => _writeSettings(settings));
     await _pendingWrite;
+    _controller.add(settings);
   }
 
   Future<void> _writeSettings(AppPreferences settings) async {
@@ -67,6 +85,7 @@ class AppSettingsRepository {
     return <String, dynamic>{
       'themeMode': settings.themeMode.name,
       'selectedModule': settings.selectedModule.name,
+      'notificationsEnabled': settings.notificationsEnabled,
     };
   }
 
@@ -78,6 +97,9 @@ class AppSettingsRepository {
     return AppPreferences(
       themeMode: _themeModeFromString(json['themeMode']),
       selectedModule: _moduleFromString(json['selectedModule']),
+      notificationsEnabled: _notificationsEnabledFromJson(
+        json['notificationsEnabled'],
+      ),
     );
   }
 
@@ -95,5 +117,9 @@ class AppSettingsRepository {
       'settings' => AppModule.settings,
       _ => AppModule.expense,
     };
+  }
+
+  bool _notificationsEnabledFromJson(Object? value) {
+    return value is bool ? value : true;
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/constants/app_constants.dart';
+import '../../../../core/formatters/indian_number_formatter.dart';
 import '../../../../domain/entities/analytics_models.dart';
 import '../../../../presentation/widgets/charts/borrowed_lent_bar_chart.dart';
 import '../../../../presentation/widgets/charts/category_pie_chart.dart';
@@ -87,25 +87,33 @@ class ExpenseAnalyticsPage extends StatelessWidget {
                       children: <Widget>[
                         MetricTile(
                           label: 'Credit',
-                          value: AppConstants.currency(analytics.totalCredit),
+                          value: IndianNumberFormatter.formatCompactCurrency(
+                            analytics.totalCredit,
+                          ),
                           icon: Icons.arrow_circle_up_rounded,
                           color: const Color(0xFF1F8B4C),
                         ),
                         MetricTile(
                           label: 'Debit',
-                          value: AppConstants.currency(analytics.totalDebit),
+                          value: IndianNumberFormatter.formatCompactCurrency(
+                            analytics.totalDebit,
+                          ),
                           icon: Icons.arrow_circle_down_rounded,
                           color: const Color(0xFFC0392B),
                         ),
                         MetricTile(
                           label: 'Borrowed',
-                          value: AppConstants.currency(analytics.totalBorrowed),
+                          value: IndianNumberFormatter.formatCompactCurrency(
+                            analytics.totalBorrowed,
+                          ),
                           icon: Icons.account_balance_wallet_rounded,
                           color: const Color(0xFF2E86DE),
                         ),
                         MetricTile(
                           label: 'Lent',
-                          value: AppConstants.currency(analytics.totalLent),
+                          value: IndianNumberFormatter.formatCompactCurrency(
+                            analytics.totalLent,
+                          ),
                           icon: Icons.savings_rounded,
                           color: const Color(0xFF16A085),
                         ),

@@ -8,6 +8,7 @@ import 'core/blocs/theme_cubit.dart';
 import 'core/models/app_preferences.dart';
 import 'core/router/app_router.dart';
 import 'core/services/app_settings_repository.dart';
+import 'core/services/module_data_export_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/reminder_settings_repository.dart';
 import 'core/theme/app_theme.dart';
@@ -42,6 +43,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   late final ExportRepository _exportRepository;
   late final TaskRepository _taskRepository;
   late final NotificationService _notificationService;
+  late final ModuleDataExportService _moduleDataExportService;
   late final TaskCategoryRepository _taskCategoryRepository;
   late final ReminderSettingsRepository _reminderSettingsRepository;
   late final Future<void> _bootstrap;
@@ -66,6 +68,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _taskCategoryRepository = TaskCategoryRepository(_taskRepository);
     _reminderSettingsRepository = ReminderSettingsRepository();
     _notificationService = NotificationService(_reminderSettingsRepository);
+    _moduleDataExportService = ModuleDataExportService();
     _bootstrap = _bootstrapApp();
   }
 
@@ -73,6 +76,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _reminderSettingsRepository.dispose();
+    unawaited(_appSettingsRepository.dispose());
     unawaited(_appSettingsRepository.flush());
     _database.close();
     super.dispose();
@@ -108,6 +112,9 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
         ),
         RepositoryProvider<NotificationService>.value(
           value: _notificationService,
+        ),
+        RepositoryProvider<ModuleDataExportService>.value(
+          value: _moduleDataExportService,
         ),
       ],
       child: FutureBuilder<void>(
@@ -210,6 +217,10 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     await _expenseRepository.seedDefaults();
     await _taskCategoryRepository.ensureSeeded();
     await _notificationService.initialize();
-    await _notificationService.scheduleDailyReminders();
+    if (_appPreferences.notificationsEnabled) {
+      await _notificationService.scheduleDailyReminders();
+    } else {
+      await _notificationService.cancelDailyReminders();
+    }
   }
 }

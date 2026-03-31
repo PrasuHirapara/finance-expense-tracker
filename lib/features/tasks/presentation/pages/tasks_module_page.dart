@@ -33,6 +33,12 @@ class TasksModulePage extends StatelessWidget {
                     ).pushNamed(AppRoutes.taskAnalytics),
                     icon: const Icon(Icons.insights_rounded),
                   ),
+                  IconButton(
+                    onPressed: () => Navigator.of(
+                      context,
+                    ).pushNamed(AppRoutes.taskSettings),
+                    icon: const Icon(Icons.settings_outlined),
+                  ),
                   FilledButton.icon(
                     onPressed: () => Navigator.of(context).pushNamed(
                       AppRoutes.taskEditor,

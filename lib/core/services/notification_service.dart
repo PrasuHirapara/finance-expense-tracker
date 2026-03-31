@@ -110,6 +110,17 @@ class NotificationService {
     );
   }
 
+  Future<void> cancelDailyReminders() async {
+    await initialize();
+
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return;
+    }
+
+    await _notifications.cancel(id: _expenseReminderId);
+    await _notifications.cancel(id: _taskReminderId);
+  }
+
   Future<void> _requestPermissions() async {
     if (Platform.isIOS) {
       await _notifications

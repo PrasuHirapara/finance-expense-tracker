@@ -135,6 +135,12 @@ class ExpenseRepository {
     return query.watch().map(_mapExpenseRows);
   }
 
+  Future<List<ExpenseRecord>> loadEntries({ExpenseEntryFilter? filter}) async {
+    final query = _entryJoin(filter: filter);
+    final rows = await query.get();
+    return _mapExpenseRows(rows);
+  }
+
   Stream<ExpenseDashboardData> watchDashboard({int? bankId}) {
     return watchEntries(filter: ExpenseEntryFilter(bankId: bankId)).map((
       entries,

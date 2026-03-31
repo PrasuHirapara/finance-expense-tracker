@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/models/module_export_models.dart';
+import '../../../../core/services/app_settings_repository.dart';
+import '../../../../core/services/module_data_export_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/reminder_settings_repository.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/module_export_panel.dart';
 import '../../data/repositories/task_category_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../blocs/tasks/task_bloc.dart';
@@ -81,6 +85,17 @@ class TaskSettingsBody extends StatelessWidget {
               ),
             );
           },
+        ),
+        const SizedBox(height: 18),
+        ModuleExportPanel(
+          title: 'Task Export',
+          description:
+              'Download task data for a selected range as PDF or Excel.',
+          onExport: (range, format) => _exportTaskData(
+            context,
+            range: range,
+            format: format,
+          ),
         ),
         const SizedBox(height: 18),
         AppPanel(
@@ -257,6 +272,7 @@ class TaskSettingsBody extends StatelessWidget {
     final reminderSettingsRepository = context
         .read<ReminderSettingsRepository>();
     final notificationService = context.read<NotificationService>();
+    final appSettingsRepository = context.read<AppSettingsRepository>();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final materialLocalizations = MaterialLocalizations.of(context);
     final alwaysUse24HourFormat =
@@ -277,7 +293,12 @@ class TaskSettingsBody extends StatelessWidget {
     );
 
     await reminderSettingsRepository.updateTaskReminder(reminderTime);
-    await notificationService.scheduleDailyReminders();
+    final appSettings = await appSettingsRepository.getSettings();
+    if (appSettings.notificationsEnabled) {
+      await notificationService.scheduleDailyReminders();
+    } else {
+      await notificationService.cancelDailyReminders();
+    }
 
     scaffoldMessenger.showSnackBar(
       SnackBar(content: Text('Task reminder set for $formattedTime.')),
@@ -292,6 +313,7 @@ class TaskSettingsBody extends StatelessWidget {
     final reminderSettingsRepository = context
         .read<ReminderSettingsRepository>();
     final notificationService = context.read<NotificationService>();
+    final appSettingsRepository = context.read<AppSettingsRepository>();
     final taskBloc = context.read<TaskBloc>();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final shouldDelete = await showDialog<bool>(
@@ -319,11 +341,32 @@ class TaskSettingsBody extends StatelessWidget {
     await taskRepository.clearSectionData();
     await categoryRepository.resetToDefaults();
     await reminderSettingsRepository.resetTaskReminder();
-    await notificationService.scheduleDailyReminders();
+    final appSettings = await appSettingsRepository.getSettings();
+    if (appSettings.notificationsEnabled) {
+      await notificationService.scheduleDailyReminders();
+    } else {
+      await notificationService.cancelDailyReminders();
+    }
 
     taskBloc.add(const TasksSubscriptionRequested());
     scaffoldMessenger.showSnackBar(
       const SnackBar(content: Text('Task data deleted.')),
+    );
+  }
+
+  Future<String> _exportTaskData(
+    BuildContext context, {
+    required DateTimeRange range,
+    required ModuleExportFormat format,
+  }) async {
+    final repository = context.read<TaskRepository>();
+    final exportService = context.read<ModuleDataExportService>();
+    final tasks = await repository.loadTasksBetween(range.start, range.end);
+
+    return exportService.exportTaskData(
+      range: range,
+      format: format,
+      tasks: tasks,
     );
   }
 

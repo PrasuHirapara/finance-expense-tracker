@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../formatters/indian_number_formatter.dart';
+
 class AppConstants {
   AppConstants._();
 
@@ -14,12 +16,6 @@ class AppConstants {
     'Bank Transfer',
     'Wallet',
   ];
-
-  static final NumberFormat currencyFormatter = NumberFormat.currency(
-    locale: 'en_IN',
-    symbol: 'Rs ',
-    decimalDigits: 0,
-  );
 
   static final DateFormat shortDateFormat = DateFormat('dd MMM yyyy');
   static final DateFormat longDateFormat = DateFormat('dd MMM yyyy, hh:mm a');
@@ -166,7 +162,8 @@ class AppConstants {
     return Icons.category_rounded;
   }
 
-  static String currency(double value) => currencyFormatter.format(value);
+  static String currency(double value) =>
+      IndianNumberFormatter.formatFullCurrency(value);
 }
 
 class DefaultCategorySeed {

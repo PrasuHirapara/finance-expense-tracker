@@ -15,6 +15,7 @@ import '../../features/tasks/presentation/blocs/task_analytics/task_analytics_bl
 import '../../features/tasks/presentation/blocs/task_editor/task_editor_bloc.dart';
 import '../../features/tasks/presentation/pages/task_analytics_page.dart';
 import '../../features/tasks/presentation/pages/task_editor_page.dart';
+import '../../features/tasks/presentation/pages/task_settings_page.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -25,6 +26,7 @@ class AppRoutes {
   static const String expenseSettings = '/expense/settings';
   static const String taskAnalytics = '/tasks/analytics';
   static const String taskEditor = '/tasks/editor';
+  static const String taskSettings = '/tasks/settings';
 }
 
 class TaskEditorArgs {
@@ -94,6 +96,10 @@ class AppRouter {
                 ),
             child: const TaskEditorPage(),
           ),
+        );
+      case AppRoutes.taskSettings:
+        return MaterialPageRoute<void>(
+          builder: (context) => const TaskSettingsPage(),
         );
       default:
         return MaterialPageRoute<void>(

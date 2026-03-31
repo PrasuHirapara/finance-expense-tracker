@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/models/module_export_models.dart';
+import '../../../../core/services/app_settings_repository.dart';
+import '../../../../core/services/module_data_export_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/reminder_settings_repository.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/module_export_panel.dart';
 import '../../data/repositories/expense_repository.dart';
+import '../../domain/models/expense_models.dart';
 import '../blocs/bank/bank_bloc.dart';
 import '../blocs/expense/expense_bloc.dart';
 
@@ -108,6 +113,17 @@ class ExpenseSettingsBody extends StatelessWidget {
                   ),
                 );
               },
+            ),
+            const SizedBox(height: 18),
+            ModuleExportPanel(
+              title: 'Expense Export',
+              description:
+                  'Download expense data for a selected range as PDF or Excel.',
+              onExport: (range, format) => _exportExpenseData(
+                context,
+                range: range,
+                format: format,
+              ),
             ),
             const SizedBox(height: 18),
             AppPanel(
@@ -257,6 +273,7 @@ class ExpenseSettingsBody extends StatelessWidget {
     final reminderSettingsRepository = context
         .read<ReminderSettingsRepository>();
     final notificationService = context.read<NotificationService>();
+    final appSettingsRepository = context.read<AppSettingsRepository>();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final materialLocalizations = MaterialLocalizations.of(context);
     final alwaysUse24HourFormat =
@@ -277,7 +294,12 @@ class ExpenseSettingsBody extends StatelessWidget {
     );
 
     await reminderSettingsRepository.updateExpenseReminder(reminderTime);
-    await notificationService.scheduleDailyReminders();
+    final appSettings = await appSettingsRepository.getSettings();
+    if (appSettings.notificationsEnabled) {
+      await notificationService.scheduleDailyReminders();
+    } else {
+      await notificationService.cancelDailyReminders();
+    }
 
     scaffoldMessenger.showSnackBar(
       SnackBar(content: Text('Expense reminder set for $formattedTime.')),
@@ -289,6 +311,7 @@ class ExpenseSettingsBody extends StatelessWidget {
     final reminderSettingsRepository = context
         .read<ReminderSettingsRepository>();
     final notificationService = context.read<NotificationService>();
+    final appSettingsRepository = context.read<AppSettingsRepository>();
     final expenseBloc = context.read<ExpenseBloc>();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final shouldDelete = await showDialog<bool>(
@@ -317,11 +340,37 @@ class ExpenseSettingsBody extends StatelessWidget {
 
     await expenseRepository.clearSectionData();
     await reminderSettingsRepository.resetExpenseReminder();
-    await notificationService.scheduleDailyReminders();
+    final appSettings = await appSettingsRepository.getSettings();
+    if (appSettings.notificationsEnabled) {
+      await notificationService.scheduleDailyReminders();
+    } else {
+      await notificationService.cancelDailyReminders();
+    }
 
     expenseBloc.add(const ExpenseSubscriptionRequested());
     scaffoldMessenger.showSnackBar(
       const SnackBar(content: Text('Expense data deleted.')),
+    );
+  }
+
+  Future<String> _exportExpenseData(
+    BuildContext context, {
+    required DateTimeRange range,
+    required ModuleExportFormat format,
+  }) async {
+    final repository = context.read<ExpenseRepository>();
+    final exportService = context.read<ModuleDataExportService>();
+    final entries = await repository.loadEntries(
+      filter: ExpenseEntryFilter(
+        fromDate: range.start,
+        toDate: range.end,
+      ),
+    );
+
+    return exportService.exportExpenseData(
+      range: range,
+      format: format,
+      entries: entries,
     );
   }
 

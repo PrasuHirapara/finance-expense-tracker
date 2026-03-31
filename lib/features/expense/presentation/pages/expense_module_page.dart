@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/extensions/date_time_x.dart';
+import '../../../../core/formatters/indian_number_formatter.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_select_field.dart';
@@ -58,25 +59,33 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
             final summaryCards = <_SummaryCardData>[
               _SummaryCardData(
                 label: 'Total Credit',
-                value: AppConstants.currency(dashboard.totalCredit),
+                value: IndianNumberFormatter.formatCompactCurrency(
+                  dashboard.totalCredit,
+                ),
                 color: const Color(0xFF1F8B4C),
                 filter: _ExpenseSummaryFilter.credit,
               ),
               _SummaryCardData(
                 label: 'Total Debit',
-                value: AppConstants.currency(dashboard.totalDebit),
+                value: IndianNumberFormatter.formatCompactCurrency(
+                  dashboard.totalDebit,
+                ),
                 color: const Color(0xFFC0392B),
                 filter: _ExpenseSummaryFilter.debit,
               ),
               _SummaryCardData(
                 label: 'Total Lent',
-                value: AppConstants.currency(dashboard.totalLent),
+                value: IndianNumberFormatter.formatCompactCurrency(
+                  dashboard.totalLent,
+                ),
                 color: const Color(0xFF8E44AD),
                 filter: _ExpenseSummaryFilter.lent,
               ),
               _SummaryCardData(
                 label: 'Total Borrowed',
-                value: AppConstants.currency(dashboard.totalBorrowed),
+                value: IndianNumberFormatter.formatCompactCurrency(
+                  dashboard.totalBorrowed,
+                ),
                 color: const Color(0xFF16A085),
                 filter: _ExpenseSummaryFilter.borrowed,
               ),
@@ -107,6 +116,12 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                             context,
                           ).pushNamed(AppRoutes.expenseAnalytics),
                           icon: const Icon(Icons.insights_rounded),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(
+                            context,
+                          ).pushNamed(AppRoutes.expenseSettings),
+                          icon: const Icon(Icons.settings_outlined),
                         ),
                       ],
                     ),
@@ -169,7 +184,9 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                           ),
                           const SizedBox(height: 16),
                           _NetSummaryRow(
-                            value: AppConstants.currency(dashboard.totalNet),
+                            value: IndianNumberFormatter.formatCompactCurrency(
+                              dashboard.totalNet,
+                            ),
                             selected:
                                 _activeSummaryFilter ==
                                 _ExpenseSummaryFilter.net,
@@ -556,7 +573,7 @@ class _DateTransactionGroup extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    AppConstants.currency(total),
+                    IndianNumberFormatter.formatCompactCurrency(total),
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: total >= 0
                           ? const Color(0xFF1F8B4C)
@@ -673,7 +690,7 @@ class _ExpenseEntryCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                '${entry.isCredit ? '+' : '-'}${AppConstants.currency(entry.amount)}',
+                '${entry.isCredit ? '+' : '-'}${IndianNumberFormatter.formatCompactCurrency(entry.amount)}',
                 style: theme.textTheme.titleMedium?.copyWith(
                   color: amountColor,
                 ),

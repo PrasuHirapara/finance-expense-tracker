@@ -9,7 +9,6 @@ import '../../../../core/models/app_preferences.dart';
 import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
-import '../widgets/credential_settings_section.dart';
 
 class SettingsModulePage extends StatefulWidget {
   const SettingsModulePage({super.key});
@@ -44,7 +43,7 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
               Text('Settings', style: theme.textTheme.headlineMedium),
               const SizedBox(height: 8),
               Text(
-                'Global settings now only includes app-wide preferences. Expense and task settings live inside their own modules.',
+                'Global settings only includes app-wide preferences. Expense, credential, and task settings live inside their own tabs.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -210,9 +209,8 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                                   ),
                                   if (preferences.exportDirectoryPath != null)
                                     TextButton(
-                                      onPressed: () => _resetExportFolder(
-                                        context,
-                                      ),
+                                      onPressed: () =>
+                                          _resetExportFolder(context),
                                       child: const Text('Use Default'),
                                     ),
                                 ],
@@ -225,8 +223,6 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 18),
-              const CredentialSettingsSection(),
             ],
           );
         },

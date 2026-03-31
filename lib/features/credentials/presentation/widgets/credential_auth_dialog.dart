@@ -73,19 +73,22 @@ class _CredentialAuthenticationDialogState
             ),
             onSubmitted: (_) => _authenticateWithKey(),
           ),
+          if (_biometricAvailable) ...<Widget>[
+            const SizedBox(height: 16),
+            FilledButton.tonalIcon(
+              onPressed: _isSubmitting ? null : _authenticateWithBiometrics,
+              icon: const Icon(Icons.fingerprint_rounded),
+              label: const Text('Biometric'),
+            ),
+          ],
         ],
       ),
+      actionsAlignment: MainAxisAlignment.end,
       actions: <Widget>[
         TextButton(
           onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        if (_biometricAvailable)
-          FilledButton.tonalIcon(
-            onPressed: _isSubmitting ? null : _authenticateWithBiometrics,
-            icon: const Icon(Icons.fingerprint_rounded),
-            label: const Text('Biometric'),
-          ),
         FilledButton(
           onPressed: _isSubmitting ? null : _authenticateWithKey,
           child: Text(_isSubmitting ? 'Checking...' : 'Unlock'),
@@ -145,7 +148,9 @@ class _CredentialAuthenticationDialogState
     final authenticated = await service.authenticateWithBiometrics(
       reason: widget.reason,
     );
-    final storedKey = authenticated ? await service.readStoredEncryptionKey() : null;
+    final storedKey = authenticated
+        ? await service.readStoredEncryptionKey()
+        : null;
 
     if (!mounted) {
       return;

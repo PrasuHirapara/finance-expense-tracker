@@ -1,87 +1,97 @@
-# Ledger Lens
+# Daily Use
 
-Ledger Lens is a Flutter personal finance app with two isolated modules:
+`Daily Use` is a Flutter app with four main tabs:
 
+- `Credential`
 - `Expense`
-- `Tasks`
+- `Task`
+- `Settings`
 
-The app uses a fixed bottom navigation bar, feature-based architecture, Drift for local storage, and Bloc for state management.
+It uses local storage, feature-based organization, and Bloc-driven UI flow to keep each module separated but still part of one app shell.
 
-## Architecture
+## What The App Does
+
+- `Credential`: stores encrypted credentials locally, asks for an encryption key only when the user first opens the Credential tab, and keeps credential settings inside the Credential area.
+- `Expense`: tracks money flow, banks, categories, analytics, and exports.
+- `Task`: manages daily tasks, categories, completion, and analytics.
+- `Settings`: keeps app-wide preferences such as theme, notifications, and export folder settings.
+
+## Tech Stack
+
+- `Flutter`
+- `flutter_bloc`
+- `drift`
+- `flutter_secure_storage`
+- `local_auth`
+- `equatable`
+- `intl`
+- `pdf`
+- `csv`
+
+## Top-Level Folder Structure
+
+This is the main project layout at the repo root:
+
+```text
+android/     Android project files
+ios/         iOS project files
+lib/         Main Flutter application code
+linux/       Linux desktop runner
+macos/       macOS desktop runner
+test/        Widget/unit tests
+web/         Web runner
+windows/     Windows desktop runner
+build/       Generated build output
+README.md    Project overview
+pubspec.yaml Flutter dependencies and package config
+```
+
+## `lib/` Structure
+
+Top-level Dart folders:
 
 ```text
 lib/
-  core/
-    blocs/
-    router/
-    theme/
-    widgets/
-  data/
-    database/
-  features/
-    expense/
-      data/
-      domain/
-      presentation/
-    tasks/
-      data/
-      domain/
-      presentation/
-  shared/
-    widgets/
+  core/         App-wide blocs, router, services, theme, shell widgets
+  data/         Shared database and repository implementations
+  domain/       Shared use-cases and entities
+  features/     Feature-first modules such as credential, expense, tasks, settings
+  presentation/ Older shared finance presentation layer used by the app
+  shared/       Reusable UI widgets
 ```
 
-## Expense module
+Feature folders generally follow this pattern:
 
-- Existing expense tracking flow retained under the `Expense` module
-- Added `Investment` category
-- Bank name CRUD in Expense Settings
-- Default banks: `Axis`, `BOB`, `SBI`, `HDFC`, `Kotak`
-- Optional bank selection on expense entries
-- Bank-based filtering on dashboard and analytics
-- Independent expense analytics for credit/debit, borrowed/lent, category spend, and trends
+```text
+features/
+  <feature>/
+    data/
+    domain/
+    presentation/
+```
 
-## Tasks module
+## Important App Areas
 
-- CRUD for tasks with title, description, category, date, priority, daily toggle, and completion state
-- Horizontally scrollable date selector
-- Date-filtered task list
-- Daily task auto-replication to the next day
-- Independent analytics for completed vs pending, priority distribution, daily streak, and category breakdown
+- `lib/core/widgets/app_shell.dart`: bottom navigation shell for all tabs
+- `lib/core/router/app_router.dart`: route definitions
+- `lib/features/credentials/`: encrypted credential flow and credential settings
+- `lib/features/expense/`: expense tracking, analytics, entries, and settings
+- `lib/features/tasks/`: task list, task editor, analytics, and settings
+- `lib/features/settings/`: app-wide settings UI
 
-## State management
+## Getting Started
 
-Bloc is used for:
+1. Run `flutter pub get`
+2. Run `dart run build_runner build --delete-conflicting-outputs`
+3. Run `flutter run`
 
-- bottom module navigation
-- expense dashboard
-- expense form
-- bank CRUD
-- expense analytics
-- task list and selected date
-- task editor
-- task analytics
-
-## Key dependencies
-
-- `flutter_bloc`
-- `equatable`
-- `drift`
-- `sqlite3_flutter_libs`
-- `fl_chart`
-- `intl`
-- `path_provider`
-- `pdf`
-- `csv`
-- `google_fonts`
-
-## Setup
-
-1. `flutter pub get`
-2. `dart run build_runner build --delete-conflicting-outputs`
-3. `flutter run`
-
-## Validation
+## Useful Commands
 
 - `flutter analyze`
 - `flutter test`
+
+## Notes
+
+- Credential data is stored locally and protected with an encryption key.
+- Biometric unlock can be enabled from Credential settings when supported on the device.
+- Expense, Credential, and Task settings are handled inside their own modules, while global app preferences stay in Settings.

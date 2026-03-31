@@ -107,7 +107,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                       children: <Widget>[
                         Expanded(
                           child: Text(
-                            'Expense Module',
+                            'Expense',
                             style: theme.textTheme.headlineMedium,
                           ),
                         ),

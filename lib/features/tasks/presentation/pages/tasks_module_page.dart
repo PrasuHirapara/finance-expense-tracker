@@ -22,10 +22,7 @@ class TasksModulePage extends StatelessWidget {
               Row(
                 children: <Widget>[
                   Expanded(
-                    child: Text(
-                      'Tasks Module',
-                      style: theme.textTheme.headlineMedium,
-                    ),
+                    child: Text('Task', style: theme.textTheme.headlineMedium),
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(
@@ -34,9 +31,8 @@ class TasksModulePage extends StatelessWidget {
                     icon: const Icon(Icons.insights_rounded),
                   ),
                   IconButton(
-                    onPressed: () => Navigator.of(
-                      context,
-                    ).pushNamed(AppRoutes.taskSettings),
+                    onPressed: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.taskSettings),
                     icon: const Icon(Icons.settings_outlined),
                   ),
                   FilledButton.icon(
@@ -63,7 +59,9 @@ class TasksModulePage extends StatelessWidget {
                 const AppPanel(
                   child: Padding(
                     padding: EdgeInsets.all(12),
-                    child: Center(child: Text('No tasks for the selected date.')),
+                    child: Center(
+                      child: Text('No tasks for the selected date.'),
+                    ),
                   ),
                 )
               else
@@ -138,13 +136,14 @@ class TasksModulePage extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: <Widget>[
                               TextButton.icon(
-                                onPressed: () => Navigator.of(context).pushNamed(
-                                  AppRoutes.taskEditor,
-                                  arguments: TaskEditorArgs(
-                                    selectedDate: state.selectedDate,
-                                    task: task,
-                                  ),
-                                ),
+                                onPressed: () =>
+                                    Navigator.of(context).pushNamed(
+                                      AppRoutes.taskEditor,
+                                      arguments: TaskEditorArgs(
+                                        selectedDate: state.selectedDate,
+                                        task: task,
+                                      ),
+                                    ),
                                 icon: const Icon(Icons.edit_rounded),
                                 label: const Text('Edit'),
                               ),
@@ -185,7 +184,9 @@ class _TaskBadge extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 110),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.65,
+        ),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(

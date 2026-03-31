@@ -21,6 +21,7 @@ class AppConstants {
   static final DateFormat longDateFormat = DateFormat('dd MMM yyyy, hh:mm a');
   static final DateFormat monthLabelFormat = DateFormat('MMM');
   static final DateFormat dayLabelFormat = DateFormat('dd MMM');
+  static final DateFormat exportFileDateFormat = DateFormat('dd-MM-yyyy');
   static final DateFormat exportFileFormat = DateFormat('yyyyMMdd_HHmmss');
 
   static final List<DefaultCategorySeed> defaultCategories =

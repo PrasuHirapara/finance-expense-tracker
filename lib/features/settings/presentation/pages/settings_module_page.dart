@@ -106,13 +106,6 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'The app always opens in Expense.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
                   ],
                 ),
               ),

@@ -75,10 +75,15 @@ class _CredentialAuthenticationDialogState
           ),
           if (_biometricAvailable) ...<Widget>[
             const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              onPressed: _isSubmitting ? null : _authenticateWithBiometrics,
-              icon: const Icon(Icons.fingerprint_rounded),
-              label: const Text('Biometric'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: <Widget>[
+                FilledButton.tonalIcon(
+                  onPressed: _isSubmitting ? null : _authenticateWithBiometrics,
+                  icon: const Icon(Icons.fingerprint_rounded),
+                  label: const Text('Biometric'),
+                ),
+              ],
             ),
           ],
         ],

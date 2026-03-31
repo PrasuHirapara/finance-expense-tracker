@@ -24,6 +24,10 @@ class CredentialService {
     return _repository.loadCredential(id);
   }
 
+  Future<List<CredentialRecord>> loadCredentials({String query = ''}) {
+    return _repository.loadCredentials(query: query);
+  }
+
   Future<bool> hasEncryptionKey() {
     return _securityService.hasEncryptionKey();
   }

@@ -45,5 +45,14 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
+  web:
+    generate: true
+    image_path: "daily_use_logo.png"
+  windows:
+    generate: true
+    image_path: "daily_use_logo.png"
+  macos:
+    generate: true
+    image_path: "daily_use_logo.png"
   image_path: "daily_use_logo.png"
   remove_alpha_ios: true

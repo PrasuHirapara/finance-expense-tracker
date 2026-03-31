@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../credentials/data/services/credential_service.dart';
 import '../../../credentials/presentation/widgets/credential_auth_dialog.dart';
+import '../../../credentials/presentation/widgets/credential_export_panel.dart';
 import '../../../credentials/presentation/widgets/credential_key_setup_dialog.dart';
 
 class CredentialSettingsSection extends StatefulWidget {
@@ -57,6 +58,8 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
                     icon: const Icon(Icons.key_rounded),
                     label: const Text('Change Encryption Key'),
                   ),
+                  const SizedBox(height: 16),
+                  const CredentialExportPanel(),
                   const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
@@ -159,7 +162,8 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
     final oldKey = await showCredentialAuthenticationDialog(
       context,
       title: 'Authenticate',
-      reason: 'Authenticate with your current encryption key or biometrics to change it.',
+      reason:
+          'Authenticate with your current encryption key or biometrics to change it.',
     );
 
     if (oldKey == null || !mounted) {
@@ -190,9 +194,9 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Encryption key updated.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Encryption key updated.')));
     await _refresh();
   }
 

@@ -66,33 +66,19 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
                     style: theme.textTheme.headlineMedium,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Flexible(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Wrap(
-                      alignment: WrapAlignment.end,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: <Widget>[
-                        IconButton(
-                          tooltip: 'Credential settings',
-                          onPressed: _openCredentialSettings,
-                          icon: const Icon(Icons.settings_outlined),
-                        ),
-                        FilledButton.icon(
-                          onPressed: !_isConfigured
-                              ? null
-                              : () => Navigator.of(
-                                  context,
-                                ).pushNamed(AppRoutes.credentialEditor),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add Credential'),
-                        ),
-                      ],
-                    ),
-                  ),
+                IconButton(
+                  tooltip: 'Credential settings',
+                  onPressed: _openCredentialSettings,
+                  icon: const Icon(Icons.settings_outlined),
+                ),
+                IconButton(
+                  tooltip: 'Add credential',
+                  onPressed: !_isConfigured
+                      ? null
+                      : () => Navigator.of(
+                          context,
+                        ).pushNamed(AppRoutes.credentialEditor),
+                  icon: const Icon(Icons.add),
                 ),
               ],
             ),

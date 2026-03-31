@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/app_preferences.dart';
 import '../../features/expense/presentation/pages/expense_module_page.dart';
 import '../../features/settings/presentation/pages/settings_module_page.dart';
 import '../../features/tasks/presentation/pages/tasks_module_page.dart';
@@ -34,13 +35,11 @@ class AppShell extends StatelessWidget {
             },
             onDestinationSelected: (index) {
               context.read<ModuleNavigationBloc>().add(
-                ModuleSelected(
-                  switch (index) {
-                    0 => AppModule.expense,
-                    1 => AppModule.tasks,
-                    _ => AppModule.settings,
-                  },
-                ),
+                ModuleSelected(switch (index) {
+                  0 => AppModule.expense,
+                  1 => AppModule.tasks,
+                  _ => AppModule.settings,
+                }),
               );
             },
             destinations: const <NavigationDestination>[

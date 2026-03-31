@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/blocs/module_navigation_bloc.dart';
 import 'core/blocs/theme_cubit.dart';
+import 'core/models/app_preferences.dart';
 import 'core/router/app_router.dart';
+import 'core/services/app_settings_repository.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/reminder_settings_repository.dart';
 import 'core/theme/app_theme.dart';
@@ -30,8 +34,9 @@ class DailyUseApp extends StatefulWidget {
   State<DailyUseApp> createState() => _DailyUseAppState();
 }
 
-class _DailyUseAppState extends State<DailyUseApp> {
+class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   late final AppDatabase _database;
+  late final AppSettingsRepository _appSettingsRepository;
   late final ExpenseRepository _expenseRepository;
   late final FinanceRepository _financeRepository;
   late final ExportRepository _exportRepository;
@@ -40,11 +45,14 @@ class _DailyUseAppState extends State<DailyUseApp> {
   late final TaskCategoryRepository _taskCategoryRepository;
   late final ReminderSettingsRepository _reminderSettingsRepository;
   late final Future<void> _bootstrap;
+  AppPreferences _appPreferences = const AppPreferences();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _database = AppDatabase();
+    _appSettingsRepository = AppSettingsRepository();
     _expenseRepository = ExpenseRepository(_database);
     _financeRepository = FinanceRepositoryImpl(
       database: _database,
@@ -63,9 +71,21 @@ class _DailyUseAppState extends State<DailyUseApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _reminderSettingsRepository.dispose();
+    unawaited(_appSettingsRepository.flush());
     _database.close();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(_appSettingsRepository.flush());
+    }
   }
 
   @override
@@ -79,6 +99,9 @@ class _DailyUseAppState extends State<DailyUseApp> {
         RepositoryProvider<TaskRepository>.value(value: _taskRepository),
         RepositoryProvider<TaskCategoryRepository>.value(
           value: _taskCategoryRepository,
+        ),
+        RepositoryProvider<AppSettingsRepository>.value(
+          value: _appSettingsRepository,
         ),
         RepositoryProvider<ReminderSettingsRepository>.value(
           value: _reminderSettingsRepository,
@@ -94,6 +117,9 @@ class _DailyUseAppState extends State<DailyUseApp> {
             return MaterialApp(
               debugShowCheckedModeBanner: false,
               theme: AppTheme.light(),
+              darkTheme: AppTheme.dark(),
+              themeMode: _appPreferences.themeMode,
+              restorationScopeId: 'daily_use_app',
               home: const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
               ),
@@ -104,6 +130,9 @@ class _DailyUseAppState extends State<DailyUseApp> {
             return MaterialApp(
               debugShowCheckedModeBanner: false,
               theme: AppTheme.light(),
+              darkTheme: AppTheme.dark(),
+              themeMode: _appPreferences.themeMode,
+              restorationScopeId: 'daily_use_app',
               home: Scaffold(
                 body: Center(
                   child: Padding(
@@ -120,9 +149,17 @@ class _DailyUseAppState extends State<DailyUseApp> {
 
           return MultiBlocProvider(
             providers: <BlocProvider<dynamic>>[
-              BlocProvider<ThemeCubit>(create: (_) => ThemeCubit()),
+              BlocProvider<ThemeCubit>(
+                create: (_) => ThemeCubit(
+                  settingsRepository: _appSettingsRepository,
+                  initialThemeMode: _appPreferences.themeMode,
+                ),
+              ),
               BlocProvider<ModuleNavigationBloc>(
-                create: (_) => ModuleNavigationBloc(),
+                create: (_) => ModuleNavigationBloc(
+                  settingsRepository: _appSettingsRepository,
+                  initialModule: _appPreferences.selectedModule,
+                ),
               ),
               BlocProvider<ExpenseBloc>(
                 create: (context) =>
@@ -148,6 +185,7 @@ class _DailyUseAppState extends State<DailyUseApp> {
                   theme: AppTheme.light(),
                   darkTheme: AppTheme.dark(),
                   themeMode: themeMode,
+                  restorationScopeId: 'daily_use_app',
                   onGenerateRoute: AppRouter.onGenerateRoute,
                   home: const AppShell(),
                 );
@@ -160,6 +198,15 @@ class _DailyUseAppState extends State<DailyUseApp> {
   }
 
   Future<void> _bootstrapApp() async {
+    final appPreferences = await _appSettingsRepository.getSettings();
+    if (mounted) {
+      setState(() {
+        _appPreferences = appPreferences;
+      });
+    } else {
+      _appPreferences = appPreferences;
+    }
+
     await _expenseRepository.seedDefaults();
     await _taskCategoryRepository.ensureSeeded();
     await _notificationService.initialize();

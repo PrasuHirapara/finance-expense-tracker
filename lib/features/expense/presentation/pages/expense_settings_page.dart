@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/module_export_models.dart';
 import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/module_data_export_service.dart';
@@ -28,231 +29,356 @@ class ExpenseSettingsPage extends StatelessWidget {
   }
 }
 
-class ExpenseSettingsBody extends StatelessWidget {
+class ExpenseSettingsBody extends StatefulWidget {
   const ExpenseSettingsBody({super.key});
+
+  @override
+  State<ExpenseSettingsBody> createState() => _ExpenseSettingsBodyState();
+}
+
+class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
+  bool _showAllBanks = false;
+  bool _showAllCategories = false;
 
   @override
   Widget build(BuildContext context) {
     final reminderRepository = context.read<ReminderSettingsRepository>();
+    final expenseRepository = context.read<ExpenseRepository>();
+    final theme = Theme.of(context);
 
     return BlocBuilder<BankBloc, BankState>(
-      builder: (context, state) {
-        return Column(
-          children: <Widget>[
-            StreamBuilder<ReminderSettings>(
-              stream: reminderRepository.watchSettings(),
-              builder: (context, snapshot) {
-                final settings = snapshot.data ?? const ReminderSettings();
+      builder: (context, bankState) {
+        return StreamBuilder<List<ExpenseCategory>>(
+          stream: expenseRepository.watchCategories(),
+          builder: (context, snapshot) {
+            final categories = snapshot.data ?? const <ExpenseCategory>[];
+            final banks = bankState.banks;
+            final visibleCategories =
+                _showAllCategories || categories.length <= 1
+                ? categories
+                : categories.take(1).toList(growable: false);
+            final visibleBanks = _showAllBanks || banks.length <= 1
+                ? banks
+                : banks.take(1).toList(growable: false);
 
-                return AppPanel(
+            return Column(
+              children: <Widget>[
+                StreamBuilder<ReminderSettings>(
+                  stream: reminderRepository.watchSettings(),
+                  builder: (context, snapshot) {
+                    final settings = snapshot.data ?? const ReminderSettings();
+
+                    return AppPanel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Expense Reminder',
+                            style: theme.textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Choose when the daily expense reminder should arrive.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.42),
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(
+                                        _formatTime(
+                                          context,
+                                          settings.expenseReminder,
+                                        ),
+                                        style: theme.textTheme.titleMedium,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Default is 8:00 PM.',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: theme
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                FilledButton.tonalIcon(
+                                  onPressed: () => _pickReminderTime(
+                                    context,
+                                    initialTime: settings.expenseReminder,
+                                  ),
+                                  icon: const Icon(Icons.schedule_rounded),
+                                  label: const Text('Change'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 18),
+                ModuleExportPanel(
+                  title: 'Expense Export',
+                  onExport: (range, format) =>
+                      _exportExpenseData(context, range: range, format: format),
+                ),
+                const SizedBox(height: 18),
+                AppPanel(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        'Expense Reminder',
-                        style: Theme.of(context).textTheme.titleLarge,
+                        'Expense Settings',
+                        style: theme.textTheme.titleLarge,
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Choose when the daily expense reminder should arrive.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        'Manage expense categories and banks.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text('Categories', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      if (categories.length > 1)
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _showAllCategories = !_showAllCategories;
+                            });
+                          },
+                          child: Text(
+                            _showAllCategories
+                                ? 'Hide category'
+                                : 'View category',
+                          ),
+                        ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: FilledButton.tonalIcon(
+                          onPressed: () => _showCategoryDialog(
+                            context,
+                            existingCategories: categories,
+                          ),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add category'),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (categories.isEmpty)
+                        _buildEmptyCard(context, 'No categories added yet.')
+                      else
+                        ...visibleCategories.map(
+                          (category) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildCategoryCard(
+                              context,
+                              category: category,
+                              canDelete: categories.length > 1,
+                              existingCategories: categories,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 6),
+                      Divider(color: theme.colorScheme.outlineVariant),
+                      const SizedBox(height: 14),
+                      Text('Banks', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      if (banks.length > 1)
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _showAllBanks = !_showAllBanks;
+                            });
+                          },
+                          child: Text(
+                            _showAllBanks ? 'Hide banks' : 'View banks',
+                          ),
+                        ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: FilledButton.tonalIcon(
+                          onPressed: () =>
+                              _showBankDialog(context, existingBanks: banks),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add bank'),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (banks.isEmpty)
+                        _buildEmptyCard(context, 'No banks added yet.')
+                      else
+                        ...visibleBanks.map(
+                          (bank) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildBankCard(
+                              context,
+                              bank: bank,
+                              existingBanks: banks,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                AppPanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Delete Expense Data',
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'This clears expense entries, restores the default banks and categories, and resets the expense reminder to 8:00 PM.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest
-                              .withValues(alpha: 0.42),
-                          borderRadius: BorderRadius.circular(18),
+                      FilledButton.tonalIcon(
+                        onPressed: () => _deleteExpenseSectionData(context),
+                        style: FilledButton.styleFrom(
+                          foregroundColor: theme.colorScheme.error,
                         ),
-                        child: Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Text(
-                                    _formatTime(
-                                      context,
-                                      settings.expenseReminder,
-                                    ),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Default is 8:00 PM.',
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            FilledButton.tonalIcon(
-                              onPressed: () => _pickReminderTime(
-                                context,
-                                initialTime: settings.expenseReminder,
-                              ),
-                              icon: const Icon(Icons.schedule_rounded),
-                              label: const Text('Change'),
-                            ),
-                          ],
-                        ),
+                        icon: const Icon(Icons.delete_forever_rounded),
+                        label: const Text('Delete Data'),
                       ),
                     ],
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 18),
-            ModuleExportPanel(
-              title: 'Expense Export',
-              onExport: (range, format) => _exportExpenseData(
-                context,
-                range: range,
-                format: format,
-              ),
-            ),
-            const SizedBox(height: 18),
-            AppPanel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              'Expense Settings',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Bank configuration',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurfaceVariant,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      FilledButton.icon(
-                        onPressed: () => _showBankDialog(context),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Bank'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (state.banks.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest
-                            .withValues(alpha: 0.42),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: const Text('No banks added yet.'),
-                    )
-                  else
-                    ...state.banks.map(
-                      (bank) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainerHighest
-                                .withValues(alpha: 0.42),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Row(
-                            children: <Widget>[
-                              Expanded(
-                                child: Text(
-                                  bank.name,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () => _showBankDialog(
-                                  context,
-                                  bankId: bank.id,
-                                  initialName: bank.name,
-                                ),
-                                icon: const Icon(Icons.edit_rounded),
-                              ),
-                              IconButton(
-                                onPressed: () {
-                                  context.read<BankBloc>().add(
-                                    BankDeleted(bank.id),
-                                  );
-                                },
-                                icon: const Icon(Icons.delete_outline_rounded),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            AppPanel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'Delete Expense Data',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'This clears expense entries, restores the default banks, and resets the expense reminder to 8:00 PM.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.tonalIcon(
-                    onPressed: () => _deleteExpenseSectionData(context),
-                    style: FilledButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.error,
-                    ),
-                    icon: const Icon(Icons.delete_forever_rounded),
-                    label: const Text('Delete Data'),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         );
       },
+    );
+  }
+
+  Widget _buildEmptyCard(BuildContext context, String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(message),
+    );
+  }
+
+  Widget _buildCategoryCard(
+    BuildContext context, {
+    required ExpenseCategory category,
+    required bool canDelete,
+    required List<ExpenseCategory> existingCategories,
+  }) {
+    final theme = Theme.of(context);
+    final color = Color(category.colorValue);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.42,
+        ),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: <Widget>[
+          CircleAvatar(
+            backgroundColor: color.withValues(alpha: 0.14),
+            child: Icon(
+              AppConstants.categoryIconFromCodePoint(category.iconCodePoint),
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(category.name, style: theme.textTheme.titleMedium),
+          ),
+          IconButton(
+            onPressed: () => _showCategoryDialog(
+              context,
+              category: category,
+              existingCategories: existingCategories,
+            ),
+            icon: const Icon(Icons.edit_rounded),
+          ),
+          IconButton(
+            onPressed: canDelete
+                ? () async {
+                    await context.read<ExpenseRepository>().deleteCategory(
+                      category.id,
+                    );
+                  }
+                : null,
+            icon: const Icon(Icons.delete_outline_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBankCard(
+    BuildContext context, {
+    required BankName bank,
+    required List<BankName> existingBanks,
+  }) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.42,
+        ),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(child: Text(bank.name, style: theme.textTheme.titleMedium)),
+          IconButton(
+            onPressed: () => _showBankDialog(
+              context,
+              bankId: bank.id,
+              initialName: bank.name,
+              existingBanks: existingBanks,
+            ),
+            icon: const Icon(Icons.edit_rounded),
+          ),
+          IconButton(
+            onPressed: () {
+              context.read<BankBloc>().add(BankDeleted(bank.id));
+            },
+            icon: const Icon(Icons.delete_outline_rounded),
+          ),
+        ],
+      ),
     );
   }
 
@@ -359,10 +485,7 @@ class ExpenseSettingsBody extends StatelessWidget {
     final repository = context.read<ExpenseRepository>();
     final exportService = context.read<ModuleDataExportService>();
     final entries = await repository.loadEntries(
-      filter: ExpenseEntryFilter(
-        fromDate: range.start,
-        toDate: range.end,
-      ),
+      filter: ExpenseEntryFilter(fromDate: range.start, toDate: range.end),
     );
 
     return exportService.exportExpenseData(
@@ -372,10 +495,190 @@ class ExpenseSettingsBody extends StatelessWidget {
     );
   }
 
+  Future<void> _showCategoryDialog(
+    BuildContext context, {
+    ExpenseCategory? category,
+    required List<ExpenseCategory> existingCategories,
+  }) async {
+    final repository = context.read<ExpenseRepository>();
+    final nameController = TextEditingController(text: category?.name ?? '');
+    var selectedIcon = category == null
+        ? AppConstants.categoryIconChoices.first
+        : AppConstants.categoryIconFromCodePoint(category.iconCodePoint);
+    var selectedColor =
+        category?.colorValue ?? AppConstants.categoryColorChoices.first;
+
+    if (!AppConstants.categoryIconChoices.contains(selectedIcon)) {
+      selectedIcon = AppConstants.categoryIconChoices.first;
+    }
+    if (!AppConstants.categoryColorChoices.contains(selectedColor)) {
+      selectedColor = AppConstants.categoryColorChoices.first;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    category == null ? 'Add Category' : 'Edit Category',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Category name',
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Choose an icon',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: AppConstants.categoryIconChoices
+                        .map((icon) {
+                          final selected = icon == selectedIcon;
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () =>
+                                setSheetState(() => selectedIcon = icon),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.primaryContainer
+                                    : Theme.of(context).colorScheme.surface,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(icon),
+                            ),
+                          );
+                        })
+                        .toList(growable: false),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Choose a color',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: AppConstants.categoryColorChoices
+                        .map((colorValue) {
+                          final selected = colorValue == selectedColor;
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () =>
+                                setSheetState(() => selectedColor = colorValue),
+                            child: Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: Color(colorValue),
+                                shape: BoxShape.circle,
+                                border: selected
+                                    ? Border.all(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
+                                        width: 2,
+                                      )
+                                    : null,
+                              ),
+                            ),
+                          );
+                        })
+                        .toList(growable: false),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () async {
+                        final trimmedName = nameController.text.trim();
+                        if (trimmedName.isEmpty) {
+                          return;
+                        }
+
+                        final hasDuplicate = existingCategories.any(
+                          (existingCategory) =>
+                              existingCategory.id != category?.id &&
+                              existingCategory.name.toLowerCase() ==
+                                  trimmedName.toLowerCase(),
+                        );
+                        if (hasDuplicate) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Category already exists.'),
+                            ),
+                          );
+                          return;
+                        }
+
+                        if (category == null) {
+                          await repository.createCategory(
+                            name: trimmedName,
+                            colorValue: selectedColor,
+                            iconCodePoint: selectedIcon.codePoint,
+                          );
+                        } else {
+                          await repository.updateCategory(
+                            id: category.id,
+                            name: trimmedName,
+                            colorValue: selectedColor,
+                            iconCodePoint: selectedIcon.codePoint,
+                          );
+                        }
+
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Text(
+                          category == null
+                              ? 'Save Category'
+                              : 'Update Category',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _showBankDialog(
     BuildContext context, {
     int? bankId,
     String initialName = '',
+    required List<BankName> existingBanks,
   }) async {
     final controller = TextEditingController(text: initialName);
     await showDialog<void>(
@@ -396,6 +699,17 @@ class ExpenseSettingsBody extends StatelessWidget {
               onPressed: () {
                 final name = controller.text.trim();
                 if (name.isEmpty) {
+                  return;
+                }
+                final hasDuplicate = existingBanks.any(
+                  (bank) =>
+                      bank.id != bankId &&
+                      bank.name.toLowerCase() == name.toLowerCase(),
+                );
+                if (hasDuplicate) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('Bank already exists.')),
+                  );
                   return;
                 }
                 if (bankId == null) {

@@ -12,8 +12,15 @@ import '../../data/repositories/task_category_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../blocs/tasks/task_bloc.dart';
 
-class TaskSettingsBody extends StatelessWidget {
+class TaskSettingsBody extends StatefulWidget {
   const TaskSettingsBody({super.key});
+
+  @override
+  State<TaskSettingsBody> createState() => _TaskSettingsBodyState();
+}
+
+class _TaskSettingsBodyState extends State<TaskSettingsBody> {
+  bool _showAllCategories = false;
 
   @override
   Widget build(BuildContext context) {
@@ -89,11 +96,8 @@ class TaskSettingsBody extends StatelessWidget {
         const SizedBox(height: 18),
         ModuleExportPanel(
           title: 'Task Export',
-          onExport: (range, format) => _exportTaskData(
-            context,
-            range: range,
-            format: format,
-          ),
+          onExport: (range, format) =>
+              _exportTaskData(context, range: range, format: format),
         ),
         const SizedBox(height: 18),
         AppPanel(
@@ -132,11 +136,37 @@ class TaskSettingsBody extends StatelessWidget {
                 stream: repository.watchCategories(),
                 builder: (context, snapshot) {
                   final categories = snapshot.data ?? const <String>[];
+                  final visibleCategories =
+                      _showAllCategories || categories.length <= 1
+                      ? categories
+                      : categories.take(1).toList(growable: false);
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text('Categories', style: theme.textTheme.titleMedium),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Text(
+                              'Categories',
+                              style: theme.textTheme.titleMedium,
+                            ),
+                          ),
+                          if (categories.length > 1)
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _showAllCategories = !_showAllCategories;
+                                });
+                              },
+                              child: Text(
+                                _showAllCategories
+                                    ? 'Hide category'
+                                    : 'View category',
+                              ),
+                            ),
+                        ],
+                      ),
                       const SizedBox(height: 12),
                       if (categories.isEmpty)
                         Text(
@@ -144,7 +174,7 @@ class TaskSettingsBody extends StatelessWidget {
                           style: theme.textTheme.bodyMedium,
                         )
                       else
-                        ...categories.map(
+                        ...visibleCategories.map(
                           (category) => Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: Container(

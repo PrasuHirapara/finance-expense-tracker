@@ -66,12 +66,116 @@ class ExpenseRepository {
     );
   }
 
+  Future<void> createCategory({
+    required String name,
+    required int colorValue,
+    required int iconCodePoint,
+  }) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+
+    final categories = await _database.getCategories();
+    if (_containsDuplicateName(
+      categories.map((category) => category.name),
+      trimmed,
+    )) {
+      return;
+    }
+
+    await _database.insertCategory(
+      DbCategoriesCompanion.insert(
+        name: trimmed,
+        iconCodePoint: iconCodePoint,
+        colorValue: colorValue,
+      ),
+    );
+  }
+
+  Future<void> updateCategory({
+    required int id,
+    required String name,
+    required int colorValue,
+    required int iconCodePoint,
+  }) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+
+    final categories = await _database.getCategories();
+    final hasDuplicate = categories.any(
+      (category) =>
+          category.id != id &&
+          category.name.toLowerCase() == trimmed.toLowerCase(),
+    );
+    if (hasDuplicate) {
+      return;
+    }
+
+    await (_database.update(
+      _database.dbCategories,
+    )..where((table) => table.id.equals(id))).write(
+      DbCategoriesCompanion(
+        name: Value(trimmed),
+        iconCodePoint: Value(iconCodePoint),
+        colorValue: Value(colorValue),
+      ),
+    );
+  }
+
+  Future<void> deleteCategory(int id) async {
+    final categories = await _database.getCategories();
+    if (categories.length <= 1) {
+      return;
+    }
+
+    final fallbackCategory = categories.where((category) => category.id != id);
+    if (fallbackCategory.isEmpty) {
+      return;
+    }
+
+    await (_database.update(
+      _database.dbFinanceEntries,
+    )..where((table) => table.categoryId.equals(id))).write(
+      DbFinanceEntriesCompanion(categoryId: Value(fallbackCategory.first.id)),
+    );
+    await (_database.delete(
+      _database.dbCategories,
+    )..where((table) => table.id.equals(id))).go();
+  }
+
   Future<void> createBank(String name) async {
-    await _database.insertBank(DbBanksCompanion.insert(name: name.trim()));
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+
+    final banks = await _database.getBanks();
+    if (_containsDuplicateName(banks.map((bank) => bank.name), trimmed)) {
+      return;
+    }
+
+    await _database.insertBank(DbBanksCompanion.insert(name: trimmed));
   }
 
   Future<void> updateBank({required int id, required String name}) async {
-    await _database.updateBankName(bankId: id, name: name.trim());
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+
+    final banks = await _database.getBanks();
+    final hasDuplicate = banks.any(
+      (bank) =>
+          bank.id != id && bank.name.toLowerCase() == trimmed.toLowerCase(),
+    );
+    if (hasDuplicate) {
+      return;
+    }
+
+    await _database.updateBankName(bankId: id, name: trimmed);
   }
 
   Future<void> deleteBank(int id) async {
@@ -127,6 +231,7 @@ class ExpenseRepository {
   Future<void> clearSectionData() async {
     await _database.delete(_database.dbFinanceEntries).go();
     await _database.delete(_database.dbBanks).go();
+    await _database.delete(_database.dbCategories).go();
     await seedDefaults();
   }
 
@@ -430,6 +535,10 @@ class ExpenseRepository {
       case ExpenseAnalyticsWindow.yearly:
         return _ExpenseDateRange(anchorDate.startOfYear, anchorDate.endOfYear);
     }
+  }
+
+  bool _containsDuplicateName(Iterable<String> names, String target) {
+    return names.any((name) => name.toLowerCase() == target.toLowerCase());
   }
 }
 

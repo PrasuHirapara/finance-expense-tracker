@@ -149,13 +149,13 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
     );
   }
 
-  Future<void> _exportCsv(AnalyticsWindow window, AnalyticsReport report) async {
+  Future<void> _exportCsv(
+    AnalyticsWindow window,
+    AnalyticsReport report,
+  ) async {
     try {
       final exportCubit = context.read<ExportCubit>();
-      final path = await exportCubit.exportCsv(
-        window: window,
-        report: report,
-      );
+      final path = await exportCubit.exportCsv(window: window, report: report);
       if (!mounted) {
         return;
       }
@@ -177,7 +177,10 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
     }
   }
 
-  Future<void> _exportPdf(AnalyticsWindow window, AnalyticsReport report) async {
+  Future<void> _exportPdf(
+    AnalyticsWindow window,
+    AnalyticsReport report,
+  ) async {
     try {
       final exportCubit = context.read<ExportCubit>();
       await Future<void>.delayed(const Duration(milliseconds: 80));
@@ -296,7 +299,8 @@ class _AnalyticsBody extends StatelessWidget {
               Expanded(
                 child: _ChartSection(
                   title: 'Category Distribution',
-                  subtitle: 'Expense share by category',
+                  subtitle:
+                      'Pie chart: slices show category share and legend chips show amount.',
                   chartKey: pieChartKey,
                   chart: CategoryPieChart(data: report.categoryDistribution),
                   footer: Wrap(
@@ -318,9 +322,14 @@ class _AnalyticsBody extends StatelessWidget {
               Expanded(
                 child: _ChartSection(
                   title: 'Expense Trendline',
-                  subtitle: 'Expense movement over time',
+                  subtitle:
+                      'X-axis shows the selected time period. Y-axis shows expense amount.',
                   chartKey: lineChartKey,
-                  chart: TrendLineChart(points: report.trendPoints),
+                  chart: TrendLineChart(
+                    points: report.trendPoints,
+                    xAxisTitle: 'Period',
+                    yAxisTitle: 'Expense Amount',
+                  ),
                 ),
               ),
             ],
@@ -328,7 +337,8 @@ class _AnalyticsBody extends StatelessWidget {
         else ...<Widget>[
           _ChartSection(
             title: 'Category Distribution',
-            subtitle: 'Expense share by category',
+            subtitle:
+                'Pie chart: slices show category share and legend chips show amount.',
             chartKey: pieChartKey,
             chart: CategoryPieChart(data: report.categoryDistribution),
             footer: Wrap(
@@ -348,19 +358,26 @@ class _AnalyticsBody extends StatelessWidget {
           const SizedBox(height: 14),
           _ChartSection(
             title: 'Expense Trendline',
-            subtitle: 'Expense movement over time',
+            subtitle:
+                'X-axis shows the selected time period. Y-axis shows expense amount.',
             chartKey: lineChartKey,
-            chart: TrendLineChart(points: report.trendPoints),
+            chart: TrendLineChart(
+              points: report.trendPoints,
+              xAxisTitle: 'Period',
+              yAxisTitle: 'Expense Amount',
+            ),
           ),
         ],
         const SizedBox(height: 14),
         _ChartSection(
           title: 'Borrowed vs Lent',
-          subtitle: 'Asset and liability comparison',
+          subtitle: 'X-axis shows flow type. Y-axis shows amount.',
           chartKey: barChartKey,
           chart: BorrowedLentBarChart(
             borrowed: report.totalBorrowed,
             lent: report.totalLent,
+            xAxisTitle: 'Flow Type',
+            yAxisTitle: 'Amount',
           ),
           footer: Text(
             'Net position: ${AppConstants.currency(report.borrowedVsLentBalance)}',

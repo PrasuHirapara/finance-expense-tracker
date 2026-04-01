@@ -124,11 +124,6 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
                       ],
                     ),
                   ),
-                  FilledButton.icon(
-                    onPressed: () => _showCategoryDialog(context),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add'),
-                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -136,10 +131,9 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
                 stream: repository.watchCategories(),
                 builder: (context, snapshot) {
                   final categories = snapshot.data ?? const <String>[];
-                  final visibleCategories =
-                      _showAllCategories || categories.length <= 1
+                  final visibleCategories = _showAllCategories
                       ? categories
-                      : categories.take(1).toList(growable: false);
+                      : const <String>[];
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,7 +146,7 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
                               style: theme.textTheme.titleMedium,
                             ),
                           ),
-                          if (categories.length > 1)
+                          if (categories.isNotEmpty)
                             TextButton(
                               onPressed: () {
                                 setState(() {
@@ -165,6 +159,12 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
                                     : 'View category',
                               ),
                             ),
+                          const SizedBox(width: 8),
+                          FilledButton.tonalIcon(
+                            onPressed: () => _showCategoryDialog(context),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add category'),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 12),

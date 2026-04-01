@@ -85,6 +85,11 @@ class TaskAnalyticsPage extends StatelessWidget {
                         'Completed tasks over the last 7 days.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'X-axis shows day. Y-axis shows completed task count.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                       const SizedBox(height: 16),
                       SizedBox(
                         height: 220,
@@ -141,7 +146,10 @@ class TaskAnalyticsPage extends StatelessWidget {
     }
 
     final values = analytics.priorityDistribution
-        .map((item) => '${item.priority}: ${((item.count / total) * 100).round()}%')
+        .map(
+          (item) =>
+              '${item.priority}: ${((item.count / total) * 100).round()}%',
+        )
         .join('   ');
     return values;
   }

@@ -13,6 +13,7 @@ import '../../data/repositories/expense_repository.dart';
 import '../../domain/models/expense_models.dart';
 import '../blocs/bank/bank_bloc.dart';
 import '../blocs/expense/expense_bloc.dart';
+import '../widgets/expense_import_section.dart';
 
 class ExpenseSettingsPage extends StatelessWidget {
   const ExpenseSettingsPage({super.key});
@@ -53,13 +54,10 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
           builder: (context, snapshot) {
             final categories = snapshot.data ?? const <ExpenseCategory>[];
             final banks = bankState.banks;
-            final visibleCategories =
-                _showAllCategories || categories.length <= 1
+            final visibleCategories = _showAllCategories
                 ? categories
-                : categories.take(1).toList(growable: false);
-            final visibleBanks = _showAllBanks || banks.length <= 1
-                ? banks
-                : banks.take(1).toList(growable: false);
+                : const <ExpenseCategory>[];
+            final visibleBanks = _showAllBanks ? banks : const <BankName>[];
 
             return Column(
               children: <Widget>[
@@ -142,6 +140,8 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
                       _exportExpenseData(context, range: range, format: format),
                 ),
                 const SizedBox(height: 18),
+                const ExpenseImportSection(),
+                const SizedBox(height: 18),
                 AppPanel(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,29 +160,31 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
                       const SizedBox(height: 18),
                       Text('Categories', style: theme.textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      if (categories.length > 1)
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _showAllCategories = !_showAllCategories;
-                            });
-                          },
-                          child: Text(
-                            _showAllCategories
-                                ? 'Hide category'
-                                : 'View category',
+                      Row(
+                        children: <Widget>[
+                          if (categories.isNotEmpty)
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _showAllCategories = !_showAllCategories;
+                                });
+                              },
+                              child: Text(
+                                _showAllCategories
+                                    ? 'Hide category'
+                                    : 'View category',
+                              ),
+                            ),
+                          const Spacer(),
+                          FilledButton.tonalIcon(
+                            onPressed: () => _showCategoryDialog(
+                              context,
+                              existingCategories: categories,
+                            ),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add category'),
                           ),
-                        ),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: FilledButton.tonalIcon(
-                          onPressed: () => _showCategoryDialog(
-                            context,
-                            existingCategories: categories,
-                          ),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add category'),
-                        ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       if (categories.isEmpty)
@@ -204,25 +206,27 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
                       const SizedBox(height: 14),
                       Text('Banks', style: theme.textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      if (banks.length > 1)
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _showAllBanks = !_showAllBanks;
-                            });
-                          },
-                          child: Text(
-                            _showAllBanks ? 'Hide banks' : 'View banks',
+                      Row(
+                        children: <Widget>[
+                          if (banks.isNotEmpty)
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _showAllBanks = !_showAllBanks;
+                                });
+                              },
+                              child: Text(
+                                _showAllBanks ? 'Hide banks' : 'View banks',
+                              ),
+                            ),
+                          const Spacer(),
+                          FilledButton.tonalIcon(
+                            onPressed: () =>
+                                _showBankDialog(context, existingBanks: banks),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add bank'),
                           ),
-                        ),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: FilledButton.tonalIcon(
-                          onPressed: () =>
-                              _showBankDialog(context, existingBanks: banks),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add bank'),
-                        ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       if (banks.isEmpty)

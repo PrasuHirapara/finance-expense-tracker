@@ -1,6 +1,8 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/services/module_data_import_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../credentials/data/services/credential_service.dart';
 import '../../../credentials/presentation/widgets/credential_auth_dialog.dart';
@@ -20,6 +22,8 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
   bool _biometricEnabled = false;
   bool _biometricAvailable = false;
   bool _isLoading = true;
+  bool _isDownloadingSample = false;
+  bool _isImporting = false;
 
   @override
   void initState() {
@@ -53,14 +57,6 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
                     label: const Text('Set Encryption Key'),
                   )
                 else ...<Widget>[
-                  FilledButton.tonalIcon(
-                    onPressed: _changeEncryptionKey,
-                    icon: const Icon(Icons.key_rounded),
-                    label: const Text('Change Encryption Key'),
-                  ),
-                  const SizedBox(height: 16),
-                  const CredentialExportPanel(),
-                  const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
@@ -96,6 +92,72 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
                           onChanged: !_biometricAvailable
                               ? null
                               : (value) => _toggleBiometric(value),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.tonalIcon(
+                    onPressed: _changeEncryptionKey,
+                    icon: const Icon(Icons.key_rounded),
+                    label: const Text('Change Encryption Key'),
+                  ),
+                  const SizedBox(height: 16),
+                  const CredentialExportPanel(),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.42),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Credential Import',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Download the sample Excel file, fill each row, then import. Every filled row must be valid before anything is saved.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Expected columns: Title, Field, Value',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: <Widget>[
+                            FilledButton.tonalIcon(
+                              onPressed: _isDownloadingSample || _isImporting
+                                  ? null
+                                  : _downloadCredentialSample,
+                              icon: const Icon(Icons.download_rounded),
+                              label: Text(
+                                _isDownloadingSample
+                                    ? 'Preparing...'
+                                    : 'Download Sample Excel',
+                              ),
+                            ),
+                            FilledButton.icon(
+                              onPressed: _isDownloadingSample || _isImporting
+                                  ? null
+                                  : _importCredentials,
+                              icon: const Icon(Icons.upload_file_rounded),
+                              label: Text(
+                                _isImporting ? 'Importing...' : 'Import Excel',
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -251,6 +313,129 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
     }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('All credential data deleted.')),
+    );
+  }
+
+  Future<void> _downloadCredentialSample() async {
+    setState(() {
+      _isDownloadingSample = true;
+    });
+
+    try {
+      final path = await context
+          .read<ModuleDataImportService>()
+          .downloadCredentialSampleExcel();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Credential sample Excel saved to $path')),
+      );
+    } on ModuleImportException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloadingSample = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _importCredentials() async {
+    final file = await FilePicker.platform.pickFiles(
+      dialogTitle: 'Select credential Excel file',
+      type: FileType.custom,
+      allowedExtensions: const <String>['xlsx'],
+    );
+
+    if (file == null || file.files.single.path == null || !mounted) {
+      return;
+    }
+
+    final authenticatedKey = await showCredentialAuthenticationDialog(
+      context,
+      title: 'Authenticate',
+      reason: 'Authenticate before importing credential data.',
+    );
+
+    if (authenticatedKey == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _isImporting = true;
+    });
+
+    try {
+      final result = await context
+          .read<ModuleDataImportService>()
+          .importCredentialExcel(
+            file.files.single.path!,
+            encryptionKey: authenticatedKey,
+          );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message)));
+    } on ModuleImportException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      if (error.errors.isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      } else {
+        await _showImportErrors(error);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isImporting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showImportErrors(ModuleImportException error) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Import Errors'),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(error.message),
+                const SizedBox(height: 12),
+                ...error.errors.map(
+                  (rowError) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(rowError),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: <Widget>[
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 

@@ -10,6 +10,7 @@ import 'core/router/app_router.dart';
 import 'core/services/app_settings_repository.dart';
 import 'core/services/credential_crypto_service.dart';
 import 'core/services/credential_security_service.dart';
+import 'core/services/module_data_import_service.dart';
 import 'core/services/module_data_export_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/reminder_settings_repository.dart';
@@ -52,6 +53,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   late final TaskRepository _taskRepository;
   late final NotificationService _notificationService;
   late final ModuleDataExportService _moduleDataExportService;
+  late final ModuleDataImportService _moduleDataImportService;
   late final TaskCategoryRepository _taskCategoryRepository;
   late final ReminderSettingsRepository _reminderSettingsRepository;
   late final Future<void> _bootstrap;
@@ -85,6 +87,11 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _reminderSettingsRepository = ReminderSettingsRepository();
     _notificationService = NotificationService(_reminderSettingsRepository);
     _moduleDataExportService = ModuleDataExportService(_appSettingsRepository);
+    _moduleDataImportService = ModuleDataImportService(
+      database: _database,
+      appSettingsRepository: _appSettingsRepository,
+      credentialCryptoService: _credentialCryptoService,
+    );
     _bootstrap = _bootstrapApp();
   }
 
@@ -135,6 +142,9 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
         ),
         RepositoryProvider<ModuleDataExportService>.value(
           value: _moduleDataExportService,
+        ),
+        RepositoryProvider<ModuleDataImportService>.value(
+          value: _moduleDataImportService,
         ),
       ],
       child: FutureBuilder<void>(

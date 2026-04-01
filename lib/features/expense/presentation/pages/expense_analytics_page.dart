@@ -128,6 +128,11 @@ class ExpenseAnalyticsPage extends StatelessWidget {
                             'Category-wise Spending',
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Pie chart: each slice shows category share of total expense. Legend values represent amount spent.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                           const SizedBox(height: 16),
                           SizedBox(
                             height: 240,
@@ -155,6 +160,11 @@ class ExpenseAnalyticsPage extends StatelessWidget {
                             'Expense Trend',
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'X-axis shows the selected period. Y-axis shows expense amount.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                           const SizedBox(height: 16),
                           SizedBox(
                             height: 240,
@@ -168,6 +178,8 @@ class ExpenseAnalyticsPage extends StatelessWidget {
                                     ),
                                   )
                                   .toList(growable: false),
+                              xAxisTitle: 'Period',
+                              yAxisTitle: 'Expense Amount',
                             ),
                           ),
                         ],
@@ -182,12 +194,19 @@ class ExpenseAnalyticsPage extends StatelessWidget {
                             'Borrowed vs Lent',
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'X-axis shows flow type. Y-axis shows amount.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                           const SizedBox(height: 16),
                           SizedBox(
                             height: 240,
                             child: BorrowedLentBarChart(
                               borrowed: analytics.totalBorrowed,
                               lent: analytics.totalLent,
+                              xAxisTitle: 'Flow Type',
+                              yAxisTitle: 'Amount',
                             ),
                           ),
                         ],

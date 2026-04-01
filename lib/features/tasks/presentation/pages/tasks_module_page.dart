@@ -79,62 +79,69 @@ class TasksModulePage extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   task.title,
-                                  maxLines: 2,
+                                  maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.titleMedium,
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Flexible(
-                                child: Wrap(
-                                  alignment: WrapAlignment.end,
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: <Widget>[
-                                    _TaskBadge(label: task.category),
-                                    _TaskBadge(label: task.priority.toString()),
-                                    if (task.isDaily)
-                                      const _TaskBadge(label: 'Daily'),
-                                  ],
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  reverse: true,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      _TaskBadge(label: task.category),
+                                      const SizedBox(width: 8),
+                                      _TaskBadge(
+                                        label: 'Priority ${task.priority}',
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _TaskBadge(
+                                        label: task.isDaily
+                                            ? 'Daily'
+                                            : 'Not Daily',
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: () {
-                              context.read<TaskBloc>().add(
-                                TaskCompletionChanged(
-                                  id: task.id,
-                                  isCompleted: !task.isCompleted,
-                                ),
-                              );
-                            },
-                            child: Row(
-                              children: <Widget>[
-                                Checkbox.adaptive(
-                                  value: task.isCompleted,
-                                  onChanged: (value) {
-                                    context.read<TaskBloc>().add(
-                                      TaskCompletionChanged(
-                                        id: task.id,
-                                        isCompleted: value ?? false,
-                                      ),
-                                    );
-                                  },
-                                ),
-                                Text(
-                                  task.isCompleted ? 'Completed' : 'Complete',
-                                  style: theme.textTheme.bodyLarge,
-                                ),
-                              ],
+                          if (task.description.trim().isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 10),
+                            Text(
+                              task.description.trim(),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
+                          ],
+                          const SizedBox(height: 12),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
                             children: <Widget>[
+                              FilledButton.tonalIcon(
+                                onPressed: () {
+                                  context.read<TaskBloc>().add(
+                                    TaskCompletionChanged(
+                                      id: task.id,
+                                      isCompleted: !task.isCompleted,
+                                    ),
+                                  );
+                                },
+                                icon: Icon(
+                                  task.isCompleted
+                                      ? Icons.check_circle_rounded
+                                      : Icons.radio_button_unchecked_rounded,
+                                ),
+                                label: Text(
+                                  task.isCompleted ? 'Completed' : 'Complete',
+                                ),
+                              ),
+                              const Spacer(),
                               TextButton.icon(
                                 onPressed: () =>
                                     Navigator.of(context).pushNamed(

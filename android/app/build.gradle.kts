@@ -29,6 +29,9 @@ android {
         targetSdk = maxOf(flutter.targetSdkVersion, 33)
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders += mapOf(
+            "appAuthRedirectScheme" to "com.prasu.daily.use"
+        )
     }
 
     buildTypes {

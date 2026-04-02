@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,6 +10,7 @@ import '../../../../core/blocs/theme_cubit.dart';
 import '../../../../core/models/app_preferences.dart';
 import '../../../../core/services/app_data_reset_service.dart';
 import '../../../../core/services/app_settings_repository.dart';
+import '../../../../core/services/google_drive_auth_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../widgets/cloud_sync_settings_section.dart';
@@ -21,11 +24,14 @@ class SettingsModulePage extends StatefulWidget {
 
 class _SettingsModulePageState extends State<SettingsModulePage> {
   late final Future<String> _exportDirectoryPath;
+  bool _isGoogleAuthLoading = false;
+  String? _googleAccountEmail;
 
   @override
   void initState() {
     super.initState();
     _exportDirectoryPath = _resolveExportDirectoryPath();
+    unawaited(_restoreGoogleSession());
   }
 
   @override
@@ -48,6 +54,77 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                 'Global settings only includes app-wide preferences. Expense, credential, and task settings live inside their own tabs.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 18),
+              AppPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Google Drive Account',
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _googleAccountEmail == null
+                          ? 'Sign in with Google first so Drive sync can upload and restore your backup data.'
+                          : 'Connected Google account used for Drive sync.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.42),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            _googleAccountEmail ?? 'Not connected',
+                            style: theme.textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: <Widget>[
+                              FilledButton.icon(
+                                onPressed: _isGoogleAuthLoading
+                                    ? null
+                                    : () => _signInWithGoogle(context),
+                                icon: Icon(
+                                  _googleAccountEmail == null
+                                      ? Icons.login_rounded
+                                      : Icons.refresh_rounded,
+                                ),
+                                label: Text(
+                                  _isGoogleAuthLoading
+                                      ? 'Please wait...'
+                                      : _googleAccountEmail == null
+                                      ? 'Continue with Google'
+                                      : 'Switch Google Account',
+                                ),
+                              ),
+                              if (_googleAccountEmail != null)
+                                TextButton(
+                                  onPressed: _isGoogleAuthLoading
+                                      ? null
+                                      : () => _signOutGoogle(context),
+                                  child: const Text('Sign Out'),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 18),
@@ -295,6 +372,91 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
 
   Future<void> _resetExportFolder(BuildContext context) async {
     await context.read<AppSettingsRepository>().updateExportDirectoryPath(null);
+  }
+
+  Future<void> _restoreGoogleSession() async {
+    try {
+      final email = await context
+          .read<GoogleDriveAuthService>()
+          .restoreCurrentUserEmail();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _googleAccountEmail = email;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _googleAccountEmail = null;
+      });
+    }
+  }
+
+  Future<void> _signInWithGoogle(BuildContext context) async {
+    setState(() {
+      _isGoogleAuthLoading = true;
+    });
+    try {
+      final account = await context
+          .read<GoogleDriveAuthService>()
+          .authenticateInteractively();
+      if (!context.mounted) {
+        return;
+      }
+      setState(() {
+        _googleAccountEmail = account.email;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Signed in as ${account.email}.')));
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Google sign-in failed: $error')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGoogleAuthLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _signOutGoogle(BuildContext context) async {
+    setState(() {
+      _isGoogleAuthLoading = true;
+    });
+    try {
+      await context.read<GoogleDriveAuthService>().signOut();
+      if (!context.mounted) {
+        return;
+      }
+      setState(() {
+        _googleAccountEmail = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Google account signed out.')),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to sign out: $error')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGoogleAuthLoading = false;
+        });
+      }
+    }
   }
 
   Future<String> _resolveExportDirectoryPath() async {

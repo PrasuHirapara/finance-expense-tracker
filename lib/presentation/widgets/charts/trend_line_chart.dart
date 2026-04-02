@@ -38,20 +38,37 @@ class TrendLineChart extends StatelessWidget {
       fontWeight: FontWeight.w600,
     );
     final maxValue = points.fold<double>(
-      0,
+      points.first.amount,
       (max, point) => point.amount > max ? point.amount : max,
     );
-    final yInterval = _niceAxisInterval(maxValue);
+    final minValue = points.fold<double>(
+      points.first.amount,
+      (min, point) => point.amount < min ? point.amount : min,
+    );
+    final range = maxValue - minValue;
+    final padding = range == 0
+        ? math.max(1, maxValue.abs() * 0.25)
+        : math.max(range * 0.18, maxValue.abs() * 0.04);
+    final minCandidate = math.max(0, minValue - padding);
+    final maxCandidate = maxValue + padding;
+    final yInterval = _niceAxisInterval(
+      math.max(maxCandidate - minCandidate, 1),
+    );
     final maxY = maxValue == 0
         ? yInterval * 4
-        : (maxValue / yInterval).ceil() * yInterval;
+        : (maxCandidate / yInterval).ceil() * yInterval;
+    final minY = minCandidate <= 0
+        ? 0.0
+        : (minCandidate / yInterval).floor() * yInterval;
+    final dotRadius = points.length > 24 ? 2.6 : 3.4;
 
     return LineChart(
       LineChartData(
         minX: 0,
         maxX: points.length == 1 ? 1 : (points.length - 1).toDouble(),
-        minY: 0,
+        minY: minY,
         maxY: maxY,
+        clipData: const FlClipData.all(),
         gridData: FlGridData(
           show: true,
           horizontalInterval: yInterval,
@@ -79,12 +96,12 @@ class TrendLineChart extends StatelessWidget {
               reservedSize: 68,
               interval: yInterval,
               getTitlesWidget: (value, meta) {
-                if (value < 0 || value > maxY) {
+                if (value < minY || value > maxY) {
                   return const SizedBox.shrink();
                 }
 
                 return Text(
-                  _formatAxisLabel(value, maxValue),
+                  _formatAxisLabel(value, maxY),
                   style: axisLabelStyle,
                 );
               },
@@ -132,13 +149,17 @@ class TrendLineChart extends StatelessWidget {
         ),
         lineBarsData: <LineChartBarData>[
           LineChartBarData(
-            isCurved: true,
+            isCurved: points.length > 2,
+            preventCurveOverShooting: true,
+            curveSmoothness: 0.18,
             barWidth: 3,
             color: theme.colorScheme.primary,
             dotData: FlDotData(
               show: true,
+              checkToShowDot: (spot, barData) =>
+                  _shouldShowDot(spot.x.toInt(), maxValue),
               getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
-                radius: 3.5,
+                radius: dotRadius,
                 color: theme.colorScheme.primary,
                 strokeWidth: 1.5,
                 strokeColor: theme.colorScheme.surface,
@@ -182,6 +203,24 @@ class TrendLineChart extends StatelessWidget {
       return 5 * magnitude;
     }
     return 10 * magnitude;
+  }
+
+  bool _shouldShowDot(int index, double maxValue) {
+    if (index < 0 || index >= points.length) {
+      return false;
+    }
+
+    if (points.length <= 12) {
+      return true;
+    }
+
+    final amount = points[index].amount;
+    if (index == 0 || index == points.length - 1 || amount == maxValue) {
+      return true;
+    }
+
+    final interval = points.length <= 24 ? 3 : 5;
+    return index % interval == 0;
   }
 
   String _formatAxisLabel(double value, double maxValue) {

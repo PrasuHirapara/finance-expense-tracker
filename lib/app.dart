@@ -67,6 +67,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   late final TaskCategoryRepository _taskCategoryRepository;
   late final ReminderSettingsRepository _reminderSettingsRepository;
   late final CloudSyncScheduler _cloudSyncScheduler;
+  late final GoogleDriveAuthService _googleDriveAuthService;
   late final CloudSyncService _cloudSyncService;
   late final AppDataResetService _appDataResetService;
   late final Future<void> _bootstrap;
@@ -101,6 +102,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _reminderSettingsRepository = ReminderSettingsRepository();
     _notificationService = NotificationService(_reminderSettingsRepository);
     _cloudSyncScheduler = CloudSyncScheduler();
+    _googleDriveAuthService = GoogleDriveAuthService();
     _fileLauncherService = FileLauncherService();
     _moduleDataExportService = ModuleDataExportService(_appSettingsRepository);
     _moduleDataImportService = ModuleDataImportService(
@@ -110,7 +112,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     );
     _cloudSyncService = CloudSyncService(
       appSettingsRepository: _appSettingsRepository,
-      authService: GoogleDriveAuthService(),
+      authService: _googleDriveAuthService,
       driveApiService: GoogleDriveApiService(),
       payloadService: CloudSyncPayloadService(
         database: _database,
@@ -177,6 +179,9 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
         ),
         RepositoryProvider<NotificationService>.value(
           value: _notificationService,
+        ),
+        RepositoryProvider<GoogleDriveAuthService>.value(
+          value: _googleDriveAuthService,
         ),
         RepositoryProvider<CloudSyncService>.value(value: _cloudSyncService),
         RepositoryProvider<AppDataResetService>.value(

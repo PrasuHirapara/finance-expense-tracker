@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -138,12 +140,17 @@ class ExpenseAnalyticsPage extends StatelessWidget {
                             'Category-wise Spending',
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           Text(
                             'Category list is shown beside the pie chart with color, name, percentage, and amount in a compact layout.',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 18),
                           if (analytics.categoryBreakdown.isEmpty)
                             Text(
                               'No expense categories found for the selected range.',
@@ -174,43 +181,71 @@ class ExpenseAnalyticsPage extends StatelessWidget {
                             'Expense Trend',
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           Text(
                             _trendDescription(analytics),
-                            style: Theme.of(context).textTheme.bodyMedium,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 18),
                           if (analytics.trend.isEmpty)
                             Text(
                               'No expense trend available for this range.',
                               style: Theme.of(context).textTheme.bodyMedium,
                             )
                           else
-                            SizedBox(
-                              height: 280,
-                              child: TrendLineChart(
-                                points: analytics.trend
-                                    .map(
-                                      (item) => TrendPoint(
-                                        period: item.period,
-                                        amount: item.amount,
-                                        label: item.label,
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final chartWidth = _trendChartWidth(
+                                  constraints.maxWidth,
+                                  analytics,
+                                );
+                                final chartHeight = _trendChartHeight(
+                                  constraints.maxWidth,
+                                );
+
+                                return SizedBox(
+                                  height: chartHeight,
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.horizontal,
+                                    child: SizedBox(
+                                      width: chartWidth,
+                                      height: chartHeight,
+                                      child: TrendLineChart(
+                                        points: analytics.trend
+                                            .map(
+                                              (item) => TrendPoint(
+                                                period: item.period,
+                                                amount: item.amount,
+                                                label: item.label,
+                                              ),
+                                            )
+                                            .toList(growable: false),
+                                        xAxisTitle: _trendXAxisTitle(analytics),
+                                        yAxisTitle: 'Expense Amount',
+                                        bottomTitlesReservedSize:
+                                            _trendBottomReservedSize(
+                                              analytics,
+                                              constraints.maxWidth,
+                                            ),
+                                        bottomTitleBuilder:
+                                            (context, point, index) {
+                                              return _buildTrendBottomLabel(
+                                                context,
+                                                analytics,
+                                                point,
+                                                index,
+                                              );
+                                            },
                                       ),
-                                    )
-                                    .toList(growable: false),
-                                xAxisTitle: _trendXAxisTitle(analytics),
-                                yAxisTitle: 'Expense Amount',
-                                bottomTitlesReservedSize:
-                                    _trendBottomReservedSize(analytics),
-                                bottomTitleBuilder: (context, point, index) {
-                                  return _buildTrendBottomLabel(
-                                    context,
-                                    analytics,
-                                    point,
-                                    index,
-                                  );
-                                },
-                              ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                         ],
                       ),
@@ -268,8 +303,26 @@ class ExpenseAnalyticsPage extends StatelessWidget {
     return _usesMonthlyTrendLabels(analytics) ? 'Month' : 'Day';
   }
 
-  double _trendBottomReservedSize(ExpenseAnalyticsData analytics) {
-    return _usesMonthlyTrendLabels(analytics) ? 48 : 56;
+  double _trendBottomReservedSize(
+    ExpenseAnalyticsData analytics,
+    double availableWidth,
+  ) {
+    if (_usesMonthlyTrendLabels(analytics)) {
+      return 44;
+    }
+    return availableWidth < 420 ? 52 : 58;
+  }
+
+  double _trendChartWidth(
+    double availableWidth,
+    ExpenseAnalyticsData analytics,
+  ) {
+    final pointWidth = _usesMonthlyTrendLabels(analytics) ? 56.0 : 30.0;
+    return math.max(availableWidth, analytics.trend.length * pointWidth);
+  }
+
+  double _trendChartHeight(double availableWidth) {
+    return availableWidth < 420 ? 300 : 340;
   }
 
   bool _usesMonthlyTrendLabels(ExpenseAnalyticsData analytics) {

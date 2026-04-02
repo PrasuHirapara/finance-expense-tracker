@@ -51,7 +51,7 @@ class AppDataResetService {
     }
 
     if (appSettings.cloudSync.enabled) {
-      await _cloudSyncService.deleteDriveFolder('Daily Use');
+      await _cloudSyncService.deleteCloudData('Daily Use');
     }
   }
 }

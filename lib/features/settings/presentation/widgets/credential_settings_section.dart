@@ -314,9 +314,9 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
     await credentialService.deleteAllCredentials();
     String? cloudCleanupWarning;
     try {
-      await cloudSyncService.deleteDriveFolder('Credential');
+      await cloudSyncService.deleteCloudData('Credential');
     } catch (error) {
-      cloudCleanupWarning = ' Local Drive cleanup failed: $error';
+      cloudCleanupWarning = ' Cloud backup cleanup failed: $error';
     }
     if (!mounted) {
       return;

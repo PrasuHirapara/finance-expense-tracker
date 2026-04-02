@@ -473,9 +473,9 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
     await expenseRepository.clearSectionData();
     String? cloudCleanupWarning;
     try {
-      await cloudSyncService.deleteDriveFolder('Expense');
+      await cloudSyncService.deleteCloudData('Expense');
     } catch (error) {
-      cloudCleanupWarning = ' Local Drive cleanup failed: $error';
+      cloudCleanupWarning = ' Cloud backup cleanup failed: $error';
     }
     await reminderSettingsRepository.resetExpenseReminder();
     final appSettings = await appSettingsRepository.getSettings();

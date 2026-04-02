@@ -11,13 +11,12 @@ import 'core/services/app_data_reset_service.dart';
 import 'core/services/app_settings_repository.dart';
 import 'core/services/cloud_sync_payload_service.dart';
 import 'core/services/cloud_sync_scheduler.dart';
-import 'core/services/cloud_sync_security_service.dart';
 import 'core/services/cloud_sync_service.dart';
 import 'core/services/credential_crypto_service.dart';
 import 'core/services/credential_security_service.dart';
+import 'core/services/firebase_cloud_sync_auth_service.dart';
 import 'core/services/file_launcher_service.dart';
-import 'core/services/google_drive_api_service.dart';
-import 'core/services/google_drive_auth_service.dart';
+import 'core/services/firestore_cloud_sync_store_service.dart';
 import 'core/services/module_data_import_service.dart';
 import 'core/services/module_data_export_service.dart';
 import 'core/services/notification_service.dart';
@@ -55,7 +54,6 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   late final CredentialRepository _credentialRepository;
   late final CredentialCryptoService _credentialCryptoService;
   late final CredentialSecurityService _credentialSecurityService;
-  late final CloudSyncSecurityService _cloudSyncSecurityService;
   late final CredentialService _credentialService;
   late final FinanceRepository _financeRepository;
   late final ExportRepository _exportRepository;
@@ -67,7 +65,8 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   late final TaskCategoryRepository _taskCategoryRepository;
   late final ReminderSettingsRepository _reminderSettingsRepository;
   late final CloudSyncScheduler _cloudSyncScheduler;
-  late final GoogleDriveAuthService _googleDriveAuthService;
+  late final FirebaseCloudSyncAuthService _firebaseCloudSyncAuthService;
+  late final FirestoreCloudSyncStoreService _firestoreCloudSyncStoreService;
   late final CloudSyncService _cloudSyncService;
   late final AppDataResetService _appDataResetService;
   late final Future<void> _bootstrap;
@@ -83,7 +82,6 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _credentialRepository = CredentialRepository(_database);
     _credentialCryptoService = CredentialCryptoService();
     _credentialSecurityService = CredentialSecurityService();
-    _cloudSyncSecurityService = CloudSyncSecurityService();
     _credentialService = CredentialService(
       repository: _credentialRepository,
       cryptoService: _credentialCryptoService,
@@ -102,7 +100,8 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _reminderSettingsRepository = ReminderSettingsRepository();
     _notificationService = NotificationService(_reminderSettingsRepository);
     _cloudSyncScheduler = CloudSyncScheduler();
-    _googleDriveAuthService = GoogleDriveAuthService();
+    _firebaseCloudSyncAuthService = FirebaseCloudSyncAuthService();
+    _firestoreCloudSyncStoreService = FirestoreCloudSyncStoreService();
     _fileLauncherService = FileLauncherService();
     _moduleDataExportService = ModuleDataExportService(_appSettingsRepository);
     _moduleDataImportService = ModuleDataImportService(
@@ -112,14 +111,14 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     );
     _cloudSyncService = CloudSyncService(
       appSettingsRepository: _appSettingsRepository,
-      authService: _googleDriveAuthService,
-      driveApiService: GoogleDriveApiService(),
+      authService: _firebaseCloudSyncAuthService,
+      remoteStoreService: _firestoreCloudSyncStoreService,
       payloadService: CloudSyncPayloadService(
         database: _database,
         taskCategoryRepository: _taskCategoryRepository,
         credentialCryptoService: _credentialCryptoService,
-        cloudSyncSecurityService: _cloudSyncSecurityService,
       ),
+      credentialSecurityService: _credentialSecurityService,
       scheduler: _cloudSyncScheduler,
     );
     _appDataResetService = AppDataResetService(
@@ -180,8 +179,8 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
         RepositoryProvider<NotificationService>.value(
           value: _notificationService,
         ),
-        RepositoryProvider<GoogleDriveAuthService>.value(
-          value: _googleDriveAuthService,
+        RepositoryProvider<FirebaseCloudSyncAuthService>.value(
+          value: _firebaseCloudSyncAuthService,
         ),
         RepositoryProvider<CloudSyncService>.value(value: _cloudSyncService),
         RepositoryProvider<AppDataResetService>.value(

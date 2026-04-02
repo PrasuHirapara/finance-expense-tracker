@@ -44,6 +44,30 @@ class CredentialService {
     return _securityService.verifyEncryptionKey(encryptionKey.trim());
   }
 
+  Future<bool> validateEncryptionKeyAgainstStoredCredentials(
+    String encryptionKey,
+  ) async {
+    final trimmedKey = encryptionKey.trim();
+    if (trimmedKey.isEmpty) {
+      return false;
+    }
+
+    final records = await _repository.loadCredentials();
+    if (records.isEmpty) {
+      return true;
+    }
+
+    try {
+      await _cryptoService.decryptFields(
+        record: records.first,
+        encryptionKey: trimmedKey,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> isBiometricUnlockEnabled() {
     return _securityService.isBiometricUnlockEnabled();
   }

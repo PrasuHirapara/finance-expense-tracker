@@ -10,9 +10,10 @@ import '../../../../core/blocs/theme_cubit.dart';
 import '../../../../core/models/app_preferences.dart';
 import '../../../../core/services/app_data_reset_service.dart';
 import '../../../../core/services/app_settings_repository.dart';
-import '../../../../core/services/google_drive_auth_service.dart';
+import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../auth/presentation/pages/auth_page.dart';
 import '../widgets/cloud_sync_settings_section.dart';
 
 class SettingsModulePage extends StatefulWidget {
@@ -24,20 +25,19 @@ class SettingsModulePage extends StatefulWidget {
 
 class _SettingsModulePageState extends State<SettingsModulePage> {
   late final Future<String> _exportDirectoryPath;
-  bool _isGoogleAuthLoading = false;
-  String? _googleAccountEmail;
+  bool _isSigningOut = false;
 
   @override
   void initState() {
     super.initState();
     _exportDirectoryPath = _resolveExportDirectoryPath();
-    unawaited(_restoreGoogleSession());
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final settingsRepository = context.read<AppSettingsRepository>();
+    final authService = context.read<FirebaseCloudSyncAuthService>();
 
     return SafeArea(
       child: StreamBuilder<AppPreferences>(
@@ -57,76 +57,7 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                 ),
               ),
               const SizedBox(height: 18),
-              AppPanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'Google Drive Account',
-                      style: theme.textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _googleAccountEmail == null
-                          ? 'Sign in with Google first so Drive sync can upload and restore your backup data.'
-                          : 'Connected Google account used for Drive sync.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerHighest
-                            .withValues(alpha: 0.42),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            _googleAccountEmail ?? 'Not connected',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: <Widget>[
-                              FilledButton.icon(
-                                onPressed: _isGoogleAuthLoading
-                                    ? null
-                                    : () => _signInWithGoogle(context),
-                                icon: Icon(
-                                  _googleAccountEmail == null
-                                      ? Icons.login_rounded
-                                      : Icons.refresh_rounded,
-                                ),
-                                label: Text(
-                                  _isGoogleAuthLoading
-                                      ? 'Please wait...'
-                                      : _googleAccountEmail == null
-                                      ? 'Continue with Google'
-                                      : 'Switch Google Account',
-                                ),
-                              ),
-                              if (_googleAccountEmail != null)
-                                TextButton(
-                                  onPressed: _isGoogleAuthLoading
-                                      ? null
-                                      : () => _signOutGoogle(context),
-                                  child: const Text('Sign Out'),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildFirebaseAccountPanel(context, theme, authService),
               const SizedBox(height: 18),
               AppPanel(
                 child: Column(
@@ -305,7 +236,7 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                     Text('Danger Zone', style: theme.textTheme.titleLarge),
                     const SizedBox(height: 6),
                     Text(
-                      'Delete all Credential, Expense, and Task data. If Cloud Sync is enabled, the full Daily Use folder is also removed from Google Drive.',
+                      'Delete all Credential, Expense, and Task data. If Cloud Sync is enabled, the Firebase cloud backup for this account is also removed.',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -374,91 +305,6 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
     await context.read<AppSettingsRepository>().updateExportDirectoryPath(null);
   }
 
-  Future<void> _restoreGoogleSession() async {
-    try {
-      final email = await context
-          .read<GoogleDriveAuthService>()
-          .restoreCurrentUserEmail();
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _googleAccountEmail = email;
-      });
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _googleAccountEmail = null;
-      });
-    }
-  }
-
-  Future<void> _signInWithGoogle(BuildContext context) async {
-    setState(() {
-      _isGoogleAuthLoading = true;
-    });
-    try {
-      final account = await context
-          .read<GoogleDriveAuthService>()
-          .authenticateInteractively();
-      if (!context.mounted) {
-        return;
-      }
-      setState(() {
-        _googleAccountEmail = account.email;
-      });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Signed in as ${account.email}.')));
-    } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Google sign-in failed: $error')));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isGoogleAuthLoading = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _signOutGoogle(BuildContext context) async {
-    setState(() {
-      _isGoogleAuthLoading = true;
-    });
-    try {
-      await context.read<GoogleDriveAuthService>().signOut();
-      if (!context.mounted) {
-        return;
-      }
-      setState(() {
-        _googleAccountEmail = null;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Google account signed out.')),
-      );
-    } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Unable to sign out: $error')));
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isGoogleAuthLoading = false;
-        });
-      }
-    }
-  }
-
   Future<String> _resolveExportDirectoryPath() async {
     final directory = await getApplicationDocumentsDirectory();
     return path.join(directory.path, 'exports');
@@ -505,5 +351,145 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
         SnackBar(content: Text('Unable to delete all data: $error')),
       );
     }
+  }
+
+  Widget _buildFirebaseAccountPanel(
+    BuildContext context,
+    ThemeData theme,
+    FirebaseCloudSyncAuthService authService,
+  ) {
+    return AppPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('Firebase Account', style: theme.textTheme.titleLarge),
+          const SizedBox(height: 6),
+          Text(
+            authService.isAvailable
+                ? 'Local storage works without login. Sign in only if you want Firestore backup and restore.'
+                : 'Firebase auth is available on mobile builds configured with Firebase.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.42,
+              ),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: StreamBuilder<FirebaseCloudSyncAccount?>(
+              stream: authService.authStateChanges(),
+              initialData: authService.currentAccount,
+              builder: (context, snapshot) {
+                final account = snapshot.data;
+                final providerLabel = _providerSummary(account);
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      account?.displayName?.trim().isNotEmpty == true
+                          ? account!.displayName!.trim()
+                          : account?.email ?? 'Not connected',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      account?.email ?? 'No active Firebase session.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      providerLabel,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (authService.isAvailable && account == null)
+                      FilledButton.icon(
+                        onPressed: () => _openFirebaseAuthPage(context),
+                        icon: const Icon(Icons.login_rounded),
+                        label: const Text('Login or Register'),
+                      ),
+                    if (authService.isAvailable && account != null)
+                      FilledButton.tonalIcon(
+                        onPressed: _isSigningOut
+                            ? null
+                            : () => _signOutFirebaseAccount(context),
+                        icon: const Icon(Icons.logout_rounded),
+                        label: Text(
+                          _isSigningOut ? 'Signing Out...' : 'Sign Out',
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _providerSummary(FirebaseCloudSyncAccount? account) {
+    if (account == null || account.providerIds.isEmpty) {
+      return 'Provider: Firebase Authentication';
+    }
+
+    final labels = account.providerIds
+        .map((providerId) {
+          return switch (providerId) {
+            'google.com' => 'Google',
+            'password' => 'Email and Password',
+            _ => providerId,
+          };
+        })
+        .join(' | ');
+
+    return 'Provider: $labels';
+  }
+
+  Future<void> _signOutFirebaseAccount(BuildContext context) async {
+    setState(() {
+      _isSigningOut = true;
+    });
+    try {
+      await context.read<FirebaseCloudSyncAuthService>().signOut();
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Firebase account signed out.')),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to sign out: $error')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSigningOut = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _openFirebaseAuthPage(BuildContext context) {
+    return Navigator.of(context).push(
+      MaterialPageRoute<bool>(
+        builder: (_) => const AuthPage(closeOnSuccess: true),
+      ),
+    );
   }
 }

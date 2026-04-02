@@ -3,10 +3,9 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../../data/database/app_database.dart';
-import '../../features/credentials/domain/models/credential_models.dart';
 import '../../features/tasks/data/repositories/task_category_repository.dart';
 import '../models/cloud_sync_models.dart';
-import 'cloud_sync_security_service.dart';
+import '../../features/credentials/domain/models/credential_models.dart';
 import 'credential_crypto_service.dart';
 
 class CloudSyncPayloadService {
@@ -14,20 +13,19 @@ class CloudSyncPayloadService {
     required AppDatabase database,
     required TaskCategoryRepository taskCategoryRepository,
     required CredentialCryptoService credentialCryptoService,
-    required CloudSyncSecurityService cloudSyncSecurityService,
   }) : _database = database,
        _taskCategoryRepository = taskCategoryRepository,
-       _credentialCryptoService = credentialCryptoService,
-       _cloudSyncSecurityService = cloudSyncSecurityService;
+       _credentialCryptoService = credentialCryptoService;
 
   final AppDatabase _database;
   final TaskCategoryRepository _taskCategoryRepository;
   final CredentialCryptoService _credentialCryptoService;
-  final CloudSyncSecurityService _cloudSyncSecurityService;
 
   Future<CloudBackupBundle> buildBackupBundle({
     DateTime? exportedAt,
     String? accountEmail,
+    String? credentialEncryptionKey,
+    bool encryptCredentialTitlesForCloud = true,
   }) async {
     final timestamp = exportedAt ?? DateTime.now();
     final categories = await (_database.select(
@@ -47,22 +45,68 @@ class CloudSyncPayloadService {
     )..orderBy([(table) => OrderingTerm.asc(table.id)])).get();
     final taskCategories = await _taskCategoryRepository.getCategories();
 
+    if (encryptCredentialTitlesForCloud &&
+        credentials.isNotEmpty &&
+        (credentialEncryptionKey == null ||
+            credentialEncryptionKey.trim().isEmpty)) {
+      throw const CloudCredentialEncryptionKeyRequiredException(
+        'A credential encryption key is required before credential titles can be synced to Firestore.',
+      );
+    }
+
+    if (encryptCredentialTitlesForCloud && credentials.isNotEmpty) {
+      final firstCredential = credentials.first;
+      try {
+        await _credentialCryptoService.decryptFields(
+          record: CredentialRecord(
+            id: firstCredential.id,
+            title: firstCredential.title,
+            encryptedPayload: firstCredential.encryptedPayload,
+            saltBase64: firstCredential.saltBase64,
+            nonceBase64: firstCredential.nonceBase64,
+            createdAt: firstCredential.createdAt,
+            updatedAt: firstCredential.updatedAt,
+          ),
+          encryptionKey: credentialEncryptionKey!.trim(),
+        );
+      } catch (_) {
+        throw const CloudCredentialEncryptionKeyInvalidException(
+          'The saved credential encryption key could not decrypt local credential records.',
+        );
+      }
+    }
+
+    final credentialRecords = await Future.wait(
+      credentials.map((item) async {
+        final map = <String, dynamic>{
+          'id': item.id,
+          'encryptedPayload': item.encryptedPayload,
+          'saltBase64': item.saltBase64,
+          'nonceBase64': item.nonceBase64,
+          'createdAt': item.createdAt.toIso8601String(),
+          'updatedAt': item.updatedAt.toIso8601String(),
+        };
+
+        if (encryptCredentialTitlesForCloud) {
+          final titlePayload = await _credentialCryptoService.encryptText(
+            plainText: item.title,
+            encryptionKey: credentialEncryptionKey!.trim(),
+          );
+          map['titleEncryptedPayload'] = titlePayload.encryptedPayload;
+          map['titleSaltBase64'] = titlePayload.saltBase64;
+          map['titleNonceBase64'] = titlePayload.nonceBase64;
+        } else {
+          map['title'] = item.title;
+        }
+
+        return map;
+      }),
+    );
+
     final credentialJson = jsonEncode(<String, dynamic>{
-      'schemaVersion': 1,
+      'schemaVersion': encryptCredentialTitlesForCloud ? 2 : 1,
       'exportedAt': timestamp.toIso8601String(),
-      'records': credentials
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'title': item.title,
-              'encryptedPayload': item.encryptedPayload,
-              'saltBase64': item.saltBase64,
-              'nonceBase64': item.nonceBase64,
-              'createdAt': item.createdAt.toIso8601String(),
-              'updatedAt': item.updatedAt.toIso8601String(),
-            },
-          )
-          .toList(growable: false),
+      'records': credentialRecords,
     });
 
     final expenseJson = jsonEncode(<String, dynamic>{
@@ -128,8 +172,6 @@ class CloudSyncPayloadService {
           )
           .toList(growable: false),
     });
-
-    final credentialPayload = await encryptCredentialData(credentialJson);
     final localLatestAt = await computeLocalLatestChangeAt();
 
     return CloudBackupBundle(
@@ -144,7 +186,7 @@ class CloudSyncPayloadService {
           CloudSyncDomain.task.folderName: tasks.length,
         },
       ),
-      credentialPayload: credentialPayload,
+      credentialPayload: credentialJson,
       expensePayload: expenseJson,
       taskPayload: taskJson,
     );
@@ -181,45 +223,15 @@ class CloudSyncPayloadService {
     return candidates.last;
   }
 
-  Future<String> encryptCredentialData(String plainText) async {
-    final backupKey = await _cloudSyncSecurityService.getOrCreateBackupKey();
-    final encrypted = await _credentialCryptoService.encryptText(
-      plainText: plainText,
-      encryptionKey: backupKey,
-    );
-
-    return jsonEncode(<String, dynamic>{
-      'schemaVersion': 1,
-      'encryptedPayload': encrypted.encryptedPayload,
-      'saltBase64': encrypted.saltBase64,
-      'nonceBase64': encrypted.nonceBase64,
-    });
-  }
-
-  Future<String> decryptCredentialData(String encryptedContent) async {
-    final decoded = jsonDecode(encryptedContent) as Map<String, dynamic>;
-    final payload = EncryptedCredentialPayload(
-      encryptedPayload: decoded['encryptedPayload'] as String? ?? '',
-      saltBase64: decoded['saltBase64'] as String? ?? '',
-      nonceBase64: decoded['nonceBase64'] as String? ?? '',
-    );
-    final backupKey = await _cloudSyncSecurityService.getOrCreateBackupKey();
-    return _credentialCryptoService.decryptText(
-      payload: payload,
-      encryptionKey: backupKey,
-    );
-  }
-
   Future<void> restoreBundle({
     required String credentialPayload,
     required String expensePayload,
     required String taskPayload,
+    String? credentialEncryptionKey,
   }) async {
     final expense = jsonDecode(expensePayload) as Map<String, dynamic>;
     final task = jsonDecode(taskPayload) as Map<String, dynamic>;
-    final credential =
-        jsonDecode(await decryptCredentialData(credentialPayload))
-            as Map<String, dynamic>;
+    final credential = jsonDecode(credentialPayload) as Map<String, dynamic>;
 
     final categories =
         (expense['categories'] as List<dynamic>? ?? const <dynamic>[])
@@ -242,6 +254,29 @@ class CloudSyncPayloadService {
         (credential['records'] as List<dynamic>? ?? const <dynamic>[])
             .whereType<Map<String, dynamic>>()
             .toList(growable: false);
+    final credentialCompanions = await Future.wait(
+      credentials.map((item) async {
+        final title = await _restoreCredentialTitle(
+          item,
+          credentialEncryptionKey: credentialEncryptionKey,
+        );
+        return DbCredentialsCompanion(
+          id: Value(item['id'] as int),
+          title: Value(title),
+          encryptedPayload: Value(item['encryptedPayload'] as String? ?? ''),
+          saltBase64: Value(item['saltBase64'] as String? ?? ''),
+          nonceBase64: Value(item['nonceBase64'] as String? ?? ''),
+          createdAt: Value(
+            DateTime.tryParse(item['createdAt'] as String? ?? '') ??
+                DateTime.now(),
+          ),
+          updatedAt: Value(
+            DateTime.tryParse(item['updatedAt'] as String? ?? '') ??
+                DateTime.now(),
+          ),
+        );
+      }),
+    );
 
     await _database.transaction(() async {
       await _database.delete(_database.dbFinanceEntries).go();
@@ -355,34 +390,43 @@ class CloudSyncPayloadService {
 
       if (credentials.isNotEmpty) {
         await _database.batch((batch) {
-          batch.insertAll(
-            _database.dbCredentials,
-            credentials
-                .map((item) {
-                  return DbCredentialsCompanion(
-                    id: Value(item['id'] as int),
-                    title: Value(item['title'] as String? ?? ''),
-                    encryptedPayload: Value(
-                      item['encryptedPayload'] as String? ?? '',
-                    ),
-                    saltBase64: Value(item['saltBase64'] as String? ?? ''),
-                    nonceBase64: Value(item['nonceBase64'] as String? ?? ''),
-                    createdAt: Value(
-                      DateTime.tryParse(item['createdAt'] as String? ?? '') ??
-                          DateTime.now(),
-                    ),
-                    updatedAt: Value(
-                      DateTime.tryParse(item['updatedAt'] as String? ?? '') ??
-                          DateTime.now(),
-                    ),
-                  );
-                })
-                .toList(growable: false),
-          );
+          batch.insertAll(_database.dbCredentials, credentialCompanions);
         });
       }
     });
 
     await _taskCategoryRepository.replaceAll(taskCategories);
+  }
+
+  Future<String> _restoreCredentialTitle(
+    Map<String, dynamic> item, {
+    String? credentialEncryptionKey,
+  }) async {
+    final encryptedTitle = item['titleEncryptedPayload'] as String?;
+    if (encryptedTitle == null || encryptedTitle.isEmpty) {
+      return item['title'] as String? ?? '';
+    }
+
+    if (credentialEncryptionKey == null ||
+        credentialEncryptionKey.trim().isEmpty) {
+      throw const CloudCredentialEncryptionKeyRequiredException(
+        'Enter your credential encryption key to restore encrypted credential titles from Firestore.',
+      );
+    }
+
+    try {
+      return await _credentialCryptoService.decryptText(
+        payload: EncryptedCredentialPayload(
+          encryptedPayload: encryptedTitle,
+          saltBase64: item['titleSaltBase64'] as String? ?? '',
+          nonceBase64: item['titleNonceBase64'] as String? ?? '',
+        ),
+        encryptionKey: credentialEncryptionKey.trim(),
+      );
+    } catch (_) {
+      throw const CloudCredentialEncryptionKeyInvalidException(
+        'The provided credential encryption key could not decrypt the Firestore credential backup.',
+      );
+    }
   }
 }

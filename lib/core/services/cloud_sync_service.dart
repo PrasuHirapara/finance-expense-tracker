@@ -8,26 +8,30 @@ import '../models/cloud_sync_models.dart';
 import 'app_settings_repository.dart';
 import 'cloud_sync_payload_service.dart';
 import 'cloud_sync_scheduler.dart';
-import 'google_drive_api_service.dart';
-import 'google_drive_auth_service.dart';
+import 'credential_security_service.dart';
+import 'firebase_cloud_sync_auth_service.dart';
+import 'firestore_cloud_sync_store_service.dart';
 
 class CloudSyncService {
   CloudSyncService({
     required AppSettingsRepository appSettingsRepository,
-    required GoogleDriveAuthService authService,
-    required GoogleDriveApiService driveApiService,
+    required FirebaseCloudSyncAuthService authService,
+    required FirestoreCloudSyncStoreService remoteStoreService,
     required CloudSyncPayloadService payloadService,
+    required CredentialSecurityService credentialSecurityService,
     required CloudSyncScheduler scheduler,
   }) : _appSettingsRepository = appSettingsRepository,
        _authService = authService,
-       _driveApiService = driveApiService,
+       _remoteStoreService = remoteStoreService,
        _payloadService = payloadService,
+       _credentialSecurityService = credentialSecurityService,
        _scheduler = scheduler;
 
   final AppSettingsRepository _appSettingsRepository;
-  final GoogleDriveAuthService _authService;
-  final GoogleDriveApiService _driveApiService;
+  final FirebaseCloudSyncAuthService _authService;
+  final FirestoreCloudSyncStoreService _remoteStoreService;
   final CloudSyncPayloadService _payloadService;
+  final CredentialSecurityService _credentialSecurityService;
   final CloudSyncScheduler _scheduler;
 
   Future<void> setCloudSyncEnabled(bool enabled) async {
@@ -88,9 +92,10 @@ class CloudSyncService {
     await _scheduler.schedule(time);
   }
 
-  Future<void> uploadDataToDrive({
+  Future<void> uploadDataToCloud({
     bool interactive = true,
     bool triggeredByScheduler = false,
+    String? credentialEncryptionKey,
   }) async {
     final settings = await _appSettingsRepository.getSettings();
     _ensureEnabled(settings);
@@ -98,44 +103,19 @@ class CloudSyncService {
       throw const SocketException('No internet connection available.');
     }
 
-    final headers = await _authService.authorizationHeaders(
-      interactive: interactive,
+    final account = await _authService.requireUser(interactive: interactive);
+    final bundle = await _payloadService.buildBackupBundle(
+      accountEmail: account.email,
+      credentialEncryptionKey:
+          credentialEncryptionKey ??
+          await _credentialSecurityService.readEncryptionKey(),
     );
-    final email = await _authService.currentUserEmail(interactive: interactive);
-    final folders = await _driveApiService.ensureFolderHierarchy(headers);
-    final bundle = await _payloadService.buildBackupBundle(accountEmail: email);
-
-    await Future.wait<void>(<Future<void>>[
-      _driveApiService.uploadTextFile(
-        authorizationHeaders: headers,
-        parentId: folders[GoogleDriveApiService.appFolderName]!,
-        fileName: 'manifest.json',
-        content: bundle.manifest.encode(),
-      ),
-      _driveApiService.uploadTextFile(
-        authorizationHeaders: headers,
-        parentId: folders[CloudSyncDomain.credential.folderName]!,
-        fileName: CloudSyncDomain.credential.fileName,
-        content: bundle.credentialPayload,
-      ),
-      _driveApiService.uploadTextFile(
-        authorizationHeaders: headers,
-        parentId: folders[CloudSyncDomain.expense.folderName]!,
-        fileName: CloudSyncDomain.expense.fileName,
-        content: bundle.expensePayload,
-      ),
-      _driveApiService.uploadTextFile(
-        authorizationHeaders: headers,
-        parentId: folders[CloudSyncDomain.task.folderName]!,
-        fileName: CloudSyncDomain.task.fileName,
-        content: bundle.taskPayload,
-      ),
-    ]);
+    await _remoteStoreService.uploadBundle(userId: account.uid, bundle: bundle);
 
     final nextCloudSync = settings.cloudSync.copyWith(
       lastSuccessfulSyncAt: bundle.manifest.exportedAt,
       lastKnownCloudBackupAt: bundle.manifest.exportedAt,
-      lastSyncedAccountEmail: email,
+      lastSyncedAccountEmail: account.email,
       lastAutoBackupAt: triggeredByScheduler
           ? bundle.manifest.exportedAt
           : settings.cloudSync.lastAutoBackupAt,
@@ -155,9 +135,10 @@ class CloudSyncService {
     );
   }
 
-  Future<void> downloadDataFromDrive({
+  Future<void> downloadDataFromCloud({
     bool interactive = true,
     bool forceOverwrite = false,
+    String? credentialEncryptionKey,
   }) async {
     final settings = await _appSettingsRepository.getSettings();
     _ensureEnabled(settings);
@@ -165,91 +146,33 @@ class CloudSyncService {
       throw const SocketException('No internet connection available.');
     }
 
-    final headers = await _authService.authorizationHeaders(
-      interactive: interactive,
-    );
-    final rootFolder = await _driveApiService.findChildByName(
-      authorizationHeaders: headers,
-      folderName: GoogleDriveApiService.appFolderName,
-      mimeType: 'application/vnd.google-apps.folder',
-    );
-    if (rootFolder == null) {
+    final account = await _authService.requireUser(interactive: interactive);
+    final bundle = await _remoteStoreService.getBundle(account.uid);
+    if (bundle == null) {
       throw const FileSystemException(
-        'Daily Use folder was not found in Drive.',
+        'No cloud backup was found for this account.',
       );
     }
-    final manifest = await _downloadManifest(
-      interactive: interactive,
-      authorizationHeaders: headers,
-      rootFolderId: rootFolder.id,
-    );
+
     final localLatestAt = await _payloadService.computeLocalLatestChangeAt();
-    if (!forceOverwrite && localLatestAt.isAfter(manifest.localLatestAt)) {
+    if (!forceOverwrite &&
+        localLatestAt.isAfter(bundle.manifest.localLatestAt)) {
       throw CloudSyncConflictException(
         'Your local data is newer. Sync first to avoid losing changes.',
       );
     }
 
-    final localRollback = await _payloadService.buildBackupBundle();
-    final credentialFolder = await _driveApiService.findChildByName(
-      authorizationHeaders: headers,
-      folderName: CloudSyncDomain.credential.folderName,
-      parentId: rootFolder.id,
-      mimeType: 'application/vnd.google-apps.folder',
+    final localRollback = await _payloadService.buildBackupBundle(
+      encryptCredentialTitlesForCloud: false,
     );
-    final expenseFolder = await _driveApiService.findChildByName(
-      authorizationHeaders: headers,
-      folderName: CloudSyncDomain.expense.folderName,
-      parentId: rootFolder.id,
-      mimeType: 'application/vnd.google-apps.folder',
-    );
-    final taskFolder = await _driveApiService.findChildByName(
-      authorizationHeaders: headers,
-      folderName: CloudSyncDomain.task.folderName,
-      parentId: rootFolder.id,
-      mimeType: 'application/vnd.google-apps.folder',
-    );
-    if (credentialFolder == null ||
-        expenseFolder == null ||
-        taskFolder == null) {
-      throw const FileSystemException(
-        'One or more Daily Use backup folders are missing from Drive.',
-      );
-    }
-    final credentialFile = await _findRequiredFile(
-      authorizationHeaders: headers,
-      parentId: credentialFolder.id,
-      fileName: CloudSyncDomain.credential.fileName,
-    );
-    final expenseFile = await _findRequiredFile(
-      authorizationHeaders: headers,
-      parentId: expenseFolder.id,
-      fileName: CloudSyncDomain.expense.fileName,
-    );
-    final taskFile = await _findRequiredFile(
-      authorizationHeaders: headers,
-      parentId: taskFolder.id,
-      fileName: CloudSyncDomain.task.fileName,
-    );
-
-    final credentialPayload = await _driveApiService.downloadTextFile(
-      authorizationHeaders: headers,
-      fileId: credentialFile.id,
-    );
-    final expensePayload = await _driveApiService.downloadTextFile(
-      authorizationHeaders: headers,
-      fileId: expenseFile.id,
-    );
-    final taskPayload = await _driveApiService.downloadTextFile(
-      authorizationHeaders: headers,
-      fileId: taskFile.id,
-    );
-
     try {
       await _payloadService.restoreBundle(
-        credentialPayload: credentialPayload,
-        expensePayload: expensePayload,
-        taskPayload: taskPayload,
+        credentialPayload: bundle.credentialPayload,
+        expensePayload: bundle.expensePayload,
+        taskPayload: bundle.taskPayload,
+        credentialEncryptionKey:
+            credentialEncryptionKey ??
+            await _credentialSecurityService.readEncryptionKey(),
       );
     } catch (error) {
       await _payloadService.restoreBundle(
@@ -263,42 +186,21 @@ class CloudSyncService {
     await _appSettingsRepository.updateCloudSyncPreferences(
       settings.cloudSync.copyWith(
         lastRestoreAt: DateTime.now(),
-        lastKnownCloudBackupAt: manifest.exportedAt,
+        lastKnownCloudBackupAt: bundle.manifest.exportedAt,
       ),
     );
   }
 
-  Future<void> deleteDriveFolder(String folderName) async {
+  Future<void> deleteCloudData(String folderName) async {
     final settings = await _appSettingsRepository.getSettings();
     if (!settings.cloudSync.enabled) {
       return;
     }
 
-    final headers = await _authService.authorizationHeaders(interactive: false);
-    final root = await _driveApiService.findChildByName(
-      authorizationHeaders: headers,
-      folderName: GoogleDriveApiService.appFolderName,
-      mimeType: 'application/vnd.google-apps.folder',
-    );
-    if (root == null) {
-      return;
-    }
-
-    final target = folderName == GoogleDriveApiService.appFolderName
-        ? root
-        : await _driveApiService.findChildByName(
-            authorizationHeaders: headers,
-            folderName: folderName,
-            parentId: root.id,
-            mimeType: 'application/vnd.google-apps.folder',
-          );
-    if (target == null) {
-      return;
-    }
-
-    await _driveApiService.deleteFileOrFolder(
-      authorizationHeaders: headers,
-      fileId: target.id,
+    final account = await _authService.requireUser(interactive: false);
+    await _remoteStoreService.deleteCloudData(
+      userId: account.uid,
+      folderName: folderName,
     );
   }
 
@@ -313,7 +215,7 @@ class CloudSyncService {
       return;
     }
 
-    await uploadDataToDrive(interactive: false, triggeredByScheduler: true);
+    await uploadDataToCloud(interactive: false, triggeredByScheduler: true);
   }
 
   void _ensureEnabled(AppPreferences settings) {
@@ -326,57 +228,13 @@ class CloudSyncService {
 
   Future<CloudSyncManifest> _downloadManifest({
     required bool interactive,
-    Map<String, String>? authorizationHeaders,
-    String? rootFolderId,
   }) async {
-    final headers =
-        authorizationHeaders ??
-        await _authService.authorizationHeaders(interactive: interactive);
-    final root = rootFolderId == null
-        ? await _driveApiService.findChildByName(
-            authorizationHeaders: headers,
-            folderName: GoogleDriveApiService.appFolderName,
-            mimeType: 'application/vnd.google-apps.folder',
-          )
-        : DriveFileResource(
-            id: rootFolderId,
-            name: GoogleDriveApiService.appFolderName,
-            mimeType: 'application/vnd.google-apps.folder',
-          );
-    if (root == null) {
-      throw const FileSystemException(
-        'Daily Use folder was not found in Drive.',
-      );
+    final account = await _authService.requireUser(interactive: interactive);
+    final manifest = await _remoteStoreService.getManifest(account.uid);
+    if (manifest == null) {
+      throw const FileSystemException('No cloud backup manifest was found.');
     }
-
-    final manifestFile = await _findRequiredFile(
-      authorizationHeaders: headers,
-      parentId: root.id,
-      fileName: 'manifest.json',
-    );
-    final manifestContent = await _driveApiService.downloadTextFile(
-      authorizationHeaders: headers,
-      fileId: manifestFile.id,
-    );
-    return CloudSyncManifest.fromEncoded(manifestContent);
-  }
-
-  Future<DriveFileResource> _findRequiredFile({
-    required Map<String, String> authorizationHeaders,
-    required String parentId,
-    required String fileName,
-  }) async {
-    final file = await _driveApiService.findChildByName(
-      authorizationHeaders: authorizationHeaders,
-      folderName: fileName,
-      parentId: parentId,
-    );
-    if (file == null) {
-      throw FileSystemException(
-        '$fileName is missing from Google Drive backup.',
-      );
-    }
-    return file;
+    return manifest;
   }
 
   bool _isBackupDue(CloudSyncPreferences settings, DateTime now) {

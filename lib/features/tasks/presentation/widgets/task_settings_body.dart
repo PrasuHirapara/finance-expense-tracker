@@ -368,9 +368,9 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
     await taskRepository.clearSectionData();
     String? cloudCleanupWarning;
     try {
-      await cloudSyncService.deleteDriveFolder('Task');
+      await cloudSyncService.deleteCloudData('Task');
     } catch (error) {
-      cloudCleanupWarning = ' Local Drive cleanup failed: $error';
+      cloudCleanupWarning = ' Cloud backup cleanup failed: $error';
     }
     await categoryRepository.resetToDefaults();
     await reminderSettingsRepository.resetTaskReminder();

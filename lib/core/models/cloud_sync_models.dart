@@ -43,6 +43,24 @@ class CloudSyncManifest extends Equatable {
   final String? accountEmail;
   final Map<String, int> domainCounts;
 
+  CloudSyncManifest copyWith({
+    int? schemaVersion,
+    DateTime? exportedAt,
+    DateTime? localLatestAt,
+    Object? accountEmail = _cloudSyncUnset,
+    Map<String, int>? domainCounts,
+  }) {
+    return CloudSyncManifest(
+      schemaVersion: schemaVersion ?? this.schemaVersion,
+      exportedAt: exportedAt ?? this.exportedAt,
+      localLatestAt: localLatestAt ?? this.localLatestAt,
+      accountEmail: identical(accountEmail, _cloudSyncUnset)
+          ? this.accountEmail
+          : accountEmail as String?,
+      domainCounts: domainCounts ?? this.domainCounts,
+    );
+  }
+
   Map<String, dynamic> toJson() => <String, dynamic>{
     'schemaVersion': schemaVersion,
     'exportedAt': exportedAt.toIso8601String(),
@@ -91,6 +109,8 @@ class CloudSyncManifest extends Equatable {
   ];
 }
 
+const Object _cloudSyncUnset = Object();
+
 class CloudRestoreCheck extends Equatable {
   const CloudRestoreCheck({
     required this.localLatestAt,
@@ -112,8 +132,8 @@ class CloudRestoreCheck extends Equatable {
   ];
 }
 
-class DriveFileResource extends Equatable {
-  const DriveFileResource({
+class CloudFileResource extends Equatable {
+  const CloudFileResource({
     required this.id,
     required this.name,
     required this.mimeType,
@@ -127,8 +147,8 @@ class DriveFileResource extends Equatable {
   final DateTime? modifiedTime;
   final List<String> parents;
 
-  factory DriveFileResource.fromJson(Map<String, dynamic> json) {
-    return DriveFileResource(
+  factory CloudFileResource.fromJson(Map<String, dynamic> json) {
+    return CloudFileResource(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
       mimeType: json['mimeType'] as String? ?? '',
@@ -169,4 +189,22 @@ class CloudBackupBundle extends Equatable {
     expensePayload,
     taskPayload,
   ];
+}
+
+class CloudCredentialEncryptionKeyRequiredException implements Exception {
+  const CloudCredentialEncryptionKeyRequiredException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+class CloudCredentialEncryptionKeyInvalidException implements Exception {
+  const CloudCredentialEncryptionKeyInvalidException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }

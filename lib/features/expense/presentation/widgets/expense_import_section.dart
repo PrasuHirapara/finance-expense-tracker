@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/services/module_data_import_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/download_result_snackbar.dart';
 
 class ExpenseImportSection extends StatefulWidget {
   const ExpenseImportSection({super.key});
@@ -74,8 +75,10 @@ class _ExpenseImportSectionState extends State<ExpenseImportSection> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Expense sample Excel saved to $path')),
+      showDownloadResultSnackBar(
+        context,
+        message: 'Expense sample Excel saved to $path',
+        path: path,
       );
     } on ModuleImportException catch (error) {
       if (!mounted) {

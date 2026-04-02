@@ -10,6 +10,7 @@ import 'core/router/app_router.dart';
 import 'core/services/app_settings_repository.dart';
 import 'core/services/credential_crypto_service.dart';
 import 'core/services/credential_security_service.dart';
+import 'core/services/file_launcher_service.dart';
 import 'core/services/module_data_import_service.dart';
 import 'core/services/module_data_export_service.dart';
 import 'core/services/notification_service.dart';
@@ -52,6 +53,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   late final ExportRepository _exportRepository;
   late final TaskRepository _taskRepository;
   late final NotificationService _notificationService;
+  late final FileLauncherService _fileLauncherService;
   late final ModuleDataExportService _moduleDataExportService;
   late final ModuleDataImportService _moduleDataImportService;
   late final TaskCategoryRepository _taskCategoryRepository;
@@ -86,6 +88,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _taskCategoryRepository = TaskCategoryRepository(_taskRepository);
     _reminderSettingsRepository = ReminderSettingsRepository();
     _notificationService = NotificationService(_reminderSettingsRepository);
+    _fileLauncherService = FileLauncherService();
     _moduleDataExportService = ModuleDataExportService(_appSettingsRepository);
     _moduleDataImportService = ModuleDataImportService(
       database: _database,
@@ -140,6 +143,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
         RepositoryProvider<NotificationService>.value(
           value: _notificationService,
         ),
+        RepositoryProvider<FileLauncherService>.value(value: _fileLauncherService),
         RepositoryProvider<ModuleDataExportService>.value(
           value: _moduleDataExportService,
         ),

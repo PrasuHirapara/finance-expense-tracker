@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/services/module_data_import_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/download_result_snackbar.dart';
 import '../../../credentials/data/services/credential_service.dart';
 import '../../../credentials/presentation/widgets/credential_auth_dialog.dart';
 import '../../../credentials/presentation/widgets/credential_export_panel.dart';
@@ -328,8 +329,10 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Credential sample Excel saved to $path')),
+      showDownloadResultSnackBar(
+        context,
+        message: 'Credential sample Excel saved to $path',
+        path: path,
       );
     } on ModuleImportException catch (error) {
       if (!mounted) {

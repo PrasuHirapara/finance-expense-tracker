@@ -481,16 +481,22 @@ class ExpenseRepository {
     final buckets = <DateTime, double>{};
 
     if (window == ExpenseAnalyticsWindow.yearly) {
-      for (var month = 1; month <= 12; month++) {
-        buckets[DateTime(range.start.year, month)] = 0;
+      var cursor = DateTime(range.start.year, range.start.month);
+      final endBucket = DateTime(range.end.year, range.end.month);
+      while (!cursor.isAfter(endBucket)) {
+        buckets[cursor] = 0;
+        cursor = DateTime(cursor.year, cursor.month + 1);
       }
+
       for (final entry in entries) {
         final bucket = DateTime(entry.date.year, entry.date.month);
         buckets.update(bucket, (value) => value + entry.amount);
       }
+
       return buckets.entries
           .map(
             (entry) => ExpenseAnalyticsPoint(
+              period: entry.key,
               label: AppConstants.monthLabelFormat.format(entry.key),
               amount: entry.value,
             ),
@@ -511,6 +517,7 @@ class ExpenseRepository {
     return buckets.entries
         .map(
           (entry) => ExpenseAnalyticsPoint(
+            period: entry.key,
             label: window == ExpenseAnalyticsWindow.weekly
                 ? DateFormat('E').format(entry.key)
                 : DateFormat('d').format(entry.key),

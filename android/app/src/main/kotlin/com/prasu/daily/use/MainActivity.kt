@@ -1,4 +1,4 @@
-package com.example.finance_analytics_app
+package com.prasu.daily.use
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

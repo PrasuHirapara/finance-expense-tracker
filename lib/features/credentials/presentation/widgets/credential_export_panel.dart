@@ -5,6 +5,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/module_export_models.dart';
 import '../../../../core/services/module_data_export_service.dart';
 import '../../../../shared/widgets/app_select_field.dart';
+import '../../../../shared/widgets/download_result_snackbar.dart';
 import '../../data/services/credential_service.dart';
 import '../../domain/models/credential_models.dart';
 import 'credential_auth_dialog.dart';
@@ -319,8 +320,10 @@ class _CredentialExportPanelState extends State<CredentialExportPanel> {
         return;
       }
 
-      messenger.showSnackBar(
-        SnackBar(content: Text('${_selectedFormat.label} exported to $path')),
+      showDownloadResultSnackBar(
+        context,
+        message: '${_selectedFormat.label} exported to $path',
+        path: path,
       );
     } catch (error) {
       if (!mounted) {

@@ -4,6 +4,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/models/module_export_models.dart';
 import 'app_panel.dart';
 import 'app_select_field.dart';
+import 'download_result_snackbar.dart';
 
 class ModuleExportPanel extends StatefulWidget {
   const ModuleExportPanel({
@@ -189,8 +190,10 @@ class _ModuleExportPanelState extends State<ModuleExportPanel> {
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(
-        SnackBar(content: Text('${_selectedFormat.label} exported to $path')),
+      showDownloadResultSnackBar(
+        context,
+        message: '${_selectedFormat.label} exported to $path',
+        path: path,
       );
     } catch (error) {
       if (!mounted) {

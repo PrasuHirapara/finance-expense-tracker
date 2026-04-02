@@ -10,6 +10,7 @@ import '../../domain/entities/analytics_models.dart';
 import '../../domain/entities/export_payload.dart';
 import '../../domain/repositories/export_repository.dart';
 import '../../domain/repositories/finance_repository.dart';
+import '../../shared/widgets/download_result_snackbar.dart';
 import '../controllers/analytics_controller.dart';
 import '../controllers/export_controller.dart';
 import '../widgets/charts/borrowed_lent_bar_chart.dart';
@@ -159,14 +160,16 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
       if (!mounted) {
         return;
       }
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.showSnackBar(SnackBar(content: Text('CSV exported to $path')));
+      showDownloadResultSnackBar(
+        context,
+        message: 'CSV exported to $path',
+        path: path,
+      );
     } catch (_) {
       if (!mounted) {
         return;
       }
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             context.read<ExportCubit>().state.errorMessage ??
@@ -197,14 +200,16 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
       if (!mounted) {
         return;
       }
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.showSnackBar(SnackBar(content: Text('PDF exported to $path')));
+      showDownloadResultSnackBar(
+        context,
+        message: 'PDF exported to $path',
+        path: path,
+      );
     } catch (_) {
       if (!mounted) {
         return;
       }
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             context.read<ExportCubit>().state.errorMessage ??

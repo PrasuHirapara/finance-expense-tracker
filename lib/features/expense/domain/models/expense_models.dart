@@ -187,14 +187,32 @@ class ExpenseDashboardData extends Equatable {
 
 enum ExpenseAnalyticsWindow { weekly, monthly, yearly }
 
-class ExpenseAnalyticsPoint extends Equatable {
-  const ExpenseAnalyticsPoint({required this.label, required this.amount});
+extension ExpenseAnalyticsWindowX on ExpenseAnalyticsWindow {
+  String get label {
+    switch (this) {
+      case ExpenseAnalyticsWindow.weekly:
+        return 'Week';
+      case ExpenseAnalyticsWindow.monthly:
+        return 'Month';
+      case ExpenseAnalyticsWindow.yearly:
+        return 'Year';
+    }
+  }
+}
 
+class ExpenseAnalyticsPoint extends Equatable {
+  const ExpenseAnalyticsPoint({
+    required this.period,
+    required this.label,
+    required this.amount,
+  });
+
+  final DateTime period;
   final String label;
   final double amount;
 
   @override
-  List<Object?> get props => <Object?>[label, amount];
+  List<Object?> get props => <Object?>[period, label, amount];
 }
 
 class ExpenseCategoryAnalysis extends Equatable {

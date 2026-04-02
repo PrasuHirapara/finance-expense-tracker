@@ -160,7 +160,9 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
                       const SizedBox(height: 18),
                       Text('Categories', style: theme.textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: <Widget>[
                           if (categories.isNotEmpty)
                             TextButton(
@@ -175,7 +177,6 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
                                     : 'View category',
                               ),
                             ),
-                          const Spacer(),
                           FilledButton.tonalIcon(
                             onPressed: () => _showCategoryDialog(
                               context,
@@ -206,7 +207,9 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
                       const SizedBox(height: 14),
                       Text('Banks', style: theme.textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: <Widget>[
                           if (banks.isNotEmpty)
                             TextButton(
@@ -219,7 +222,6 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
                                 _showAllBanks ? 'Hide banks' : 'View banks',
                               ),
                             ),
-                          const Spacer(),
                           FilledButton.tonalIcon(
                             onPressed: () =>
                                 _showBankDialog(context, existingBanks: banks),

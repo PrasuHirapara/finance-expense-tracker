@@ -138,14 +138,12 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Row(
+                      Text('Categories', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: <Widget>[
-                          Expanded(
-                            child: Text(
-                              'Categories',
-                              style: theme.textTheme.titleMedium,
-                            ),
-                          ),
                           if (categories.isNotEmpty)
                             TextButton(
                               onPressed: () {
@@ -159,7 +157,6 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
                                     : 'View category',
                               ),
                             ),
-                          const SizedBox(width: 8),
                           FilledButton.tonalIcon(
                             onPressed: () => _showCategoryDialog(context),
                             icon: const Icon(Icons.add),

@@ -1,6 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
 
 import '../../../core/formatters/indian_number_formatter.dart';
 import '../../../domain/entities/analytics_models.dart';
@@ -11,14 +12,23 @@ class TrendLineChart extends StatelessWidget {
     required this.points,
     this.xAxisTitle = 'Period',
     this.yAxisTitle = 'Amount',
+    this.bottomTitleBuilder,
+    this.bottomTitlesReservedSize = 38,
   });
 
   final List<TrendPoint> points;
   final String xAxisTitle;
   final String yAxisTitle;
+  final Widget Function(BuildContext context, TrendPoint point, int index)?
+  bottomTitleBuilder;
+  final double bottomTitlesReservedSize;
 
   @override
   Widget build(BuildContext context) {
+    if (points.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final theme = Theme.of(context);
     final maxValue = points.fold<double>(
       0,
@@ -31,6 +41,8 @@ class TrendLineChart extends StatelessWidget {
 
     return LineChart(
       LineChartData(
+        minX: 0,
+        maxX: points.length == 1 ? 1 : (points.length - 1).toDouble(),
         minY: 0,
         maxY: maxY,
         gridData: FlGridData(
@@ -59,10 +71,16 @@ class TrendLineChart extends StatelessWidget {
               showTitles: true,
               reservedSize: 68,
               interval: yInterval,
-              getTitlesWidget: (value, meta) => Text(
-                _formatAxisLabel(value, maxValue),
-                style: theme.textTheme.bodySmall,
-              ),
+              getTitlesWidget: (value, meta) {
+                if (value < 0 || value > maxY) {
+                  return const SizedBox.shrink();
+                }
+
+                return Text(
+                  _formatAxisLabel(value, maxValue),
+                  style: theme.textTheme.bodySmall,
+                );
+              },
             ),
           ),
           bottomTitles: AxisTitles(
@@ -73,16 +91,31 @@ class TrendLineChart extends StatelessWidget {
             axisNameSize: 30,
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 38,
+              reservedSize: bottomTitlesReservedSize,
+              interval: 1,
               getTitlesWidget: (value, meta) {
                 final index = value.toInt();
                 if (index < 0 || index >= points.length) {
                   return const SizedBox.shrink();
                 }
+
+                final customLabel = bottomTitleBuilder?.call(
+                  context,
+                  points[index],
+                  index,
+                );
+                if (customLabel != null) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: customLabel,
+                  );
+                }
+
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     points[index].label,
+                    textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall,
                   ),
                 );
@@ -95,7 +128,15 @@ class TrendLineChart extends StatelessWidget {
             isCurved: true,
             barWidth: 3,
             color: theme.colorScheme.primary,
-            dotData: const FlDotData(show: false),
+            dotData: FlDotData(
+              show: true,
+              getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
+                radius: 3.5,
+                color: theme.colorScheme.primary,
+                strokeWidth: 1.5,
+                strokeColor: theme.colorScheme.surface,
+              ),
+            ),
             belowBarData: BarAreaData(
               show: true,
               color: theme.colorScheme.primary.withValues(alpha: 0.16),
@@ -115,7 +156,7 @@ class TrendLineChart extends StatelessWidget {
 
   double _niceAxisInterval(double maxValue) {
     if (maxValue <= 0) {
-      return 10;
+      return 1;
     }
 
     final rawStep = maxValue / 4;
@@ -127,7 +168,7 @@ class TrendLineChart extends StatelessWidget {
     if (normalized <= 1) {
       return magnitude;
     }
-    if (normalized <= 2) {
+    if (normalized <= 2.5) {
       return 2 * magnitude;
     }
     if (normalized <= 5) {
@@ -137,6 +178,10 @@ class TrendLineChart extends StatelessWidget {
   }
 
   String _formatAxisLabel(double value, double maxValue) {
+    if (value == 0) {
+      return '0';
+    }
+
     if (maxValue >= 100000) {
       return IndianNumberFormatter.formatCompact(value);
     }

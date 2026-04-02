@@ -32,6 +32,7 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.39
   timezone: ^0.11.0
   xml: ^6.6.1
+  open_filex: ^4.7.0
 
 dev_dependencies:
   build_runner: ^2.7.1

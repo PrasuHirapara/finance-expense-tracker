@@ -37,32 +37,62 @@ class AppTheme {
       surface: surface,
     );
 
-    final textTheme = GoogleFonts.manropeTextTheme().copyWith(
+    final baseTextTheme = GoogleFonts.manropeTextTheme().apply(
+      bodyColor: colorScheme.onSurface,
+      displayColor: colorScheme.onSurface,
+    );
+
+    final textTheme = baseTextTheme.copyWith(
       headlineMedium: GoogleFonts.manrope(
         fontWeight: FontWeight.w700,
         fontSize: 28,
+        color: colorScheme.onSurface,
         letterSpacing: -0.5,
       ),
       headlineSmall: GoogleFonts.manrope(
         fontWeight: FontWeight.w700,
         fontSize: 22,
+        color: colorScheme.onSurface,
       ),
       titleLarge: GoogleFonts.manrope(
         fontWeight: FontWeight.w700,
         fontSize: 18,
+        color: colorScheme.onSurface,
       ),
       titleMedium: GoogleFonts.manrope(
         fontWeight: FontWeight.w600,
         fontSize: 16,
+        color: colorScheme.onSurface,
       ),
-      bodyLarge: GoogleFonts.manrope(fontWeight: FontWeight.w500, fontSize: 15),
+      bodyLarge: GoogleFonts.manrope(
+        fontWeight: FontWeight.w500,
+        fontSize: 15,
+        color: colorScheme.onSurface,
+      ),
       bodyMedium: GoogleFonts.manrope(
         fontWeight: FontWeight.w500,
         fontSize: 14,
+        color: colorScheme.onSurface,
+      ),
+      bodySmall: GoogleFonts.manrope(
+        fontWeight: FontWeight.w500,
+        fontSize: 12,
+        color: colorScheme.onSurfaceVariant,
       ),
       labelLarge: GoogleFonts.manrope(
         fontWeight: FontWeight.w700,
         fontSize: 14,
+        color: colorScheme.onSurface,
+      ),
+      labelMedium: GoogleFonts.manrope(
+        fontWeight: FontWeight.w600,
+        fontSize: 12,
+        color: colorScheme.onSurface,
+      ),
+      labelSmall: GoogleFonts.manrope(
+        fontWeight: FontWeight.w600,
+        fontSize: 11,
+        color: colorScheme.onSurfaceVariant,
       ),
     );
 

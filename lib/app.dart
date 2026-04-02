@@ -7,10 +7,17 @@ import 'core/blocs/module_navigation_bloc.dart';
 import 'core/blocs/theme_cubit.dart';
 import 'core/models/app_preferences.dart';
 import 'core/router/app_router.dart';
+import 'core/services/app_data_reset_service.dart';
 import 'core/services/app_settings_repository.dart';
+import 'core/services/cloud_sync_payload_service.dart';
+import 'core/services/cloud_sync_scheduler.dart';
+import 'core/services/cloud_sync_security_service.dart';
+import 'core/services/cloud_sync_service.dart';
 import 'core/services/credential_crypto_service.dart';
 import 'core/services/credential_security_service.dart';
 import 'core/services/file_launcher_service.dart';
+import 'core/services/google_drive_api_service.dart';
+import 'core/services/google_drive_auth_service.dart';
 import 'core/services/module_data_import_service.dart';
 import 'core/services/module_data_export_service.dart';
 import 'core/services/notification_service.dart';
@@ -48,6 +55,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   late final CredentialRepository _credentialRepository;
   late final CredentialCryptoService _credentialCryptoService;
   late final CredentialSecurityService _credentialSecurityService;
+  late final CloudSyncSecurityService _cloudSyncSecurityService;
   late final CredentialService _credentialService;
   late final FinanceRepository _financeRepository;
   late final ExportRepository _exportRepository;
@@ -58,6 +66,9 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   late final ModuleDataImportService _moduleDataImportService;
   late final TaskCategoryRepository _taskCategoryRepository;
   late final ReminderSettingsRepository _reminderSettingsRepository;
+  late final CloudSyncScheduler _cloudSyncScheduler;
+  late final CloudSyncService _cloudSyncService;
+  late final AppDataResetService _appDataResetService;
   late final Future<void> _bootstrap;
   AppPreferences _appPreferences = const AppPreferences();
 
@@ -71,6 +82,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _credentialRepository = CredentialRepository(_database);
     _credentialCryptoService = CredentialCryptoService();
     _credentialSecurityService = CredentialSecurityService();
+    _cloudSyncSecurityService = CloudSyncSecurityService();
     _credentialService = CredentialService(
       repository: _credentialRepository,
       cryptoService: _credentialCryptoService,
@@ -88,12 +100,35 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _taskCategoryRepository = TaskCategoryRepository(_taskRepository);
     _reminderSettingsRepository = ReminderSettingsRepository();
     _notificationService = NotificationService(_reminderSettingsRepository);
+    _cloudSyncScheduler = CloudSyncScheduler();
     _fileLauncherService = FileLauncherService();
     _moduleDataExportService = ModuleDataExportService(_appSettingsRepository);
     _moduleDataImportService = ModuleDataImportService(
       database: _database,
       appSettingsRepository: _appSettingsRepository,
       credentialCryptoService: _credentialCryptoService,
+    );
+    _cloudSyncService = CloudSyncService(
+      appSettingsRepository: _appSettingsRepository,
+      authService: GoogleDriveAuthService(),
+      driveApiService: GoogleDriveApiService(),
+      payloadService: CloudSyncPayloadService(
+        database: _database,
+        taskCategoryRepository: _taskCategoryRepository,
+        credentialCryptoService: _credentialCryptoService,
+        cloudSyncSecurityService: _cloudSyncSecurityService,
+      ),
+      scheduler: _cloudSyncScheduler,
+    );
+    _appDataResetService = AppDataResetService(
+      credentialService: _credentialService,
+      expenseRepository: _expenseRepository,
+      taskRepository: _taskRepository,
+      taskCategoryRepository: _taskCategoryRepository,
+      reminderSettingsRepository: _reminderSettingsRepository,
+      appSettingsRepository: _appSettingsRepository,
+      notificationService: _notificationService,
+      cloudSyncService: _cloudSyncService,
     );
     _bootstrap = _bootstrapApp();
   }
@@ -143,7 +178,13 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
         RepositoryProvider<NotificationService>.value(
           value: _notificationService,
         ),
-        RepositoryProvider<FileLauncherService>.value(value: _fileLauncherService),
+        RepositoryProvider<CloudSyncService>.value(value: _cloudSyncService),
+        RepositoryProvider<AppDataResetService>.value(
+          value: _appDataResetService,
+        ),
+        RepositoryProvider<FileLauncherService>.value(
+          value: _fileLauncherService,
+        ),
         RepositoryProvider<ModuleDataExportService>.value(
           value: _moduleDataExportService,
         ),
@@ -252,6 +293,17 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
       await _notificationService.scheduleDailyReminders();
     } else {
       await _notificationService.cancelDailyReminders();
+    }
+    if (_appPreferences.cloudSync.enabled &&
+        _appPreferences.cloudSync.autoBackupEnabled) {
+      await _cloudSyncService.scheduleAutoBackup(
+        TimeOfDay(
+          hour: _appPreferences.cloudSync.autoBackupHour,
+          minute: _appPreferences.cloudSync.autoBackupMinute,
+        ),
+      );
+    } else {
+      await _cloudSyncScheduler.cancel();
     }
   }
 }

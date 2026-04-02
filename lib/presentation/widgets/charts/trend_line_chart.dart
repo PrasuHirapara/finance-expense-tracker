@@ -30,6 +30,13 @@ class TrendLineChart extends StatelessWidget {
     }
 
     final theme = Theme.of(context);
+    final axisLabelStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final axisTitleStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurface,
+      fontWeight: FontWeight.w600,
+    );
     final maxValue = points.fold<double>(
       0,
       (max, point) => point.amount > max ? point.amount : max,
@@ -64,7 +71,7 @@ class TrendLineChart extends StatelessWidget {
           leftTitles: AxisTitles(
             axisNameWidget: Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: Text(yAxisTitle, style: theme.textTheme.bodySmall),
+              child: Text(yAxisTitle, style: axisTitleStyle),
             ),
             axisNameSize: 28,
             sideTitles: SideTitles(
@@ -78,7 +85,7 @@ class TrendLineChart extends StatelessWidget {
 
                 return Text(
                   _formatAxisLabel(value, maxValue),
-                  style: theme.textTheme.bodySmall,
+                  style: axisLabelStyle,
                 );
               },
             ),
@@ -86,7 +93,7 @@ class TrendLineChart extends StatelessWidget {
           bottomTitles: AxisTitles(
             axisNameWidget: Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: Text(xAxisTitle, style: theme.textTheme.bodySmall),
+              child: Text(xAxisTitle, style: axisTitleStyle),
             ),
             axisNameSize: 30,
             sideTitles: SideTitles(
@@ -116,7 +123,7 @@ class TrendLineChart extends StatelessWidget {
                   child: Text(
                     points[index].label,
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall,
+                    style: axisLabelStyle,
                   ),
                 );
               },

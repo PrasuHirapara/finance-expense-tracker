@@ -21,6 +21,13 @@ class BorrowedLentBarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final axisLabelStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final axisTitleStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurface,
+      fontWeight: FontWeight.w600,
+    );
     final maxValue = borrowed > lent ? borrowed : lent;
     final yInterval = _niceAxisInterval(maxValue);
     final maxY = maxValue == 0
@@ -48,7 +55,7 @@ class BorrowedLentBarChart extends StatelessWidget {
           leftTitles: AxisTitles(
             axisNameWidget: Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: Text(yAxisTitle, style: theme.textTheme.bodySmall),
+              child: Text(yAxisTitle, style: axisTitleStyle),
             ),
             axisNameSize: 28,
             sideTitles: SideTitles(
@@ -57,14 +64,14 @@ class BorrowedLentBarChart extends StatelessWidget {
               interval: yInterval,
               getTitlesWidget: (value, meta) => Text(
                 _formatAxisLabel(value, maxValue),
-                style: theme.textTheme.bodySmall,
+                style: axisLabelStyle,
               ),
             ),
           ),
           bottomTitles: AxisTitles(
             axisNameWidget: Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: Text(xAxisTitle, style: theme.textTheme.bodySmall),
+              child: Text(xAxisTitle, style: axisTitleStyle),
             ),
             axisNameSize: 30,
             sideTitles: SideTitles(
@@ -75,7 +82,7 @@ class BorrowedLentBarChart extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     value == 0 ? 'Borrowed' : 'Lent',
-                    style: theme.textTheme.bodySmall,
+                    style: axisLabelStyle,
                   ),
                 );
               },

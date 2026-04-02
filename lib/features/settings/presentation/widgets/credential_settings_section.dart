@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/services/cloud_sync_service.dart';
 import '../../../../core/services/module_data_import_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/download_result_snackbar.dart';
@@ -308,12 +309,24 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
       return;
     }
 
-    await context.read<CredentialService>().deleteAllCredentials();
+    final credentialService = context.read<CredentialService>();
+    final cloudSyncService = context.read<CloudSyncService>();
+    await credentialService.deleteAllCredentials();
+    String? cloudCleanupWarning;
+    try {
+      await cloudSyncService.deleteDriveFolder('Credential');
+    } catch (error) {
+      cloudCleanupWarning = ' Local Drive cleanup failed: $error';
+    }
     if (!mounted) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('All credential data deleted.')),
+      SnackBar(
+        content: Text(
+          'All credential data deleted.${cloudCleanupWarning ?? ''}',
+        ),
+      ),
     );
   }
 

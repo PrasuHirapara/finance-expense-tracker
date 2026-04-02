@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/models/module_export_models.dart';
 import '../../../../core/services/app_settings_repository.dart';
+import '../../../../core/services/cloud_sync_service.dart';
 import '../../../../core/services/module_data_export_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/reminder_settings_repository.dart';
@@ -340,6 +341,7 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
     final notificationService = context.read<NotificationService>();
     final appSettingsRepository = context.read<AppSettingsRepository>();
     final taskBloc = context.read<TaskBloc>();
+    final cloudSyncService = context.read<CloudSyncService>();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final shouldDelete = await showDialog<bool>(
       context: context,
@@ -364,6 +366,12 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
     }
 
     await taskRepository.clearSectionData();
+    String? cloudCleanupWarning;
+    try {
+      await cloudSyncService.deleteDriveFolder('Task');
+    } catch (error) {
+      cloudCleanupWarning = ' Local Drive cleanup failed: $error';
+    }
     await categoryRepository.resetToDefaults();
     await reminderSettingsRepository.resetTaskReminder();
     final appSettings = await appSettingsRepository.getSettings();
@@ -375,7 +383,7 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
 
     taskBloc.add(const TasksSubscriptionRequested());
     scaffoldMessenger.showSnackBar(
-      const SnackBar(content: Text('Task data deleted.')),
+      SnackBar(content: Text('Task data deleted.${cloudCleanupWarning ?? ''}')),
     );
   }
 

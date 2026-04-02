@@ -124,6 +124,27 @@ class TaskCategoryRepository {
     await _commit(List<String>.from(AppConstants.taskCategoryChoices));
   }
 
+  Future<void> replaceAll(List<String> categories) async {
+    final sanitized = categories
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    await _commit(
+      sanitized.isEmpty
+          ? List<String>.from(AppConstants.taskCategoryChoices)
+          : sanitized,
+    );
+  }
+
+  Future<DateTime?> lastModifiedAt() async {
+    final file = await _categoriesFile();
+    if (!await file.exists()) {
+      return null;
+    }
+    return file.lastModified();
+  }
+
   Future<void> _commit(List<String> categories) async {
     _cachedCategories = categories.toSet().toList(growable: false);
     await _writeCategories(_cachedCategories!);

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/module_export_models.dart';
 import '../../../../core/services/app_settings_repository.dart';
+import '../../../../core/services/cloud_sync_service.dart';
 import '../../../../core/services/module_data_export_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/reminder_settings_repository.dart';
@@ -443,6 +444,7 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
     final notificationService = context.read<NotificationService>();
     final appSettingsRepository = context.read<AppSettingsRepository>();
     final expenseBloc = context.read<ExpenseBloc>();
+    final cloudSyncService = context.read<CloudSyncService>();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final shouldDelete = await showDialog<bool>(
       context: context,
@@ -469,6 +471,12 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
     }
 
     await expenseRepository.clearSectionData();
+    String? cloudCleanupWarning;
+    try {
+      await cloudSyncService.deleteDriveFolder('Expense');
+    } catch (error) {
+      cloudCleanupWarning = ' Local Drive cleanup failed: $error';
+    }
     await reminderSettingsRepository.resetExpenseReminder();
     final appSettings = await appSettingsRepository.getSettings();
     if (appSettings.notificationsEnabled) {
@@ -479,7 +487,9 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
 
     expenseBloc.add(const ExpenseSubscriptionRequested());
     scaffoldMessenger.showSnackBar(
-      const SnackBar(content: Text('Expense data deleted.')),
+      SnackBar(
+        content: Text('Expense data deleted.${cloudCleanupWarning ?? ''}'),
+      ),
     );
   }
 

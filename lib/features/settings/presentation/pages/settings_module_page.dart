@@ -6,9 +6,11 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../../core/blocs/theme_cubit.dart';
 import '../../../../core/models/app_preferences.dart';
+import '../../../../core/services/app_data_reset_service.dart';
 import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../widgets/cloud_sync_settings_section.dart';
 
 class SettingsModulePage extends StatefulWidget {
   const SettingsModulePage({super.key});
@@ -216,6 +218,33 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                   ],
                 ),
               ),
+              const SizedBox(height: 18),
+              CloudSyncSettingsSection(preferences: preferences),
+              const SizedBox(height: 18),
+              AppPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('Danger Zone', style: theme.textTheme.titleLarge),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Delete all Credential, Expense, and Task data. If Cloud Sync is enabled, the full Daily Use folder is also removed from Google Drive.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.tonalIcon(
+                      onPressed: () => _deleteAllData(context),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error,
+                      ),
+                      icon: const Icon(Icons.delete_forever_rounded),
+                      label: const Text('Delete All Data'),
+                    ),
+                  ],
+                ),
+              ),
             ],
           );
         },
@@ -271,5 +300,48 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
   Future<String> _resolveExportDirectoryPath() async {
     final directory = await getApplicationDocumentsDirectory();
     return path.join(directory.path, 'exports');
+  }
+
+  Future<void> _deleteAllData(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete All Data'),
+        content: const Text(
+          'This deletes all Credential, Expense, and Task data. Continue?',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete All'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    try {
+      await context.read<AppDataResetService>().deleteAllData();
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('All app data deleted.')));
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to delete all data: $error')),
+      );
+    }
   }
 }

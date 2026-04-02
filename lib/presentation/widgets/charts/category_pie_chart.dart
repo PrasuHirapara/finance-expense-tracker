@@ -83,6 +83,7 @@ class _ChartBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedItem = selectedIndex == null ? null : data[selectedIndex!];
+    final theme = Theme.of(context);
 
     return SizedBox(
       height: 210,
@@ -96,11 +97,9 @@ class _ChartBody extends StatelessWidget {
                 color: Colors.transparent,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
+                    color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
+                    border: Border.all(color: theme.colorScheme.outlineVariant),
                     boxShadow: <BoxShadow>[
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.08),
@@ -118,7 +117,9 @@ class _ChartBody extends StatelessWidget {
                       selectedItem.categoryName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                      ),
                     ),
                   ),
                 ),
@@ -192,6 +193,19 @@ class _LegendList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final nameStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurface,
+      fontWeight: FontWeight.w600,
+    );
+    final statStyle = theme.textTheme.labelSmall?.copyWith(
+      color: theme.colorScheme.onSurface,
+      fontWeight: FontWeight.w700,
+    );
+    final amountStyle = theme.textTheme.labelSmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+
     final children = data
         .asMap()
         .entries
@@ -215,13 +229,14 @@ class _LegendList extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? Color(item.colorValue).withValues(alpha: 0.12)
-                      : Theme.of(context).colorScheme.surfaceContainerHighest
-                            .withValues(alpha: 0.3),
+                      : theme.colorScheme.surfaceContainerHighest.withValues(
+                          alpha: 0.3,
+                        ),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: isSelected
                         ? Color(item.colorValue)
-                        : Theme.of(context).colorScheme.outlineVariant,
+                        : theme.colorScheme.outlineVariant,
                   ),
                 ),
                 child: Row(
@@ -240,9 +255,7 @@ class _LegendList extends StatelessWidget {
                         item.categoryName,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: nameStyle,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -252,15 +265,14 @@ class _LegendList extends StatelessWidget {
                       children: <Widget>[
                         Text(
                           '${percentage.toStringAsFixed(1)}%',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(fontWeight: FontWeight.w700),
+                          style: statStyle,
                         ),
                         const SizedBox(height: 2),
                         Text(
                           IndianNumberFormatter.formatCompactCurrency(
                             item.amount,
                           ),
-                          style: Theme.of(context).textTheme.labelSmall,
+                          style: amountStyle,
                         ),
                       ],
                     ),

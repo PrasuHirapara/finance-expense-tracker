@@ -58,6 +58,13 @@ class AppSettingsRepository {
     await _commit(settings.copyWith(exportDirectoryPath: pathValue));
   }
 
+  Future<void> updateCloudSyncPreferences(
+    CloudSyncPreferences preferences,
+  ) async {
+    final settings = await getSettings();
+    await _commit(settings.copyWith(cloudSync: preferences));
+  }
+
   Future<void> flush() => _pendingWrite;
 
   Future<void> dispose() async {
@@ -86,6 +93,7 @@ class AppSettingsRepository {
       'themeMode': settings.themeMode.name,
       'notificationsEnabled': settings.notificationsEnabled,
       'exportDirectoryPath': settings.exportDirectoryPath,
+      'cloudSync': _cloudSyncToJson(settings.cloudSync),
     };
   }
 
@@ -102,6 +110,7 @@ class AppSettingsRepository {
       exportDirectoryPath: _exportDirectoryPathFromJson(
         json['exportDirectoryPath'],
       ),
+      cloudSync: _cloudSyncFromJson(json['cloudSync']),
     );
   }
 
@@ -119,5 +128,58 @@ class AppSettingsRepository {
 
   String? _exportDirectoryPathFromJson(Object? value) {
     return value is String && value.trim().isNotEmpty ? value : null;
+  }
+
+  Map<String, dynamic> _cloudSyncToJson(CloudSyncPreferences preferences) {
+    return <String, dynamic>{
+      'enabled': preferences.enabled,
+      'autoBackupEnabled': preferences.autoBackupEnabled,
+      'autoBackupHour': preferences.autoBackupHour,
+      'autoBackupMinute': preferences.autoBackupMinute,
+      'lastSuccessfulSyncAt': preferences.lastSuccessfulSyncAt
+          ?.toIso8601String(),
+      'lastAutoBackupAt': preferences.lastAutoBackupAt?.toIso8601String(),
+      'lastRestoreAt': preferences.lastRestoreAt?.toIso8601String(),
+      'lastSyncedAccountEmail': preferences.lastSyncedAccountEmail,
+      'lastKnownCloudBackupAt': preferences.lastKnownCloudBackupAt
+          ?.toIso8601String(),
+    };
+  }
+
+  CloudSyncPreferences _cloudSyncFromJson(Object? value) {
+    if (value is! Map) {
+      return const CloudSyncPreferences();
+    }
+
+    return CloudSyncPreferences(
+      enabled: value['enabled'] is bool ? value['enabled'] as bool : false,
+      autoBackupEnabled: value['autoBackupEnabled'] is bool
+          ? value['autoBackupEnabled'] as bool
+          : false,
+      autoBackupHour: _intFromJson(value['autoBackupHour'], fallback: 6),
+      autoBackupMinute: _intFromJson(value['autoBackupMinute']),
+      lastSuccessfulSyncAt: _dateTimeFromJson(value['lastSuccessfulSyncAt']),
+      lastAutoBackupAt: _dateTimeFromJson(value['lastAutoBackupAt']),
+      lastRestoreAt: _dateTimeFromJson(value['lastRestoreAt']),
+      lastSyncedAccountEmail: value['lastSyncedAccountEmail'] is String
+          ? (value['lastSyncedAccountEmail'] as String).trim().isEmpty
+                ? null
+                : value['lastSyncedAccountEmail'] as String
+          : null,
+      lastKnownCloudBackupAt: _dateTimeFromJson(
+        value['lastKnownCloudBackupAt'],
+      ),
+    );
+  }
+
+  int _intFromJson(Object? value, {int fallback = 0}) {
+    return value is int ? value : fallback;
+  }
+
+  DateTime? _dateTimeFromJson(Object? value) {
+    if (value is! String || value.trim().isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(value);
   }
 }

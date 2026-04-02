@@ -393,6 +393,9 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
         forceOverwrite = true;
       }
 
+      if (!context.mounted) {
+        return;
+      }
       final restored = await _restoreWithCredentialKeyHandling(
         context,
         forceOverwrite: forceOverwrite,
@@ -444,7 +447,11 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     required bool keyWasInvalid,
   }) async {
     final credentialService = context.read<CredentialService>();
+    final cloudSyncService = context.read<CloudSyncService>();
     final hasStoredKey = await credentialService.hasEncryptionKey();
+    if (!context.mounted) {
+      return false;
+    }
     final enteredKey = await showCredentialKeyEntryDialog(
       context,
       title: 'Credential Key Required',
@@ -478,7 +485,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     }
 
     await credentialService.configureEncryptionKey(enteredKey);
-    await context.read<CloudSyncService>().uploadDataToCloud(
+    await cloudSyncService.uploadDataToCloud(
       credentialEncryptionKey: enteredKey,
     );
     return true;
@@ -497,14 +504,21 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
       );
       return true;
     } on CloudCredentialEncryptionKeyRequiredException {
+      final requireConfirmation = !(await credentialService.hasEncryptionKey());
+      if (!context.mounted) {
+        return false;
+      }
       return _promptForCredentialKeyAndRestore(
         context,
         forceOverwrite: forceOverwrite,
-        requireConfirmation: !(await credentialService.hasEncryptionKey()),
+        requireConfirmation: requireConfirmation,
         reason:
             'Enter your credential encryption key to restore encrypted credential titles from Firestore.',
       );
     } on CloudCredentialEncryptionKeyInvalidException {
+      if (!context.mounted) {
+        return false;
+      }
       return _promptForCredentialKeyAndRestore(
         context,
         forceOverwrite: forceOverwrite,
@@ -521,6 +535,8 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     required bool requireConfirmation,
     required String reason,
   }) async {
+    final cloudSyncService = context.read<CloudSyncService>();
+    final credentialService = context.read<CredentialService>();
     final enteredKey = await showCredentialKeyEntryDialog(
       context,
       title: 'Credential Key Required',
@@ -533,11 +549,11 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
       return false;
     }
 
-    await context.read<CloudSyncService>().downloadDataFromCloud(
+    await cloudSyncService.downloadDataFromCloud(
       forceOverwrite: forceOverwrite,
       credentialEncryptionKey: enteredKey,
     );
-    await context.read<CredentialService>().configureEncryptionKey(enteredKey);
+    await credentialService.configureEncryptionKey(enteredKey);
     return true;
   }
 }

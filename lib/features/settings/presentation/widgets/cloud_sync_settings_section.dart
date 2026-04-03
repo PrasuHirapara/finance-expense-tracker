@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/models/app_preferences.dart';
 import '../../../../core/models/cloud_sync_models.dart';
@@ -12,9 +13,14 @@ import '../../../credentials/data/services/credential_service.dart';
 import '../../../credentials/presentation/widgets/credential_key_entry_dialog.dart';
 
 class CloudSyncSettingsSection extends StatefulWidget {
-  const CloudSyncSettingsSection({super.key, required this.preferences});
+  const CloudSyncSettingsSection({
+    super.key,
+    required this.preferences,
+    this.embedded = false,
+  });
 
   final AppPreferences preferences;
+  final bool embedded;
 
   @override
   State<CloudSyncSettingsSection> createState() =>
@@ -43,8 +49,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
             authService.isAvailable &&
             (hasFirebaseAccount || cloudSync.enabled);
 
-        return AppPanel(
-          child: Column(
+        final content = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Row(
@@ -62,7 +67,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
                           !authService.isAvailable
                               ? 'Firebase cloud backup is available on mobile builds configured with Firebase.'
                               : cloudSync.enabled
-                              ? 'Firebase cloud backup is enabled for Credential, Expense, and Task data.'
+                              ? 'Firebase cloud backup is enabled for your app data.'
                               : 'Enable cloud sync to upload backups and restore from Firestore.',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
@@ -101,6 +106,63 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.42,
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Backup Details',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 10),
+                    _InfoRow(
+                      label: 'Account',
+                      value: cloudSync.lastSyncedAccountEmail?.trim().isNotEmpty ==
+                              true
+                          ? cloudSync.lastSyncedAccountEmail!
+                          : hasFirebaseAccount
+                          ? snapshot.data?.email ?? 'Connected'
+                          : 'Not connected',
+                    ),
+                    const SizedBox(height: 8),
+                    _InfoRow(
+                      label: 'Backup Scope',
+                      value: cloudSync.syncCredentials
+                          ? 'All data'
+                          : 'Expense and Task data only',
+                    ),
+                    const SizedBox(height: 8),
+                    _InfoRow(
+                      label: 'Last Sync',
+                      value: _formatDateTime(cloudSync.lastSuccessfulSyncAt),
+                    ),
+                    const SizedBox(height: 8),
+                    _InfoRow(
+                      label: 'Last Auto Backup',
+                      value: _formatDateTime(cloudSync.lastAutoBackupAt),
+                    ),
+                    const SizedBox(height: 8),
+                    _InfoRow(
+                      label: 'Last Restore',
+                      value: _formatDateTime(cloudSync.lastRestoreAt),
+                    ),
+                    const SizedBox(height: 8),
+                    _InfoRow(
+                      label: 'Last Cloud Backup',
+                      value: _formatDateTime(cloudSync.lastKnownCloudBackupAt),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               Container(
@@ -230,20 +292,10 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                hasFirebaseAccount
-                    ? cloudSync.syncCredentials
-                        ? 'Credential titles are encrypted before upload, while local credential titles stay visible in the app so you can find the right entry quickly. Expense and Task backups are stored in your Firebase space for the signed-in account.'
-                        : 'Credential entries remain local-only and are preserved locally during cloud restore. Expense and Task backups are stored in your Firebase space for the signed-in account.'
-                    : 'You can keep using local storage without login. Sign in only when you want Firestore sync.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
             ],
-          ),
-        );
+          );
+
+        return widget.embedded ? content : AppPanel(child: content);
       },
     );
   }
@@ -482,17 +534,19 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     return localizations.formatTimeOfDay(time);
   }
 
+  String _formatDateTime(DateTime? value) {
+    if (value == null) {
+      return 'Not available';
+    }
+    return DateFormat('dd-MM-yyyy HH:mm').format(value.toLocal());
+  }
+
   String _statusSummary(CloudSyncPreferences preferences) {
-    final sync = preferences.lastSuccessfulSyncAt;
-    final restore = preferences.lastRestoreAt;
-    final account = preferences.lastSyncedAccountEmail;
     final parts = <String>[
-      'Credentials: ${preferences.syncCredentials ? 'Cloud Backup On' : 'Local Only'}',
-      if (sync != null) 'Last sync: ${sync.toLocal()}',
-      if (restore != null) 'Last restore: ${restore.toLocal()}',
-      if (account != null && account.isNotEmpty) 'Account: $account',
+      'Data: ${preferences.syncCredentials ? 'Full backup enabled' : 'App data backup without credentials'}',
+      preferences.autoBackupEnabled ? 'Auto backup on' : 'Auto backup off',
     ];
-    return parts.isEmpty ? 'No cloud activity yet.' : parts.join(' | ');
+    return parts.join(' | ');
   }
 
   Future<void> _toggleCredentialSync(BuildContext context, bool enabled) async {
@@ -670,5 +724,40 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     );
     await credentialService.configureEncryptionKey(enteredKey);
     return true;
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        SizedBox(
+          width: 120,
+          child: Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: theme.textTheme.bodyMedium,
+          ),
+        ),
+      ],
+    );
   }
 }

@@ -8,7 +8,7 @@ import 'app.dart';
 import 'core/services/cloud_sync_background.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+ WidgetsFlutterBinding.ensureInitialized();
   if (Platform.isAndroid || Platform.isIOS) {
     await Firebase.initializeApp();
   }

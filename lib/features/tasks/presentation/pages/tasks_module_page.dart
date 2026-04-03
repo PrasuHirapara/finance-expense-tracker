@@ -73,40 +73,20 @@ class TasksModulePage extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          Text(
+                            task.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
                             children: <Widget>[
-                              Expanded(
-                                child: Text(
-                                  task.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.titleMedium,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Flexible(
-                                child: SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  reverse: true,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: <Widget>[
-                                      _TaskBadge(label: task.category),
-                                      const SizedBox(width: 8),
-                                      _TaskBadge(
-                                        label: 'Priority ${task.priority}',
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _TaskBadge(
-                                        label: task.isDaily
-                                            ? 'Daily'
-                                            : 'Not Daily',
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                              _TaskBadge(label: task.category),
+                              _TaskBadge(label: 'Priority ${task.priority}'),
+                              if (task.isDaily) const _TaskBadge(label: 'Daily'),
                             ],
                           ),
                           if (task.description.trim().isNotEmpty) ...<Widget>[

@@ -49,45 +49,39 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
             children: <Widget>[
-              Text('Global Settings', style: theme.textTheme.headlineMedium),
-              const SizedBox(height: 8),
-              Text(
-                'User-related global settings, app preferences, and legal documents live here. Module-specific settings stay inside each module tab.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 18),
-              _buildSectionHeader(
-                theme,
-                title: 'User Settings',
-                subtitle:
-                    'Account and cloud backup controls for the signed-in user.',
-              ),
-              const SizedBox(height: 12),
-              _buildFirebaseAccountPanel(context, theme, authService),
-              const SizedBox(height: 18),
-              CloudSyncSettingsSection(preferences: preferences),
-              const SizedBox(height: 24),
-              _buildSectionHeader(
-                theme,
-                title: 'App Settings',
-                subtitle:
-                    'Appearance, notifications, storage, and device-wide behavior.',
-              ),
-              const SizedBox(height: 12),
               AppPanel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text('Appearance', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Theme and startup preferences for the full app.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                    Text('User Settings', style: theme.textTheme.titleLarge),
+                    const SizedBox(height: 16),
+                    _buildFirebaseAccountContent(context, theme, authService),
+                    const SizedBox(height: 18),
+                    CloudSyncSettingsSection(
+                      preferences: preferences,
+                      embedded: true,
+                    ),
+                    const SizedBox(height: 18),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FilledButton.tonalIcon(
+                        onPressed: () => _deleteAllData(context),
+                        style: FilledButton.styleFrom(
+                          foregroundColor: theme.colorScheme.error,
+                        ),
+                        icon: const Icon(Icons.delete_forever_rounded),
+                        label: const Text('Delete All Data'),
                       ),
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              AppPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('App Settings', style: theme.textTheme.titleLarge),
                     const SizedBox(height: 16),
                     Container(
                       width: double.infinity,
@@ -133,58 +127,44 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              AppPanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                'Notifications',
-                                style: theme.textTheme.titleLarge,
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                preferences.notificationsEnabled
-                                    ? 'Module reminders are enabled app-wide.'
-                                    : 'All daily reminders are paused for the app.',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.42),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  'Notifications',
+                                  style: theme.textTheme.titleMedium,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  preferences.notificationsEnabled
+                                      ? 'Module reminders are enabled app-wide.'
+                                      : 'All daily reminders are paused for the app.',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        Switch.adaptive(
-                          value: preferences.notificationsEnabled,
-                          onChanged: (value) {
-                            _updateNotifications(context, value);
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              AppPanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text('Storage', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Exports are stored locally in the app documents folder.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                          Switch.adaptive(
+                            value: preferences.notificationsEnabled,
+                            onChanged: (value) {
+                              _updateNotifications(context, value);
+                            },
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -207,8 +187,20 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
                               Text(
-                                'Export folder',
+                                'Storage',
                                 style: theme.textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Exports are stored locally in the app documents folder.',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Export folder',
+                                style: theme.textTheme.titleSmall,
                               ),
                               const SizedBox(height: 8),
                               SelectableText(
@@ -244,62 +236,32 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                 ),
               ),
               const SizedBox(height: 18),
-              _buildLegalPanel(context, theme),
-              const SizedBox(height: 24),
-              _buildSectionHeader(
-                theme,
-                title: 'Data Management',
-                subtitle: 'Destructive actions for app data and backups.',
-              ),
-              const SizedBox(height: 12),
               AppPanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text('Danger Zone', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Delete all Credential, Expense, and Task data. If Cloud Sync is enabled, the Firebase cloud backup for this account is also removed.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton.tonalIcon(
-                      onPressed: () => _deleteAllData(context),
-                      style: FilledButton.styleFrom(
-                        foregroundColor: theme.colorScheme.error,
-                      ),
-                      icon: const Icon(Icons.delete_forever_rounded),
-                      label: const Text('Delete All Data'),
-                    ),
-                  ],
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: const Text('Privacy & Legal'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () =>
+                      Navigator.of(context).pushNamed(AppRoutes.privacyPolicy),
+                ),
+              ),
+              const SizedBox(height: 18),
+              AppPanel(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.description_outlined),
+                  title: const Text('Terms & Conditions'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pushNamed(AppRoutes.termsAndConditions),
                 ),
               ),
             ],
           );
         },
       ),
-    );
-  }
-
-  Widget _buildSectionHeader(
-    ThemeData theme, {
-    required String title,
-    required String subtitle,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(title, style: theme.textTheme.titleLarge),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
     );
   }
 
@@ -396,131 +358,78 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
     }
   }
 
-  Widget _buildFirebaseAccountPanel(
+  Widget _buildFirebaseAccountContent(
     BuildContext context,
     ThemeData theme,
     FirebaseCloudSyncAuthService authService,
   ) {
-    return AppPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text('Firebase Account', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 6),
-          Text(
-            authService.isAvailable
-                ? 'Local storage works without login. Sign in only if you want Firestore backup and restore.'
-                : 'Firebase auth is available on mobile builds configured with Firebase.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text('Firebase Account', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.42,
             ),
+            borderRadius: BorderRadius.circular(18),
           ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(
-                alpha: 0.42,
-              ),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: StreamBuilder<FirebaseCloudSyncAccount?>(
-              stream: authService.authStateChanges(),
-              initialData: authService.currentAccount,
-              builder: (context, snapshot) {
-                final account = snapshot.data;
-                final providerLabel = _providerSummary(account);
+          child: StreamBuilder<FirebaseCloudSyncAccount?>(
+            stream: authService.authStateChanges(),
+            initialData: authService.currentAccount,
+            builder: (context, snapshot) {
+              final account = snapshot.data;
+              final providerLabel = _providerSummary(account);
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      account?.displayName?.trim().isNotEmpty == true
-                          ? account!.displayName!.trim()
-                          : account?.email ?? 'Not connected',
-                      style: theme.textTheme.titleMedium,
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    account?.displayName?.trim().isNotEmpty == true
+                        ? account!.displayName!.trim()
+                        : account?.email ?? 'Not connected',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    account?.email ?? 'No active Firebase session.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      account?.email ?? 'No active Firebase session.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    providerLabel,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (authService.isAvailable && account == null)
+                    FilledButton.icon(
+                      onPressed: () => _openFirebaseAuthPage(context),
+                      icon: const Icon(Icons.login_rounded),
+                      label: const Text('Login or Sign Up'),
+                    ),
+                  if (authService.isAvailable && account != null)
+                    FilledButton.tonalIcon(
+                      onPressed: _isSigningOut
+                          ? null
+                          : () => _signOutFirebaseAccount(context),
+                      icon: const Icon(Icons.logout_rounded),
+                      label: Text(
+                        _isSigningOut ? 'Signing Out...' : 'Sign Out',
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      providerLabel,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (authService.isAvailable && account == null)
-                      FilledButton.icon(
-                        onPressed: () => _openFirebaseAuthPage(context),
-                        icon: const Icon(Icons.login_rounded),
-                        label: const Text('Login or Register'),
-                      ),
-                    if (authService.isAvailable && account != null)
-                      FilledButton.tonalIcon(
-                        onPressed: _isSigningOut
-                            ? null
-                            : () => _signOutFirebaseAccount(context),
-                        icon: const Icon(Icons.logout_rounded),
-                        label: Text(
-                          _isSigningOut ? 'Signing Out...' : 'Sign Out',
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
+                ],
+              );
+            },
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegalPanel(BuildContext context, ThemeData theme) {
-    return AppPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text('Privacy & Legal', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 6),
-          Text(
-            'Review how the app stores data, how cloud sync works, and the terms for using the app.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.privacy_tip_outlined),
-            title: const Text('Privacy Policy'),
-            subtitle: const Text(
-              'See what data stays local, what can be synced, and your control options.',
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => Navigator.of(context).pushNamed(AppRoutes.privacyPolicy),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.description_outlined),
-            title: const Text('Terms & Conditions'),
-            subtitle: const Text(
-              'Read the app usage terms, responsibilities, and backup limitations.',
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => Navigator.of(context).pushNamed(
-              AppRoutes.termsAndConditions,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

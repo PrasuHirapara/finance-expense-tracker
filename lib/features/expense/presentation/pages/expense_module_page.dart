@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/extensions/date_time_x.dart';
@@ -21,6 +22,7 @@ class ExpenseModulePage extends StatefulWidget {
 
 class _ExpenseModulePageState extends State<ExpenseModulePage> {
   _ExpenseSummaryFilter _activeSummaryFilter = _ExpenseSummaryFilter.net;
+  final TextEditingController _searchController = TextEditingController();
   DateTime? _expandedDate;
 
   @override
@@ -28,6 +30,12 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
     super.initState();
     context.read<ExpenseBloc>().add(const ExpenseSubscriptionRequested());
     context.read<BankBloc>().add(const BanksSubscriptionRequested());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -49,6 +57,9 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
             final filteredEntries = dashboard.entries
                 .where(
                   (entry) => _matchesSummaryFilter(entry, _activeSummaryFilter),
+                )
+                .where(
+                  (entry) => _matchesSearchQuery(entry, _searchController.text),
                 )
                 .toList(growable: false);
             final groupedEntries = _groupEntries(filteredEntries);
@@ -224,6 +235,16 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                       ),
                     ),
                     const SizedBox(height: 18),
+                    TextField(
+                      controller: _searchController,
+                      decoration: const InputDecoration(
+                        labelText: 'Search expenses',
+                        hintText: 'Search by date, title, description, or amount',
+                        prefixIcon: Icon(Icons.search_rounded),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    const SizedBox(height: 18),
                     AppPanel(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,6 +334,30 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
       case _ExpenseSummaryFilter.borrowed:
         return entry.type == 'borrowed';
     }
+  }
+
+  bool _matchesSearchQuery(ExpenseRecord entry, String query) {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return true;
+    }
+
+    final searchDateFormat = DateFormat('dd-MM-yyyy');
+    final searchableValues = <String>[
+      entry.title,
+      entry.notes,
+      entry.category.name,
+      entry.paymentMode,
+      entry.type,
+      if (entry.counterparty != null) entry.counterparty!,
+      if (entry.bank != null) entry.bank!.name,
+      entry.amount.toStringAsFixed(2),
+      entry.amount.toString(),
+      AppConstants.shortDateFormat.format(entry.date),
+      searchDateFormat.format(entry.date),
+    ].map((value) => value.toLowerCase());
+
+    return searchableValues.any((value) => value.contains(normalizedQuery));
   }
 
   Map<DateTime, List<ExpenseRecord>> _groupEntries(

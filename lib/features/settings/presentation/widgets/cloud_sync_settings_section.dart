@@ -25,6 +25,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
   bool _isSyncing = false;
   bool _isRestoring = false;
   bool _isToggling = false;
+  bool _isUpdatingCredentialSync = false;
 
   @override
   Widget build(BuildContext context) {
@@ -111,6 +112,55 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
                   ),
                   borderRadius: BorderRadius.circular(18),
                 ),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Sync Credential Data',
+                            style: theme.textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            !hasFirebaseAccount
+                                ? 'Sign in to choose whether encrypted credential backups should be stored in Firestore.'
+                                : !cloudSync.enabled
+                                ? 'Turn on Cloud Sync first to choose whether credentials are included.'
+                                : cloudSync.syncCredentials
+                                ? 'Encrypted credential payloads and encrypted titles are included in your Firebase backup.'
+                                : 'Credentials stay local only. Any previous Firebase credential backup for this account will be deleted.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: cloudSync.syncCredentials,
+                      onChanged:
+                          !cloudSync.enabled ||
+                              _isUpdatingCredentialSync ||
+                              !authService.isAvailable ||
+                              !hasFirebaseAccount
+                          ? null
+                          : (value) => _toggleCredentialSync(context, value),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.42,
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
@@ -183,7 +233,9 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
               const SizedBox(height: 8),
               Text(
                 hasFirebaseAccount
-                    ? 'Credential titles, keys, and values stay encrypted before upload. Expense and Task backups are stored in your Firebase cloud space for the signed-in account.'
+                    ? cloudSync.syncCredentials
+                        ? 'Credential titles are encrypted before upload, while local credential titles stay visible in the app so you can find the right entry quickly. Expense and Task backups are stored in your Firebase space for the signed-in account.'
+                        : 'Credential entries remain local-only and are preserved locally during cloud restore. Expense and Task backups are stored in your Firebase space for the signed-in account.'
                     : 'You can keep using local storage without login. Sign in only when you want Firestore sync.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -435,11 +487,74 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     final restore = preferences.lastRestoreAt;
     final account = preferences.lastSyncedAccountEmail;
     final parts = <String>[
+      'Credentials: ${preferences.syncCredentials ? 'Cloud Backup On' : 'Local Only'}',
       if (sync != null) 'Last sync: ${sync.toLocal()}',
       if (restore != null) 'Last restore: ${restore.toLocal()}',
       if (account != null && account.isNotEmpty) 'Account: $account',
     ];
     return parts.isEmpty ? 'No cloud activity yet.' : parts.join(' | ');
+  }
+
+  Future<void> _toggleCredentialSync(BuildContext context, bool enabled) async {
+    if (!enabled) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Keep Credentials Local Only?'),
+          content: const Text(
+            'This keeps credential records on this device only and deletes any existing credential backup from Firebase for the signed-in account.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Disable Sync'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true || !context.mounted) {
+        return;
+      }
+    }
+
+    setState(() {
+      _isUpdatingCredentialSync = true;
+    });
+    try {
+      await context.read<CloudSyncService>().setCredentialSyncEnabled(enabled);
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            enabled
+                ? 'Credential cloud backup enabled. Your next sync will include encrypted credential data.'
+                : 'Credential cloud backup disabled. Existing Firebase credential backup deleted.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to update credential cloud backup: $error'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingCredentialSync = false;
+        });
+      }
+    }
   }
 
   Future<bool> _retrySyncWithCredentialKey(

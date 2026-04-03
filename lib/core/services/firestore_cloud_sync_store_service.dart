@@ -28,10 +28,14 @@ class FirestoreCloudSyncStoreService {
       ...bundle.manifest.toJson(),
       'updatedAt': timestamp,
     });
-    batch.set(collection.doc(_credentialDocId), <String, dynamic>{
-      'payload': bundle.credentialPayload,
-      'updatedAt': timestamp,
-    });
+    if (bundle.containsCredentialPayload) {
+      batch.set(collection.doc(_credentialDocId), <String, dynamic>{
+        'payload': bundle.credentialPayload,
+        'updatedAt': timestamp,
+      });
+    } else {
+      batch.delete(collection.doc(_credentialDocId));
+    }
     batch.set(collection.doc(_expenseDocId), <String, dynamic>{
       'payload': bundle.expensePayload,
       'updatedAt': timestamp,
@@ -65,19 +69,23 @@ class FirestoreCloudSyncStoreService {
     final taskData = taskSnapshot.data();
 
     if (!manifestSnapshot.exists ||
-        !credentialSnapshot.exists ||
         !expenseSnapshot.exists ||
         !taskSnapshot.exists ||
         manifestData == null ||
-        credentialData == null ||
         expenseData == null ||
         taskData == null) {
       return null;
     }
 
+    final hasCredentialPayload =
+        credentialSnapshot.exists && credentialData != null;
+
     return CloudBackupBundle(
       manifest: CloudSyncManifest.fromJson(_normalizeMap(manifestData)),
-      credentialPayload: credentialData['payload'] as String? ?? '',
+      credentialPayload: hasCredentialPayload
+          ? credentialData['payload'] as String? ?? ''
+          : _emptyCredentialPayload(),
+      containsCredentialPayload: hasCredentialPayload,
       expensePayload: expenseData['payload'] as String? ?? '',
       taskPayload: taskData['payload'] as String? ?? '',
     );
@@ -159,5 +167,9 @@ class FirestoreCloudSyncStoreService {
       }
       return MapEntry(key, value);
     });
+  }
+
+  String _emptyCredentialPayload() {
+    return '{"schemaVersion":0,"exportedAt":"","records":[]}';
   }
 }

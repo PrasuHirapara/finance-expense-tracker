@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/cloud_sync_service.dart';
 import '../../../../core/services/module_data_import_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
@@ -223,6 +224,9 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
   }
 
   Future<void> _changeEncryptionKey() async {
+    final credentialService = context.read<CredentialService>();
+    final settingsRepository = context.read<AppSettingsRepository>();
+    final cloudSyncService = context.read<CloudSyncService>();
     final oldKey = await showCredentialAuthenticationDialog(
       context,
       title: 'Authenticate',
@@ -240,10 +244,17 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
     }
 
     try {
-      await context.read<CredentialService>().rotateEncryptionKey(
+      await credentialService.rotateEncryptionKey(
         oldEncryptionKey: oldKey,
         newEncryptionKey: newKey,
       );
+
+      final settings = await settingsRepository.getSettings();
+      if (settings.cloudSync.enabled && settings.cloudSync.syncCredentials) {
+        await cloudSyncService.uploadDataToCloud(
+          credentialEncryptionKey: newKey,
+        );
+      }
     } catch (error) {
       if (!mounted) {
         return;
@@ -260,7 +271,11 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
 
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Encryption key updated.')));
+    ).showSnackBar(
+      const SnackBar(
+        content: Text('Encryption key updated. Cloud backup refreshed if enabled.'),
+      ),
+    );
     await _refresh();
   }
 

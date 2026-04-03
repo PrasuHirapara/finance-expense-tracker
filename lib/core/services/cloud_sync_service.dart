@@ -57,6 +57,22 @@ class CloudSyncService {
     }
   }
 
+  Future<void> setCredentialSyncEnabled(bool enabled) async {
+    final settings = await _appSettingsRepository.getSettings();
+    final current = settings.cloudSync;
+    if (current.syncCredentials == enabled) {
+      return;
+    }
+
+    if (!enabled && current.enabled) {
+      await deleteCloudData('Credential');
+    }
+
+    await _appSettingsRepository.updateCloudSyncPreferences(
+      current.copyWith(syncCredentials: enabled),
+    );
+  }
+
   Future<void> setAutoBackupEnabled(bool enabled) async {
     final settings = await _appSettingsRepository.getSettings();
     final nextCloudSync = settings.cloudSync.copyWith(
@@ -109,6 +125,7 @@ class CloudSyncService {
       credentialEncryptionKey:
           credentialEncryptionKey ??
           await _credentialSecurityService.readEncryptionKey(),
+      includeCredentialsInBundle: settings.cloudSync.syncCredentials,
     );
     await _remoteStoreService.uploadBundle(userId: account.uid, bundle: bundle);
 
@@ -173,12 +190,14 @@ class CloudSyncService {
         credentialEncryptionKey:
             credentialEncryptionKey ??
             await _credentialSecurityService.readEncryptionKey(),
+        restoreCredentials: bundle.containsCredentialPayload,
       );
     } catch (error) {
       await _payloadService.restoreBundle(
         credentialPayload: localRollback.credentialPayload,
         expensePayload: localRollback.expensePayload,
         taskPayload: localRollback.taskPayload,
+        restoreCredentials: true,
       );
       rethrow;
     }

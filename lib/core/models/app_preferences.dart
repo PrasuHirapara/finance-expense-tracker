@@ -5,6 +5,7 @@ enum AppModule { credential, expense, tasks, settings }
 class CloudSyncPreferences {
   const CloudSyncPreferences({
     this.enabled = false,
+    this.syncCredentials = true,
     this.autoBackupEnabled = false,
     this.autoBackupHour = 6,
     this.autoBackupMinute = 0,
@@ -16,6 +17,7 @@ class CloudSyncPreferences {
   });
 
   final bool enabled;
+  final bool syncCredentials;
   final bool autoBackupEnabled;
   final int autoBackupHour;
   final int autoBackupMinute;
@@ -27,6 +29,7 @@ class CloudSyncPreferences {
 
   CloudSyncPreferences copyWith({
     bool? enabled,
+    bool? syncCredentials,
     bool? autoBackupEnabled,
     int? autoBackupHour,
     int? autoBackupMinute,
@@ -38,6 +41,7 @@ class CloudSyncPreferences {
   }) {
     return CloudSyncPreferences(
       enabled: enabled ?? this.enabled,
+      syncCredentials: syncCredentials ?? this.syncCredentials,
       autoBackupEnabled: autoBackupEnabled ?? this.autoBackupEnabled,
       autoBackupHour: autoBackupHour ?? this.autoBackupHour,
       autoBackupMinute: autoBackupMinute ?? this.autoBackupMinute,

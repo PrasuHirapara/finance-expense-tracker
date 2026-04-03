@@ -11,6 +11,8 @@ import '../../features/expense/presentation/pages/expense_analytics_page.dart';
 import '../../features/expense/presentation/pages/expense_entry_page.dart';
 import '../../features/expense/presentation/pages/expense_entries_page.dart';
 import '../../features/expense/presentation/pages/expense_settings_page.dart';
+import '../../features/settings/presentation/pages/privacy_policy_page.dart';
+import '../../features/settings/presentation/pages/terms_conditions_page.dart';
 import '../../features/tasks/data/repositories/task_repository.dart';
 import '../../features/tasks/domain/models/task_models.dart';
 import '../../features/tasks/presentation/blocs/task_analytics/task_analytics_bloc.dart';
@@ -31,6 +33,8 @@ class AppRoutes {
   static const String taskAnalytics = '/tasks/analytics';
   static const String taskEditor = '/tasks/editor';
   static const String taskSettings = '/tasks/settings';
+  static const String privacyPolicy = '/settings/privacy-policy';
+  static const String termsAndConditions = '/settings/terms-and-conditions';
 }
 
 class TaskEditorArgs {
@@ -116,6 +120,14 @@ class AppRouter {
       case AppRoutes.taskSettings:
         return MaterialPageRoute<void>(
           builder: (context) => const TaskSettingsPage(),
+        );
+      case AppRoutes.privacyPolicy:
+        return MaterialPageRoute<void>(
+          builder: (context) => const PrivacyPolicyPage(),
+        );
+      case AppRoutes.termsAndConditions:
+        return MaterialPageRoute<void>(
+          builder: (context) => const TermsConditionsPage(),
         );
       default:
         return MaterialPageRoute<void>(

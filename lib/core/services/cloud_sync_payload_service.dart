@@ -26,6 +26,7 @@ class CloudSyncPayloadService {
     String? accountEmail,
     String? credentialEncryptionKey,
     bool encryptCredentialTitlesForCloud = true,
+    bool includeCredentialsInBundle = true,
   }) async {
     final timestamp = exportedAt ?? DateTime.now();
     final categories = await (_database.select(
@@ -45,7 +46,8 @@ class CloudSyncPayloadService {
     )..orderBy([(table) => OrderingTerm.asc(table.id)])).get();
     final taskCategories = await _taskCategoryRepository.getCategories();
 
-    if (encryptCredentialTitlesForCloud &&
+    if (includeCredentialsInBundle &&
+        encryptCredentialTitlesForCloud &&
         credentials.isNotEmpty &&
         (credentialEncryptionKey == null ||
             credentialEncryptionKey.trim().isEmpty)) {
@@ -54,7 +56,9 @@ class CloudSyncPayloadService {
       );
     }
 
-    if (encryptCredentialTitlesForCloud && credentials.isNotEmpty) {
+    if (includeCredentialsInBundle &&
+        encryptCredentialTitlesForCloud &&
+        credentials.isNotEmpty) {
       final firstCredential = credentials.first;
       try {
         await _credentialCryptoService.decryptFields(
@@ -76,35 +80,42 @@ class CloudSyncPayloadService {
       }
     }
 
-    final credentialRecords = await Future.wait(
-      credentials.map((item) async {
-        final map = <String, dynamic>{
-          'id': item.id,
-          'encryptedPayload': item.encryptedPayload,
-          'saltBase64': item.saltBase64,
-          'nonceBase64': item.nonceBase64,
-          'createdAt': item.createdAt.toIso8601String(),
-          'updatedAt': item.updatedAt.toIso8601String(),
-        };
+    final credentialRecords = includeCredentialsInBundle
+        ? await Future.wait(
+            credentials.map((item) async {
+              final map = <String, dynamic>{
+                'id': item.id,
+                'encryptedPayload': item.encryptedPayload,
+                'saltBase64': item.saltBase64,
+                'nonceBase64': item.nonceBase64,
+                'createdAt': item.createdAt.toIso8601String(),
+                'updatedAt': item.updatedAt.toIso8601String(),
+              };
 
-        if (encryptCredentialTitlesForCloud) {
-          final titlePayload = await _credentialCryptoService.encryptText(
-            plainText: item.title,
-            encryptionKey: credentialEncryptionKey!.trim(),
-          );
-          map['titleEncryptedPayload'] = titlePayload.encryptedPayload;
-          map['titleSaltBase64'] = titlePayload.saltBase64;
-          map['titleNonceBase64'] = titlePayload.nonceBase64;
-        } else {
-          map['title'] = item.title;
-        }
+              if (encryptCredentialTitlesForCloud) {
+                final titlePayload = await _credentialCryptoService.encryptText(
+                  plainText: item.title,
+                  encryptionKey: credentialEncryptionKey!.trim(),
+                );
+                map['titleEncryptedPayload'] = titlePayload.encryptedPayload;
+                map['titleSaltBase64'] = titlePayload.saltBase64;
+                map['titleNonceBase64'] = titlePayload.nonceBase64;
+              } else {
+                map['title'] = item.title;
+              }
 
-        return map;
-      }),
-    );
+              return map;
+            }),
+          )
+        : const <Map<String, dynamic>>[];
 
     final credentialJson = jsonEncode(<String, dynamic>{
-      'schemaVersion': encryptCredentialTitlesForCloud ? 2 : 1,
+      'schemaVersion':
+          includeCredentialsInBundle
+              ? encryptCredentialTitlesForCloud
+                    ? 2
+                    : 1
+              : 0,
       'exportedAt': timestamp.toIso8601String(),
       'records': credentialRecords,
     });
@@ -181,12 +192,15 @@ class CloudSyncPayloadService {
         localLatestAt: localLatestAt,
         accountEmail: accountEmail,
         domainCounts: <String, int>{
-          CloudSyncDomain.credential.folderName: credentials.length,
+          CloudSyncDomain.credential.folderName: includeCredentialsInBundle
+              ? credentials.length
+              : 0,
           CloudSyncDomain.expense.folderName: entries.length,
           CloudSyncDomain.task.folderName: tasks.length,
         },
       ),
       credentialPayload: credentialJson,
+      containsCredentialPayload: includeCredentialsInBundle,
       expensePayload: expenseJson,
       taskPayload: taskJson,
     );
@@ -228,10 +242,13 @@ class CloudSyncPayloadService {
     required String expensePayload,
     required String taskPayload,
     String? credentialEncryptionKey,
+    bool restoreCredentials = true,
   }) async {
     final expense = jsonDecode(expensePayload) as Map<String, dynamic>;
     final task = jsonDecode(taskPayload) as Map<String, dynamic>;
-    final credential = jsonDecode(credentialPayload) as Map<String, dynamic>;
+    final credential = restoreCredentials
+        ? jsonDecode(credentialPayload) as Map<String, dynamic>
+        : const <String, dynamic>{};
 
     final categories =
         (expense['categories'] as List<dynamic>? ?? const <dynamic>[])
@@ -250,40 +267,47 @@ class CloudSyncPayloadService {
     final tasks = (task['tasks'] as List<dynamic>? ?? const <dynamic>[])
         .whereType<Map<String, dynamic>>()
         .toList(growable: false);
-    final credentials =
-        (credential['records'] as List<dynamic>? ?? const <dynamic>[])
-            .whereType<Map<String, dynamic>>()
-            .toList(growable: false);
-    final credentialCompanions = await Future.wait(
-      credentials.map((item) async {
-        final title = await _restoreCredentialTitle(
-          item,
-          credentialEncryptionKey: credentialEncryptionKey,
-        );
-        return DbCredentialsCompanion(
-          id: Value(item['id'] as int),
-          title: Value(title),
-          encryptedPayload: Value(item['encryptedPayload'] as String? ?? ''),
-          saltBase64: Value(item['saltBase64'] as String? ?? ''),
-          nonceBase64: Value(item['nonceBase64'] as String? ?? ''),
-          createdAt: Value(
-            DateTime.tryParse(item['createdAt'] as String? ?? '') ??
-                DateTime.now(),
-          ),
-          updatedAt: Value(
-            DateTime.tryParse(item['updatedAt'] as String? ?? '') ??
-                DateTime.now(),
-          ),
-        );
-      }),
-    );
+    final credentials = restoreCredentials
+        ? (credential['records'] as List<dynamic>? ?? const <dynamic>[])
+              .whereType<Map<String, dynamic>>()
+              .toList(growable: false)
+        : const <Map<String, dynamic>>[];
+    final credentialCompanions = restoreCredentials
+        ? await Future.wait(
+            credentials.map((item) async {
+              final title = await _restoreCredentialTitle(
+                item,
+                credentialEncryptionKey: credentialEncryptionKey,
+              );
+              return DbCredentialsCompanion(
+                id: Value(item['id'] as int),
+                title: Value(title),
+                encryptedPayload: Value(
+                  item['encryptedPayload'] as String? ?? '',
+                ),
+                saltBase64: Value(item['saltBase64'] as String? ?? ''),
+                nonceBase64: Value(item['nonceBase64'] as String? ?? ''),
+                createdAt: Value(
+                  DateTime.tryParse(item['createdAt'] as String? ?? '') ??
+                      DateTime.now(),
+                ),
+                updatedAt: Value(
+                  DateTime.tryParse(item['updatedAt'] as String? ?? '') ??
+                      DateTime.now(),
+                ),
+              );
+            }),
+          )
+        : const <DbCredentialsCompanion>[];
 
     await _database.transaction(() async {
       await _database.delete(_database.dbFinanceEntries).go();
       await _database.delete(_database.dbBanks).go();
       await _database.delete(_database.dbCategories).go();
       await _database.delete(_database.dbTasks).go();
-      await _database.delete(_database.dbCredentials).go();
+      if (restoreCredentials) {
+        await _database.delete(_database.dbCredentials).go();
+      }
 
       if (categories.isNotEmpty) {
         await _database.batch((batch) {
@@ -388,7 +412,7 @@ class CloudSyncPayloadService {
         });
       }
 
-      if (credentials.isNotEmpty) {
+      if (restoreCredentials && credentials.isNotEmpty) {
         await _database.batch((batch) {
           batch.insertAll(_database.dbCredentials, credentialCompanions);
         });

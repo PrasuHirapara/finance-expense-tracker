@@ -133,6 +133,7 @@ class AppSettingsRepository {
   Map<String, dynamic> _cloudSyncToJson(CloudSyncPreferences preferences) {
     return <String, dynamic>{
       'enabled': preferences.enabled,
+      'syncCredentials': preferences.syncCredentials,
       'autoBackupEnabled': preferences.autoBackupEnabled,
       'autoBackupHour': preferences.autoBackupHour,
       'autoBackupMinute': preferences.autoBackupMinute,
@@ -153,6 +154,9 @@ class AppSettingsRepository {
 
     return CloudSyncPreferences(
       enabled: value['enabled'] is bool ? value['enabled'] as bool : false,
+      syncCredentials: value['syncCredentials'] is bool
+          ? value['syncCredentials'] as bool
+          : true,
       autoBackupEnabled: value['autoBackupEnabled'] is bool
           ? value['autoBackupEnabled'] as bool
           : false,

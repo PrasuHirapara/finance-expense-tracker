@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../../core/blocs/theme_cubit.dart';
 import '../../../../core/models/app_preferences.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/services/app_data_reset_service.dart';
 import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
@@ -48,17 +49,33 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
             children: <Widget>[
-              Text('Settings', style: theme.textTheme.headlineMedium),
+              Text('Global Settings', style: theme.textTheme.headlineMedium),
               const SizedBox(height: 8),
               Text(
-                'Global settings only includes app-wide preferences. Expense, credential, and task settings live inside their own tabs.',
+                'User-related global settings, app preferences, and legal documents live here. Module-specific settings stay inside each module tab.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 18),
+              _buildSectionHeader(
+                theme,
+                title: 'User Settings',
+                subtitle:
+                    'Account and cloud backup controls for the signed-in user.',
+              ),
+              const SizedBox(height: 12),
               _buildFirebaseAccountPanel(context, theme, authService),
               const SizedBox(height: 18),
+              CloudSyncSettingsSection(preferences: preferences),
+              const SizedBox(height: 24),
+              _buildSectionHeader(
+                theme,
+                title: 'App Settings',
+                subtitle:
+                    'Appearance, notifications, storage, and device-wide behavior.',
+              ),
+              const SizedBox(height: 12),
               AppPanel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,8 +244,14 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                 ),
               ),
               const SizedBox(height: 18),
-              CloudSyncSettingsSection(preferences: preferences),
-              const SizedBox(height: 18),
+              _buildLegalPanel(context, theme),
+              const SizedBox(height: 24),
+              _buildSectionHeader(
+                theme,
+                title: 'Data Management',
+                subtitle: 'Destructive actions for app data and backups.',
+              ),
+              const SizedBox(height: 12),
               AppPanel(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -257,6 +280,26 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(
+    ThemeData theme, {
+    required String title,
+    required String subtitle,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(title, style: theme.textTheme.titleLarge),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 
@@ -432,6 +475,48 @@ class _SettingsModulePageState extends State<SettingsModulePage> {
                   ],
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegalPanel(BuildContext context, ThemeData theme) {
+    return AppPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('Privacy & Legal', style: theme.textTheme.titleLarge),
+          const SizedBox(height: 6),
+          Text(
+            'Review how the app stores data, how cloud sync works, and the terms for using the app.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: const Text('Privacy Policy'),
+            subtitle: const Text(
+              'See what data stays local, what can be synced, and your control options.',
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => Navigator.of(context).pushNamed(AppRoutes.privacyPolicy),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.description_outlined),
+            title: const Text('Terms & Conditions'),
+            subtitle: const Text(
+              'Read the app usage terms, responsibilities, and backup limitations.',
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => Navigator.of(context).pushNamed(
+              AppRoutes.termsAndConditions,
             ),
           ),
         ],

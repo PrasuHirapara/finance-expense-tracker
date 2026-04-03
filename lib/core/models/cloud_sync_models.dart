@@ -173,12 +173,14 @@ class CloudBackupBundle extends Equatable {
   const CloudBackupBundle({
     required this.manifest,
     required this.credentialPayload,
+    required this.containsCredentialPayload,
     required this.expensePayload,
     required this.taskPayload,
   });
 
   final CloudSyncManifest manifest;
   final String credentialPayload;
+  final bool containsCredentialPayload;
   final String expensePayload;
   final String taskPayload;
 
@@ -186,6 +188,7 @@ class CloudBackupBundle extends Equatable {
   List<Object?> get props => <Object?>[
     manifest,
     credentialPayload,
+    containsCredentialPayload,
     expensePayload,
     taskPayload,
   ];

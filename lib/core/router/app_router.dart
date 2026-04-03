@@ -12,6 +12,7 @@ import '../../features/expense/presentation/pages/expense_entry_page.dart';
 import '../../features/expense/presentation/pages/expense_entries_page.dart';
 import '../../features/expense/presentation/pages/expense_settings_page.dart';
 import '../../features/settings/presentation/pages/privacy_policy_page.dart';
+import '../../features/settings/presentation/pages/settings_info_pages.dart';
 import '../../features/settings/presentation/pages/terms_conditions_page.dart';
 import '../../features/tasks/data/repositories/task_repository.dart';
 import '../../features/tasks/domain/models/task_models.dart';
@@ -33,6 +34,9 @@ class AppRoutes {
   static const String taskAnalytics = '/tasks/analytics';
   static const String taskEditor = '/tasks/editor';
   static const String taskSettings = '/tasks/settings';
+  static const String userSettingsInfo = '/settings/user-settings';
+  static const String appSettingsInfo = '/settings/app-settings';
+  static const String backupSettingsInfo = '/settings/backup-settings';
   static const String privacyPolicy = '/settings/privacy-policy';
   static const String termsAndConditions = '/settings/terms-and-conditions';
 }
@@ -120,6 +124,18 @@ class AppRouter {
       case AppRoutes.taskSettings:
         return MaterialPageRoute<void>(
           builder: (context) => const TaskSettingsPage(),
+        );
+      case AppRoutes.userSettingsInfo:
+        return MaterialPageRoute<void>(
+          builder: (context) => const UserSettingsInfoPage(),
+        );
+      case AppRoutes.appSettingsInfo:
+        return MaterialPageRoute<void>(
+          builder: (context) => const AppSettingsInfoPage(),
+        );
+      case AppRoutes.backupSettingsInfo:
+        return MaterialPageRoute<void>(
+          builder: (context) => const BackupSettingsInfoPage(),
         );
       case AppRoutes.privacyPolicy:
         return MaterialPageRoute<void>(

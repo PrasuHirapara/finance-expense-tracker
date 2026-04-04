@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../data/services/credential_service.dart';
 import '../../domain/models/credential_models.dart';
@@ -23,6 +24,7 @@ class CredentialEditorPage extends StatefulWidget {
 class _CredentialEditorPageState extends State<CredentialEditorPage> {
   late final TextEditingController _titleController;
   late final List<_FieldRowController> _fieldControllers;
+  DateTime? _expiryDate;
   bool _isSaving = false;
   bool _showValidation = false;
 
@@ -34,6 +36,7 @@ class _CredentialEditorPageState extends State<CredentialEditorPage> {
     _titleController = TextEditingController(
       text: widget.args.credential?.title ?? '',
     );
+    _expiryDate = widget.args.credential?.expiryDate;
     final existingFields = widget.args.credential?.fields ?? const <CredentialField>[];
     _fieldControllers = existingFields.isEmpty
         ? <_FieldRowController>[_FieldRowController.empty()]
@@ -78,6 +81,45 @@ class _CredentialEditorPageState extends State<CredentialEditorPage> {
                 setState(() {});
               }
             },
+          ),
+          const SizedBox(height: 16),
+          AppPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Credential Details',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: _pickExpiryDate,
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Expiry Date',
+                    ),
+                    child: Text(
+                      _expiryDate == null
+                          ? 'No expiry date'
+                          : AppConstants.shortDateFormat.format(_expiryDate!),
+                    ),
+                  ),
+                ),
+                if (_expiryDate != null)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _expiryDate = null;
+                        });
+                      },
+                      icon: const Icon(Icons.close_rounded),
+                      label: const Text('Clear expiry'),
+                    ),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           AppPanel(
@@ -136,7 +178,8 @@ class _CredentialEditorPageState extends State<CredentialEditorPage> {
               controller: row.keyController,
               decoration: InputDecoration(
                 labelText: 'Key',
-                errorText: hasValidationError ? 'Both key and value are required' : null,
+                errorText:
+                    hasValidationError ? 'Both key and value are required' : null,
               ),
               onChanged: (_) {
                 if (_showValidation) {
@@ -185,6 +228,23 @@ class _CredentialEditorPageState extends State<CredentialEditorPage> {
     });
   }
 
+  Future<void> _pickExpiryDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _expiryDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 3650)),
+    );
+
+    if (picked == null) {
+      return;
+    }
+
+    setState(() {
+      _expiryDate = picked;
+    });
+  }
+
   Future<void> _saveCredential() async {
     setState(() {
       _showValidation = true;
@@ -201,7 +261,11 @@ class _CredentialEditorPageState extends State<CredentialEditorPage> {
     });
 
     final service = context.read<CredentialService>();
-    final draft = CredentialDraft(title: title, fields: fields);
+    final draft = CredentialDraft(
+      title: title,
+      fields: fields,
+      expiryDate: _expiryDate,
+    );
 
     try {
       if (_isEditing) {
@@ -237,9 +301,7 @@ class _CredentialEditorPageState extends State<CredentialEditorPage> {
             value: row.valueController.text.trim(),
           ),
         )
-        .where(
-          (field) => field.keyLabel.isNotEmpty || field.value.isNotEmpty,
-        )
+        .where((field) => field.keyLabel.isNotEmpty || field.value.isNotEmpty)
         .toList(growable: false);
   }
 

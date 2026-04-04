@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:intl/intl.dart';
 
@@ -8,6 +10,8 @@ import '../../domain/models/task_models.dart';
 
 class TaskRepository {
   TaskRepository(this._database);
+
+  static const String _taskContentPrefix = '__task_content_v1__';
 
   final AppDatabase _database;
 
@@ -28,11 +32,11 @@ class TaskRepository {
         .map(
           (rows) => rows
               .map(
-                (row) => TaskItem(
+                (row) => _mapTaskItem(
                   id: row.id,
                   sourceTaskId: row.sourceTaskId,
                   title: row.title,
-                  description: row.description,
+                  rawDescription: row.description,
                   category: row.category,
                   date: row.taskDate,
                   priority: row.priority,
@@ -61,11 +65,11 @@ class TaskRepository {
 
     return rows
         .map(
-          (row) => TaskItem(
+          (row) => _mapTaskItem(
             id: row.id,
             sourceTaskId: row.sourceTaskId,
             title: row.title,
-            description: row.description,
+            rawDescription: row.description,
             category: row.category,
             date: row.taskDate,
             priority: row.priority,
@@ -82,7 +86,12 @@ class TaskRepository {
         .insert(
           DbTasksCompanion.insert(
             title: draft.title.trim(),
-            description: Value(draft.description.trim()),
+            description: Value(
+              _encodeTaskContent(
+                description: draft.description.trim(),
+                checklist: draft.checklist,
+              ),
+            ),
             category: draft.category.trim(),
             taskDate: draft.date.startOfDay,
             priority: Value(draft.priority),
@@ -98,7 +107,12 @@ class TaskRepository {
     )..where((table) => table.id.equals(id))).write(
       DbTasksCompanion(
         title: Value(draft.title.trim()),
-        description: Value(draft.description.trim()),
+        description: Value(
+          _encodeTaskContent(
+            description: draft.description.trim(),
+            checklist: draft.checklist,
+          ),
+        ),
         category: Value(draft.category.trim()),
         taskDate: Value(draft.date.startOfDay),
         priority: Value(draft.priority),
@@ -143,6 +157,48 @@ class TaskRepository {
     await (_database.update(_database.dbTasks)
           ..where((table) => table.id.equals(id)))
         .write(DbTasksCompanion(isCompleted: Value(isCompleted)));
+  }
+
+  Future<void> setChecklistItemCompletion({
+    required int taskId,
+    required int index,
+    required bool isCompleted,
+  }) async {
+    final row =
+        await (_database.select(_database.dbTasks)
+              ..where((table) => table.id.equals(taskId)))
+            .getSingleOrNull();
+    if (row == null) {
+      return;
+    }
+
+    final content = _decodeTaskContent(row.description);
+    if (index < 0 || index >= content.checklist.length) {
+      return;
+    }
+
+    final updatedChecklist = content.checklist
+        .asMap()
+        .entries
+        .map(
+          (entry) => entry.key == index
+              ? entry.value.copyWith(isCompleted: isCompleted)
+              : entry.value,
+        )
+        .toList(growable: false);
+
+    await (_database.update(_database.dbTasks)
+          ..where((table) => table.id.equals(taskId)))
+        .write(
+          DbTasksCompanion(
+            description: Value(
+              _encodeTaskContent(
+                description: content.description,
+                checklist: updatedChecklist,
+              ),
+            ),
+          ),
+        );
   }
 
   Future<void> ensureDailyTasksThroughDate(DateTime selectedDate) async {
@@ -347,6 +403,89 @@ class TaskRepository {
         .toList(growable: false);
   }
 
+  TaskItem _mapTaskItem({
+    required int id,
+    required int? sourceTaskId,
+    required String title,
+    required String rawDescription,
+    required String category,
+    required DateTime date,
+    required int priority,
+    required bool isDaily,
+    required bool isCompleted,
+  }) {
+    final content = _decodeTaskContent(rawDescription);
+    return TaskItem(
+      id: id,
+      sourceTaskId: sourceTaskId,
+      title: title,
+      description: content.description,
+      category: category,
+      date: date,
+      priority: priority,
+      isDaily: isDaily,
+      isCompleted: isCompleted,
+      checklist: content.checklist,
+    );
+  }
+
+  _TaskStoredContent _decodeTaskContent(String rawDescription) {
+    if (!rawDescription.startsWith(_taskContentPrefix)) {
+      return _TaskStoredContent(
+        description: rawDescription,
+        checklist: const <TaskChecklistItem>[],
+      );
+    }
+
+    try {
+      final payload = jsonDecode(rawDescription.substring(_taskContentPrefix.length))
+          as Map<String, dynamic>;
+      final description = payload['description'] as String? ?? '';
+      final checklist = (payload['checklist'] as List<dynamic>? ?? const <dynamic>[])
+          .whereType<Map>()
+          .map(
+            (item) => TaskChecklistItem.fromJson(
+              item.map((key, value) => MapEntry(key.toString(), value)),
+            ),
+          )
+          .where((item) => item.title.trim().isNotEmpty)
+          .toList(growable: false);
+      return _TaskStoredContent(
+        description: description,
+        checklist: checklist,
+      );
+    } catch (_) {
+      return _TaskStoredContent(
+        description: rawDescription,
+        checklist: const <TaskChecklistItem>[],
+      );
+    }
+  }
+
+  String _encodeTaskContent({
+    required String description,
+    required List<TaskChecklistItem> checklist,
+  }) {
+    final normalizedChecklist = checklist
+        .map(
+          (item) => TaskChecklistItem(
+            title: item.title.trim(),
+            isCompleted: item.isCompleted,
+          ),
+        )
+        .where((item) => item.title.isNotEmpty)
+        .toList(growable: false);
+
+    if (normalizedChecklist.isEmpty) {
+      return description;
+    }
+
+    return '$_taskContentPrefix${jsonEncode(<String, dynamic>{
+          'description': description,
+          'checklist': normalizedChecklist.map((item) => item.toJson()).toList(growable: false),
+        })}';
+  }
+
   _TaskDateRange _resolveRange(TaskAnalyticsWindow window, DateTime anchorDate) {
     switch (window) {
       case TaskAnalyticsWindow.weekly:
@@ -360,6 +499,16 @@ class TaskRepository {
         return _TaskDateRange(anchorDate.startOfYear, anchorDate.endOfYear);
     }
   }
+}
+
+class _TaskStoredContent {
+  const _TaskStoredContent({
+    required this.description,
+    required this.checklist,
+  });
+
+  final String description;
+  final List<TaskChecklistItem> checklist;
 }
 
 class _TaskDateRange {

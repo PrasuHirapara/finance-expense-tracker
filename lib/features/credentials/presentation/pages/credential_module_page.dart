@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/blocs/module_navigation_bloc.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/app_preferences.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../data/services/credential_service.dart';
 import '../../domain/models/credential_models.dart';
+import '../widgets/credential_auth_dialog.dart';
 import '../widgets/credential_key_setup_dialog.dart';
 import 'credential_detail_page.dart';
 import 'credential_settings_page.dart';
@@ -24,6 +26,9 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
   bool _checkingConfiguration = true;
   bool _hasPromptedOnFirstOpen = false;
   bool _isCheckingConfiguration = false;
+  bool _isLoadingInsights = false;
+  CredentialSecurityReport? _securityReport;
+  _CredentialInsightFilter? _selectedInsightFilter;
 
   @override
   void initState() {
@@ -114,6 +119,15 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
                 ),
               )
             else ...<Widget>[
+              _CredentialInsightsPanel(
+                report: _securityReport,
+                isLoading: _isLoadingInsights,
+                onUnlock: _unlockInsights,
+                onClose: _closeInsights,
+                selectedFilter: _selectedInsightFilter,
+                onFilterSelected: _handleInsightFilterSelected,
+              ),
+              const SizedBox(height: 18),
               TextField(
                 controller: _searchController,
                 decoration: const InputDecoration(
@@ -203,10 +217,14 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
       return;
     }
 
-    setState(() {
-      _isConfigured = configured;
-      _checkingConfiguration = false;
-    });
+      setState(() {
+        _isConfigured = configured;
+        _checkingConfiguration = false;
+        if (!configured) {
+          _securityReport = null;
+          _selectedInsightFilter = null;
+        }
+      });
 
     if (promptIfNeeded && !configured && mounted) {
       await _promptForFirstTimeSetup();
@@ -222,6 +240,65 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
       _isConfigured = configured == true;
       _checkingConfiguration = false;
     });
+  }
+
+  Future<void> _unlockInsights() async {
+    setState(() {
+      _isLoadingInsights = true;
+    });
+
+    try {
+      final encryptionKey = await showCredentialAuthenticationDialog(
+        context,
+        title: 'Unlock Security Insights',
+        reason: 'Authenticate to review reused passwords and expiry reminders.',
+      );
+      if (encryptionKey == null || !mounted) {
+        return;
+      }
+
+      final report = await context.read<CredentialService>().buildSecurityReport(
+        encryptionKey: encryptionKey,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _securityReport = report;
+        _selectedInsightFilter = _defaultInsightFilter(report);
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingInsights = false;
+        });
+      }
+    }
+  }
+
+  void _closeInsights() {
+    setState(() {
+      _securityReport = null;
+      _selectedInsightFilter = null;
+    });
+  }
+
+  void _handleInsightFilterSelected(_CredentialInsightFilter filter) {
+    setState(() {
+      _selectedInsightFilter = filter;
+    });
+  }
+
+  _CredentialInsightFilter _defaultInsightFilter(
+    CredentialSecurityReport report,
+  ) {
+    if (report.reusedPasswords.isNotEmpty) {
+      return _CredentialInsightFilter.reused;
+    }
+    if (report.expiredItems.isNotEmpty) {
+      return _CredentialInsightFilter.expired;
+    }
+    return _CredentialInsightFilter.dueSoon;
   }
 }
 
@@ -278,3 +355,230 @@ class _CredentialListCard extends StatelessWidget {
     );
   }
 }
+
+class _CredentialInsightsPanel extends StatelessWidget {
+  const _CredentialInsightsPanel({
+    required this.report,
+    required this.isLoading,
+    required this.onUnlock,
+    required this.onClose,
+    required this.selectedFilter,
+    required this.onFilterSelected,
+  });
+
+  final CredentialSecurityReport? report;
+  final bool isLoading;
+  final Future<void> Function() onUnlock;
+  final VoidCallback onClose;
+  final _CredentialInsightFilter? selectedFilter;
+  final ValueChanged<_CredentialInsightFilter> onFilterSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AppPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Security & Expiry Check',
+                      style: theme.textTheme.titleLarge,
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: isLoading
+                    ? null
+                    : () {
+                        if (report == null) {
+                          onUnlock();
+                        } else {
+                          onClose();
+                        }
+                      },
+                icon: isLoading
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        report == null
+                            ? Icons.shield_outlined
+                            : Icons.close_rounded,
+                      ),
+                label: Text(report == null ? 'Unlock' : 'Close'),
+              ),
+            ],
+          ),
+          if (report != null) ...<Widget>[
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: <Widget>[
+                _InsightChip(
+                  label: 'Reused',
+                  value: report!.reusedPasswords.length.toString(),
+                  isSelected: selectedFilter == _CredentialInsightFilter.reused,
+                  onTap: () => onFilterSelected(_CredentialInsightFilter.reused),
+                ),
+                _InsightChip(
+                  label: 'Expired',
+                  value: report!.expiredItems.length.toString(),
+                  isSelected: selectedFilter == _CredentialInsightFilter.expired,
+                  onTap: () => onFilterSelected(_CredentialInsightFilter.expired),
+                ),
+                _InsightChip(
+                  label: 'Due Soon',
+                  value: report!.expiringSoonItems.length.toString(),
+                  isSelected: selectedFilter == _CredentialInsightFilter.dueSoon,
+                  onTap: () => onFilterSelected(_CredentialInsightFilter.dueSoon),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildSection(
+              context,
+              title: _sectionTitle(selectedFilter),
+              items: _sectionItems(report!, selectedFilter),
+              emptyLabel: _emptyLabel(selectedFilter),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _sectionTitle(_CredentialInsightFilter? filter) {
+    return switch (filter) {
+      _CredentialInsightFilter.reused => 'Reused Passwords',
+      _CredentialInsightFilter.expired => 'Expired Items',
+      _CredentialInsightFilter.dueSoon => 'Due Soon',
+      null => 'Insights',
+    };
+  }
+
+  List<String> _sectionItems(
+    CredentialSecurityReport report,
+    _CredentialInsightFilter? filter,
+  ) {
+    return switch (filter) {
+      _CredentialInsightFilter.reused => report.reusedPasswords
+          .map((item) => '${item.credentialTitle} - ${item.fieldLabel}')
+          .toList(growable: false),
+      _CredentialInsightFilter.expired => report.expiredItems
+          .map(
+            (item) =>
+                '${item.credentialTitle} - expired ${AppConstants.shortDateFormat.format(item.expiryDate)}',
+          )
+          .toList(growable: false),
+      _CredentialInsightFilter.dueSoon => report.expiringSoonItems
+          .map(
+            (item) =>
+                '${item.credentialTitle} - due ${AppConstants.shortDateFormat.format(item.expiryDate)}',
+          )
+          .toList(growable: false),
+      null => const <String>[],
+    };
+  }
+
+  String _emptyLabel(_CredentialInsightFilter? filter) {
+    return switch (filter) {
+      _CredentialInsightFilter.reused => 'No reused passwords found.',
+      _CredentialInsightFilter.expired => 'No expired items found.',
+      _CredentialInsightFilter.dueSoon => 'No upcoming expiry items found.',
+      null => 'No insights available.',
+    };
+  }
+
+  Widget _buildSection(
+    BuildContext context, {
+    required String title,
+    required List<String> items,
+    required String emptyLabel,
+  }) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(title, style: theme.textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (items.isEmpty)
+          Text(
+            emptyLabel,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          )
+        else
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(item, style: theme.textTheme.bodyMedium),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _InsightChip extends StatelessWidget {
+  const _InsightChip({
+    required this.label,
+    required this.value,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final Color backgroundColor = isSelected
+        ? theme.colorScheme.primaryContainer
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.55);
+    final Color textColor = isSelected
+        ? theme.colorScheme.onPrimaryContainer
+        : theme.colorScheme.onSurfaceVariant;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(value, style: theme.textTheme.titleMedium),
+            Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: textColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+enum _CredentialInsightFilter { reused, expired, dueSoon }

@@ -404,6 +404,7 @@ class ModuleDataExportService {
               'Priority',
               'Daily',
               'Completed',
+              'Checklist',
               'Description',
             ],
             data: tasks
@@ -415,6 +416,7 @@ class ModuleDataExportService {
                     IndianNumberFormatter.formatFull(task.priority),
                     task.isDaily ? 'Yes' : 'No',
                     task.isCompleted ? 'Yes' : 'No',
+                    _formatTaskChecklist(task),
                     task.description.trim().isNotEmpty
                         ? task.description.trim()
                         : '-',
@@ -521,9 +523,10 @@ class ModuleDataExportService {
       TextCellValue('Priority'),
       TextCellValue('Daily'),
       TextCellValue('Completed'),
+      TextCellValue('Checklist'),
       TextCellValue('Description'),
     ]);
-    _applyRowStyle(tasksSheet, rowIndex: 0, columnCount: 7, style: headerStyle);
+    _applyRowStyle(tasksSheet, rowIndex: 0, columnCount: 8, style: headerStyle);
 
     for (final task in tasks) {
       final rowIndex = tasksSheet.maxRows;
@@ -534,6 +537,7 @@ class ModuleDataExportService {
         _numericCell(task.priority),
         TextCellValue(task.isDaily ? 'Yes' : 'No'),
         TextCellValue(task.isCompleted ? 'Yes' : 'No'),
+        TextCellValue(_formatTaskChecklist(task)),
         TextCellValue(task.description),
       ]);
       _applyCellStyle(
@@ -545,7 +549,7 @@ class ModuleDataExportService {
     }
 
     _setColumnWidths(summarySheet, <double>[26, 22]);
-    _setColumnWidths(tasksSheet, <double>[14, 26, 18, 12, 12, 14, 32]);
+    _setColumnWidths(tasksSheet, <double>[14, 26, 18, 12, 12, 14, 24, 32]);
 
     final bytes = excel.save();
     if (bytes == null) {
@@ -614,6 +618,7 @@ class ModuleDataExportService {
             cellStyle: const pw.TextStyle(fontSize: 8.5),
             headers: const <String>[
               'Title',
+              'Expiry',
               'Field',
               'Value',
               'Created',
@@ -623,6 +628,7 @@ class ModuleDataExportService {
                 .map(
                   (row) => <String>[
                     row.title,
+                    row.expiryLabel,
                     row.fieldLabel,
                     row.fieldValue,
                     AppConstants.shortDateFormat.format(row.createdAt),
@@ -702,6 +708,7 @@ class ModuleDataExportService {
 
     credentialsSheet.appendRow(<CellValue?>[
       TextCellValue('Title'),
+      TextCellValue('Expiry'),
       TextCellValue('Field'),
       TextCellValue('Value'),
       TextCellValue('Created'),
@@ -710,13 +717,14 @@ class ModuleDataExportService {
     _applyRowStyle(
       credentialsSheet,
       rowIndex: 0,
-      columnCount: 5,
+      columnCount: 6,
       style: headerStyle,
     );
 
     for (final row in rows) {
       credentialsSheet.appendRow(<CellValue?>[
         TextCellValue(row.title),
+        TextCellValue(row.expiryLabel),
         TextCellValue(row.fieldLabel),
         TextCellValue(row.fieldValue),
         TextCellValue(AppConstants.shortDateFormat.format(row.createdAt)),
@@ -725,7 +733,7 @@ class ModuleDataExportService {
     }
 
     _setColumnWidths(summarySheet, <double>[24, 18]);
-    _setColumnWidths(credentialsSheet, <double>[26, 22, 34, 16, 16]);
+    _setColumnWidths(credentialsSheet, <double>[26, 16, 22, 34, 16, 16]);
 
     final bytes = excel.save();
     if (bytes == null) {
@@ -851,6 +859,18 @@ class ModuleDataExportService {
     };
   }
 
+  String _formatTaskChecklist(TaskItem task) {
+    if (task.checklist.isEmpty) {
+      return '-';
+    }
+
+    return task.checklist
+        .map(
+          (item) => '${item.isCompleted ? '[x]' : '[ ]'} ${item.title}',
+        )
+        .join(' | ');
+  }
+
   List<_CredentialExportRow> _credentialRows(
     List<DecryptedCredential> credentials,
   ) {
@@ -860,6 +880,11 @@ class ModuleDataExportService {
               ? <_CredentialExportRow>[
                   _CredentialExportRow(
                     title: credential.title,
+                    expiryLabel: credential.expiryDate == null
+                        ? '-'
+                        : AppConstants.shortDateFormat.format(
+                            credential.expiryDate!,
+                          ),
                     fieldLabel: '-',
                     fieldValue: '-',
                     createdAt: credential.createdAt,
@@ -869,6 +894,11 @@ class ModuleDataExportService {
               : credential.fields.map(
                   (field) => _CredentialExportRow(
                     title: credential.title,
+                    expiryLabel: credential.expiryDate == null
+                        ? '-'
+                        : AppConstants.shortDateFormat.format(
+                            credential.expiryDate!,
+                          ),
                     fieldLabel: field.keyLabel,
                     fieldValue: field.value,
                     createdAt: credential.createdAt,
@@ -966,6 +996,7 @@ class _CredentialExportSummary {
 class _CredentialExportRow {
   const _CredentialExportRow({
     required this.title,
+    required this.expiryLabel,
     required this.fieldLabel,
     required this.fieldValue,
     required this.createdAt,
@@ -973,6 +1004,7 @@ class _CredentialExportRow {
   });
 
   final String title;
+  final String expiryLabel;
   final String fieldLabel;
   final String fieldValue;
   final DateTime createdAt;

@@ -20,6 +20,8 @@ class CloudSyncPayloadService {
        _taskCategoryRepository = taskCategoryRepository,
        _credentialCryptoService = credentialCryptoService;
 
+  static const String _credentialExpiryMetadataKey = '__meta_expiry__';
+
   final AppDatabase _database;
   final TaskRepository _taskRepository;
   final TaskCategoryRepository _taskCategoryRepository;
@@ -88,6 +90,10 @@ class CloudSyncPayloadService {
     final credentialRecords = includeCredentialsInBundle
         ? await Future.wait(
             credentials.map((item) async {
+              final expiryDate = await _extractCredentialExpiryDate(
+                item,
+                credentialEncryptionKey: credentialEncryptionKey,
+              );
               final map = <String, dynamic>{
                 'id': item.id,
                 'encryptedPayload': item.encryptedPayload,
@@ -95,6 +101,7 @@ class CloudSyncPayloadService {
                 'nonceBase64': item.nonceBase64,
                 'createdAt': item.createdAt.toIso8601String(),
                 'updatedAt': item.updatedAt.toIso8601String(),
+                'expiryDate': expiryDate?.toIso8601String(),
               };
 
               if (encryptCredentialTitlesForCloud) {
@@ -458,5 +465,38 @@ class CloudSyncPayloadService {
         'The provided credential encryption key could not decrypt the Firestore credential backup.',
       );
     }
+  }
+
+  Future<DateTime?> _extractCredentialExpiryDate(
+    DbCredential credential, {
+    String? credentialEncryptionKey,
+  }) async {
+    if (credentialEncryptionKey == null || credentialEncryptionKey.trim().isEmpty) {
+      return null;
+    }
+
+    try {
+      final fields = await _credentialCryptoService.decryptFields(
+        record: CredentialRecord(
+          id: credential.id,
+          title: credential.title,
+          encryptedPayload: credential.encryptedPayload,
+          saltBase64: credential.saltBase64,
+          nonceBase64: credential.nonceBase64,
+          createdAt: credential.createdAt,
+          updatedAt: credential.updatedAt,
+        ),
+        encryptionKey: credentialEncryptionKey.trim(),
+      );
+      for (final field in fields) {
+        if (field.keyLabel == _credentialExpiryMetadataKey) {
+          return DateTime.tryParse(field.value);
+        }
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
   }
 }

@@ -66,6 +66,18 @@ class _CredentialDetailPageState extends State<CredentialDetailPage> {
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: <Widget>[
+                          if (credential.expiryDate != null)
+                            _CredentialBadge(
+                              label:
+                                  'Expiry ${AppConstants.shortDateFormat.format(credential.expiryDate!)}',
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -255,5 +267,29 @@ class _CredentialDetailPageState extends State<CredentialDetailPage> {
       return;
     }
     Navigator.of(context).pop(true);
+  }
+}
+
+class _CredentialBadge extends StatelessWidget {
+  const _CredentialBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
   }
 }

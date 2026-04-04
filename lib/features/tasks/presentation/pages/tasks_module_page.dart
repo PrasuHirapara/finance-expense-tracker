@@ -87,6 +87,11 @@ class TasksModulePage extends StatelessWidget {
                               _TaskBadge(label: task.category),
                               _TaskBadge(label: 'Priority ${task.priority}'),
                               if (task.isDaily) const _TaskBadge(label: 'Daily'),
+                              if (task.checklist.isNotEmpty)
+                                _TaskBadge(
+                                  label:
+                                      '${task.completedChecklistCount}/${task.checklist.length} Done',
+                                ),
                             ],
                           ),
                           if (task.description.trim().isNotEmpty) ...<Widget>[
@@ -97,6 +102,38 @@ class TasksModulePage extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                          if (task.checklist.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 12),
+                            ...task.checklist.asMap().entries.map(
+                              (entry) => CheckboxListTile(
+                                value: entry.value.isCompleted,
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
+                                title: Text(
+                                  entry.value.title,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    decoration: entry.value.isCompleted
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                    color: entry.value.isCompleted
+                                        ? theme.colorScheme.onSurfaceVariant
+                                        : theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                onChanged: (value) {
+                                  context.read<TaskBloc>().add(
+                                    TaskChecklistItemCompletionChanged(
+                                      taskId: task.id,
+                                      index: entry.key,
+                                      isCompleted: value ?? false,
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ],

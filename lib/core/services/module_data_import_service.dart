@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:drift/drift.dart';
@@ -14,6 +15,7 @@ import '../../features/credentials/domain/models/credential_models.dart';
 import '../constants/app_constants.dart';
 import 'app_settings_repository.dart';
 import 'credential_crypto_service.dart';
+import 'notification_service.dart';
 
 class ModuleImportResult {
   const ModuleImportResult({
@@ -42,13 +44,18 @@ class ModuleDataImportService {
     required AppDatabase database,
     required AppSettingsRepository appSettingsRepository,
     required CredentialCryptoService credentialCryptoService,
+    required NotificationService notificationService,
   }) : _database = database,
        _appSettingsRepository = appSettingsRepository,
-       _credentialCryptoService = credentialCryptoService;
+       _credentialCryptoService = credentialCryptoService,
+       _notificationService = notificationService;
+
+  static const String _credentialExpiryMetadataKey = '__meta_expiry__';
 
   final AppDatabase _database;
   final AppSettingsRepository _appSettingsRepository;
   final CredentialCryptoService _credentialCryptoService;
+  final NotificationService _notificationService;
 
   Future<String> downloadExpenseSampleExcel() async {
     final file = await _buildOutputFile(
@@ -237,21 +244,27 @@ class ModuleDataImportService {
 
     credentialSheet.appendRow(<CellValue?>[
       TextCellValue('Title*'),
+      TextCellValue('Expiry Date'),
       TextCellValue('Field*'),
       TextCellValue('Value*'),
     ]);
     credentialSheet.appendRow(<CellValue?>[
       TextCellValue('GitHub'),
+      TextCellValue(
+        DateFormat(
+          'yyyy-MM-dd',
+        ).format(DateTime.now().add(const Duration(days: 30))),
+      ),
       TextCellValue('Username'),
       TextCellValue('demo_user'),
     ]);
     _applyRowStyle(
       credentialSheet,
       rowIndex: 0,
-      columnCount: 3,
+      columnCount: 4,
       style: headerStyle,
     );
-    _setColumnWidths(credentialSheet, <double>[26, 22, 32]);
+    _setColumnWidths(credentialSheet, <double>[26, 18, 22, 32]);
 
     referenceSheet.appendRow(<CellValue?>[
       TextCellValue('Rule'),
@@ -266,7 +279,13 @@ class ModuleDataImportService {
     referenceSheet.appendRow(<CellValue?>[
       TextCellValue('Required columns'),
       TextCellValue(
-        'Title, Field, and Value are all required for every non-empty row.',
+        'Title, Field, and Value are required for every non-empty row. Expiry Date is optional.',
+      ),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Expiry Date'),
+      TextCellValue(
+        'Optional. Use yyyy-MM-dd when possible. If the same Title appears on multiple rows, keep the same expiry date across those rows.',
       ),
     ]);
     referenceSheet.appendRow(<CellValue?>[
@@ -471,6 +490,12 @@ class ModuleDataImportService {
       headerRow: sheet.row(0),
       aliases: const <String, List<String>>{
         'title': <String>['title'],
+        'expiryDate': <String>[
+          'expiry date',
+          'expirydate',
+          'expiration date',
+          'expirationdate',
+        ],
         'field': <String>['field'],
         'value': <String>['value'],
       },
@@ -479,6 +504,7 @@ class ModuleDataImportService {
 
     final errors = <String>[];
     final groupedFields = <String, List<CredentialField>>{};
+    final groupedExpiryDates = <String, DateTime?>{};
     final titleByGroup = <String, String>{};
     var validatedRows = 0;
 
@@ -489,6 +515,8 @@ class ModuleDataImportService {
       }
 
       final title = _cellText(_cellAt(row, headerMap['title']));
+      final expiryCell = _cellAt(row, headerMap['expiryDate']);
+      final expiryText = _cellText(expiryCell);
       final field = _cellText(_cellAt(row, headerMap['field']));
       final value = _cellText(_cellAt(row, headerMap['value']));
       final rowErrors = <String>[];
@@ -502,6 +530,12 @@ class ModuleDataImportService {
       if (value.isEmpty) {
         rowErrors.add('Value is required.');
       }
+      final parsedExpiryDate = expiryText.isEmpty ? null : _parseDate(expiryCell);
+      if (expiryText.isNotEmpty && parsedExpiryDate == null) {
+        rowErrors.add(
+          'Expiry Date must be a valid Excel date or text date like yyyy-MM-dd.',
+        );
+      }
 
       if (rowErrors.isNotEmpty) {
         errors.add('Row ${rowIndex + 1}: ${rowErrors.join(' ')}');
@@ -514,6 +548,20 @@ class ModuleDataImportService {
         () => <CredentialField>[],
       );
       titleByGroup.putIfAbsent(groupKey, () => title);
+      final existingExpiryDate = groupedExpiryDates[groupKey];
+
+      if (parsedExpiryDate != null) {
+        if (existingExpiryDate != null &&
+            !_isSameDate(existingExpiryDate, parsedExpiryDate)) {
+          errors.add(
+            'Row ${rowIndex + 1}: Expiry Date does not match other rows for credential "$title".',
+          );
+          continue;
+        }
+        groupedExpiryDates[groupKey] = parsedExpiryDate;
+      } else {
+        groupedExpiryDates.putIfAbsent(groupKey, () => null);
+      }
 
       final hasDuplicateField = existingFields.any(
         (existingField) =>
@@ -549,6 +597,7 @@ class ModuleDataImportService {
           (entry) => CredentialDraft(
             title: titleByGroup[entry.key]!,
             fields: List<CredentialField>.from(entry.value),
+            expiryDate: groupedExpiryDates[entry.key],
           ),
         )
         .toList(growable: false);
@@ -556,7 +605,7 @@ class ModuleDataImportService {
     final payloads = <_PreparedCredentialImport>[];
     for (final draft in drafts) {
       final payload = await _credentialCryptoService.encryptFields(
-        fields: draft.fields,
+        fields: _withCredentialMetadataFields(draft),
         encryptionKey: encryptionKey.trim(),
       );
       payloads.add(_PreparedCredentialImport(draft: draft, payload: payload));
@@ -579,6 +628,10 @@ class ModuleDataImportService {
             );
       }
     });
+
+    try {
+      await _notificationService.syncCredentialExpiryNotifications();
+    } catch (_) {}
 
     return ModuleImportResult(
       savedItems: drafts.length,
@@ -1071,6 +1124,26 @@ class ModuleDataImportService {
     }
 
     return file;
+  }
+
+  List<CredentialField> _withCredentialMetadataFields(CredentialDraft draft) {
+    final fields = List<CredentialField>.from(draft.fields)
+      ..removeWhere((field) => field.keyLabel == _credentialExpiryMetadataKey);
+    if (draft.expiryDate != null) {
+      fields.add(
+        CredentialField(
+          keyLabel: _credentialExpiryMetadataKey,
+          value: draft.expiryDate!.toIso8601String(),
+        ),
+      );
+    }
+    return fields;
+  }
+
+  bool _isSameDate(DateTime left, DateTime right) {
+    return left.year == right.year &&
+        left.month == right.month &&
+        left.day == right.day;
   }
 }
 

@@ -11,6 +11,7 @@ import 'cloud_sync_scheduler.dart';
 import 'credential_security_service.dart';
 import 'firebase_cloud_sync_auth_service.dart';
 import 'firestore_cloud_sync_store_service.dart';
+import 'notification_service.dart';
 
 class CloudSyncService {
   CloudSyncService({
@@ -20,12 +21,14 @@ class CloudSyncService {
     required CloudSyncPayloadService payloadService,
     required CredentialSecurityService credentialSecurityService,
     required CloudSyncScheduler scheduler,
+    required NotificationService notificationService,
   }) : _appSettingsRepository = appSettingsRepository,
        _authService = authService,
        _remoteStoreService = remoteStoreService,
        _payloadService = payloadService,
        _credentialSecurityService = credentialSecurityService,
-       _scheduler = scheduler;
+       _scheduler = scheduler,
+       _notificationService = notificationService;
 
   final AppSettingsRepository _appSettingsRepository;
   final FirebaseCloudSyncAuthService _authService;
@@ -33,6 +36,7 @@ class CloudSyncService {
   final CloudSyncPayloadService _payloadService;
   final CredentialSecurityService _credentialSecurityService;
   final CloudSyncScheduler _scheduler;
+  final NotificationService _notificationService;
 
   Future<void> setCloudSyncEnabled(bool enabled) async {
     final settings = await _appSettingsRepository.getSettings();
@@ -208,6 +212,9 @@ class CloudSyncService {
         lastKnownCloudBackupAt: bundle.manifest.exportedAt,
       ),
     );
+    try {
+      await _notificationService.syncCredentialExpiryNotifications();
+    } catch (_) {}
   }
 
   Future<void> deleteCloudData(String folderName) async {

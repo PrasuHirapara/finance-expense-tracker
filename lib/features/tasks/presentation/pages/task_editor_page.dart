@@ -61,10 +61,7 @@ class TaskEditorPage extends StatelessWidget {
                     )
                     .toList(growable: false);
 
-                final priorityOptions = List<int>.generate(
-                  5,
-                  (index) => index + 1,
-                )
+                final priorityOptions = List<int>.generate(5, (index) => index + 1)
                     .map(
                       (priority) => AppSelectOption<int>(
                         value: priority,
@@ -150,6 +147,8 @@ class TaskEditorPage extends StatelessWidget {
                         TaskPriorityChanged(value),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    _ChecklistSection(state: state),
                     const SizedBox(height: 10),
                     SwitchListTile.adaptive(
                       value: state.isDaily,
@@ -191,6 +190,77 @@ class TaskEditorPage extends StatelessWidget {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _ChecklistSection extends StatelessWidget {
+  const _ChecklistSection({required this.state});
+
+  final TaskEditorState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.42,
+        ),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('Checklist', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          Text(
+            'Add subtasks for shopping, study, or work steps.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...state.checklist.asMap().entries.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: <Widget>[
+                  const Icon(Icons.checklist_rounded, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      initialValue: entry.value.title,
+                      decoration: InputDecoration(
+                        labelText: 'Checklist item ${entry.key + 1}',
+                      ),
+                      onChanged: (value) => context.read<TaskEditorBloc>().add(
+                        TaskChecklistItemChanged(
+                          index: entry.key,
+                          value: value,
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => context.read<TaskEditorBloc>().add(
+                      TaskChecklistItemRemoved(entry.key),
+                    ),
+                    icon: const Icon(Icons.delete_outline_rounded),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          FilledButton.tonalIcon(
+            onPressed: () => context.read<TaskEditorBloc>().add(
+              const TaskChecklistItemAdded(),
+            ),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add checklist item'),
+          ),
+        ],
       ),
     );
   }

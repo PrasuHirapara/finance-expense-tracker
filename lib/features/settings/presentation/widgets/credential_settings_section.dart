@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/cloud_sync_service.dart';
 import '../../../../core/services/module_data_import_service.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/download_result_snackbar.dart';
 import '../../../credentials/data/services/credential_service.dart';
@@ -24,6 +25,7 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
   bool _hasEncryptionKey = false;
   bool _biometricEnabled = false;
   bool _biometricAvailable = false;
+  bool _credentialExpiryNotificationEnabled = false;
   bool _isLoading = true;
   bool _isDownloadingSample = false;
   bool _isImporting = false;
@@ -78,15 +80,15 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
                                 'Biometric Unlock',
                                 style: theme.textTheme.titleMedium,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _biometricAvailable
-                                    ? 'Use fingerprint or face unlock to decrypt credentials after authentication.'
-                                    : 'Biometric authentication is not available on this device.',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
+                              if (!_biometricAvailable) ...<Widget>[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Biometric authentication is not available on this device.',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                         ),
@@ -95,6 +97,42 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
                           onChanged: !_biometricAvailable
                               ? null
                               : (value) => _toggleBiometric(value),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.42),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                'Expiry Notification',
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Notify 1 day before a saved credential expiry date.',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch.adaptive(
+                          value: _credentialExpiryNotificationEnabled,
+                          onChanged: _toggleCredentialExpiryNotification,
                         ),
                       ],
                     ),
@@ -132,7 +170,7 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          'Expected columns: Title, Field, Value',
+                          'Expected columns: Title, Expiry Date, Field, Value',
                           style: theme.textTheme.bodyMedium,
                         ),
                         const SizedBox(height: 12),
@@ -202,6 +240,7 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
     final hasEncryptionKey = await service.hasEncryptionKey();
     final biometricEnabled = await service.isBiometricUnlockEnabled();
     final biometricAvailable = await service.canUseBiometrics();
+    final settings = await context.read<AppSettingsRepository>().getSettings();
 
     if (!mounted) {
       return;
@@ -211,6 +250,8 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
       _hasEncryptionKey = hasEncryptionKey;
       _biometricEnabled = biometricEnabled;
       _biometricAvailable = biometricAvailable;
+      _credentialExpiryNotificationEnabled =
+          settings.credentialExpiryNotificationEnabled;
       _isLoading = false;
     });
   }
@@ -286,6 +327,23 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
     }
     setState(() {
       _biometricEnabled = enabled;
+    });
+  }
+
+  Future<void> _toggleCredentialExpiryNotification(bool enabled) async {
+    final settingsRepository = context.read<AppSettingsRepository>();
+    final notificationService = context.read<NotificationService>();
+    await settingsRepository.updateCredentialExpiryNotificationEnabled(enabled);
+    if (enabled) {
+      await notificationService.syncCredentialExpiryNotifications();
+    } else {
+      await notificationService.cancelCredentialExpiryNotifications();
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _credentialExpiryNotificationEnabled = enabled;
     });
   }
 

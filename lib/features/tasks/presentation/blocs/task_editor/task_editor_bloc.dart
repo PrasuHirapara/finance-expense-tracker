@@ -16,6 +16,7 @@ class TaskEditorState extends Equatable {
     this.priority = 3,
     this.isDaily = false,
     this.isCompleted = false,
+    this.checklist = const <TaskChecklistItem>[],
     this.showValidation = false,
     this.errorMessage,
   });
@@ -29,6 +30,7 @@ class TaskEditorState extends Equatable {
   final int priority;
   final bool isDaily;
   final bool isCompleted;
+  final List<TaskChecklistItem> checklist;
   final bool showValidation;
   final String? errorMessage;
 
@@ -44,6 +46,7 @@ class TaskEditorState extends Equatable {
     int? priority,
     bool? isDaily,
     bool? isCompleted,
+    List<TaskChecklistItem>? checklist,
     bool? showValidation,
     String? errorMessage,
   }) {
@@ -57,6 +60,7 @@ class TaskEditorState extends Equatable {
       priority: priority ?? this.priority,
       isDaily: isDaily ?? this.isDaily,
       isCompleted: isCompleted ?? this.isCompleted,
+      checklist: checklist ?? this.checklist,
       showValidation: showValidation ?? this.showValidation,
       errorMessage: errorMessage,
     );
@@ -73,6 +77,7 @@ class TaskEditorState extends Equatable {
     priority,
     isDaily,
     isCompleted,
+    checklist,
     showValidation,
     errorMessage,
   ];
@@ -146,6 +151,32 @@ class TaskCompletionStatusChanged extends TaskEditorEvent {
   List<Object?> get props => <Object?>[value];
 }
 
+class TaskChecklistItemAdded extends TaskEditorEvent {
+  const TaskChecklistItemAdded();
+}
+
+class TaskChecklistItemChanged extends TaskEditorEvent {
+  const TaskChecklistItemChanged({
+    required this.index,
+    required this.value,
+  });
+
+  final int index;
+  final String value;
+
+  @override
+  List<Object?> get props => <Object?>[index, value];
+}
+
+class TaskChecklistItemRemoved extends TaskEditorEvent {
+  const TaskChecklistItemRemoved(this.index);
+
+  final int index;
+
+  @override
+  List<Object?> get props => <Object?>[index];
+}
+
 class TaskSubmitted extends TaskEditorEvent {
   const TaskSubmitted();
 }
@@ -175,6 +206,9 @@ class TaskEditorBloc extends Bloc<TaskEditorEvent, TaskEditorState> {
     on<TaskCompletionStatusChanged>(
       (event, emit) => emit(state.copyWith(isCompleted: event.value)),
     );
+    on<TaskChecklistItemAdded>(_onChecklistItemAdded);
+    on<TaskChecklistItemChanged>(_onChecklistItemChanged);
+    on<TaskChecklistItemRemoved>(_onChecklistItemRemoved);
     on<TaskSubmitted>(_onSubmitted);
   }
 
@@ -205,8 +239,59 @@ class TaskEditorBloc extends Bloc<TaskEditorEvent, TaskEditorState> {
         priority: task.priority,
         isDaily: task.isDaily,
         isCompleted: task.isCompleted,
+        checklist: task.checklist,
       ),
     );
+  }
+
+  void _onChecklistItemAdded(
+    TaskChecklistItemAdded event,
+    Emitter<TaskEditorState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        checklist: <TaskChecklistItem>[
+          ...state.checklist,
+          const TaskChecklistItem(title: ''),
+        ],
+      ),
+    );
+  }
+
+  void _onChecklistItemChanged(
+    TaskChecklistItemChanged event,
+    Emitter<TaskEditorState> emit,
+  ) {
+    if (event.index < 0 || event.index >= state.checklist.length) {
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        checklist: state.checklist
+            .asMap()
+            .entries
+            .map(
+              (entry) => entry.key == event.index
+                  ? entry.value.copyWith(title: event.value)
+                  : entry.value,
+            )
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  void _onChecklistItemRemoved(
+    TaskChecklistItemRemoved event,
+    Emitter<TaskEditorState> emit,
+  ) {
+    if (event.index < 0 || event.index >= state.checklist.length) {
+      return;
+    }
+
+    final updatedChecklist = List<TaskChecklistItem>.from(state.checklist)
+      ..removeAt(event.index);
+    emit(state.copyWith(checklist: updatedChecklist));
   }
 
   Future<void> _onSubmitted(
@@ -234,6 +319,10 @@ class TaskEditorBloc extends Bloc<TaskEditorEvent, TaskEditorState> {
       priority: state.priority,
       isDaily: state.isDaily,
       isCompleted: state.isCompleted,
+      checklist: state.checklist
+          .map((item) => item.copyWith(title: item.title.trim()))
+          .where((item) => item.title.isNotEmpty)
+          .toList(growable: false),
     );
 
     try {

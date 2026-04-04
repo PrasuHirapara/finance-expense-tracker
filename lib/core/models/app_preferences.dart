@@ -70,24 +70,30 @@ class AppPreferences {
   const AppPreferences({
     this.themeMode = ThemeMode.dark,
     this.notificationsEnabled = true,
+    this.credentialExpiryNotificationEnabled = false,
     this.exportDirectoryPath,
     this.cloudSync = const CloudSyncPreferences(),
   });
 
   final ThemeMode themeMode;
   final bool notificationsEnabled;
+  final bool credentialExpiryNotificationEnabled;
   final String? exportDirectoryPath;
   final CloudSyncPreferences cloudSync;
 
   AppPreferences copyWith({
     ThemeMode? themeMode,
     bool? notificationsEnabled,
+    bool? credentialExpiryNotificationEnabled,
     Object? exportDirectoryPath = _appPreferenceUnset,
     CloudSyncPreferences? cloudSync,
   }) {
     return AppPreferences(
       themeMode: themeMode ?? this.themeMode,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      credentialExpiryNotificationEnabled:
+          credentialExpiryNotificationEnabled ??
+          this.credentialExpiryNotificationEnabled,
       exportDirectoryPath: identical(exportDirectoryPath, _appPreferenceUnset)
           ? this.exportDirectoryPath
           : exportDirectoryPath as String?,

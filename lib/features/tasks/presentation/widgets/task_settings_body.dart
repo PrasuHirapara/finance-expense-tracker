@@ -117,7 +117,7 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Manage task categories and defaults',
+                          'Manage task categories.',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -218,31 +218,6 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
                             ),
                           ),
                         ),
-                      const SizedBox(height: 10),
-                      AppPanel(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              'Task Defaults',
-                              style: theme.textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              '1 Low   2 Medium-low   3 Medium   4 Medium-high   5 High',
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Daily tasks automatically carry forward to the next day until completed.',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   );
                 },

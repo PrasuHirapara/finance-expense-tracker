@@ -82,10 +82,19 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _credentialRepository = CredentialRepository(_database);
     _credentialCryptoService = CredentialCryptoService();
     _credentialSecurityService = CredentialSecurityService();
+    _reminderSettingsRepository = ReminderSettingsRepository();
+    _notificationService = NotificationService(
+      reminderSettingsRepository: _reminderSettingsRepository,
+      appSettingsRepository: _appSettingsRepository,
+      credentialRepository: _credentialRepository,
+      credentialCryptoService: _credentialCryptoService,
+      credentialSecurityService: _credentialSecurityService,
+    );
     _credentialService = CredentialService(
       repository: _credentialRepository,
       cryptoService: _credentialCryptoService,
       securityService: _credentialSecurityService,
+      notificationService: _notificationService,
     );
     _financeRepository = FinanceRepositoryImpl(
       database: _database,
@@ -97,8 +106,6 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     );
     _taskRepository = TaskRepository(_database);
     _taskCategoryRepository = TaskCategoryRepository(_taskRepository);
-    _reminderSettingsRepository = ReminderSettingsRepository();
-    _notificationService = NotificationService(_reminderSettingsRepository);
     _cloudSyncScheduler = CloudSyncScheduler();
     _firebaseCloudSyncAuthService = FirebaseCloudSyncAuthService();
     _firestoreCloudSyncStoreService = FirestoreCloudSyncStoreService();
@@ -108,6 +115,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
       database: _database,
       appSettingsRepository: _appSettingsRepository,
       credentialCryptoService: _credentialCryptoService,
+      notificationService: _notificationService,
     );
     _cloudSyncService = CloudSyncService(
       appSettingsRepository: _appSettingsRepository,
@@ -121,6 +129,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
       ),
       credentialSecurityService: _credentialSecurityService,
       scheduler: _cloudSyncScheduler,
+      notificationService: _notificationService,
     );
     _appDataResetService = AppDataResetService(
       credentialService: _credentialService,

@@ -53,6 +53,13 @@ class AppSettingsRepository {
     await _commit(settings.copyWith(notificationsEnabled: enabled));
   }
 
+  Future<void> updateCredentialExpiryNotificationEnabled(bool enabled) async {
+    final settings = await getSettings();
+    await _commit(
+      settings.copyWith(credentialExpiryNotificationEnabled: enabled),
+    );
+  }
+
   Future<void> updateExportDirectoryPath(String? pathValue) async {
     final settings = await getSettings();
     await _commit(settings.copyWith(exportDirectoryPath: pathValue));
@@ -92,6 +99,8 @@ class AppSettingsRepository {
     return <String, dynamic>{
       'themeMode': settings.themeMode.name,
       'notificationsEnabled': settings.notificationsEnabled,
+      'credentialExpiryNotificationEnabled':
+          settings.credentialExpiryNotificationEnabled,
       'exportDirectoryPath': settings.exportDirectoryPath,
       'cloudSync': _cloudSyncToJson(settings.cloudSync),
     };
@@ -107,6 +116,10 @@ class AppSettingsRepository {
       notificationsEnabled: _notificationsEnabledFromJson(
         json['notificationsEnabled'],
       ),
+      credentialExpiryNotificationEnabled:
+          json['credentialExpiryNotificationEnabled'] is bool
+          ? json['credentialExpiryNotificationEnabled'] as bool
+          : false,
       exportDirectoryPath: _exportDirectoryPathFromJson(
         json['exportDirectoryPath'],
       ),

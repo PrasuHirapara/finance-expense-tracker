@@ -15,6 +15,41 @@ extension TaskAnalyticsWindowX on TaskAnalyticsWindow {
   }
 }
 
+class TaskChecklistItem extends Equatable {
+  const TaskChecklistItem({
+    required this.title,
+    this.isCompleted = false,
+  });
+
+  final String title;
+  final bool isCompleted;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'title': title,
+    'isCompleted': isCompleted,
+  };
+
+  factory TaskChecklistItem.fromJson(Map<String, dynamic> json) {
+    return TaskChecklistItem(
+      title: json['title'] as String? ?? '',
+      isCompleted: json['isCompleted'] as bool? ?? false,
+    );
+  }
+
+  TaskChecklistItem copyWith({
+    String? title,
+    bool? isCompleted,
+  }) {
+    return TaskChecklistItem(
+      title: title ?? this.title,
+      isCompleted: isCompleted ?? this.isCompleted,
+    );
+  }
+
+  @override
+  List<Object?> get props => <Object?>[title, isCompleted];
+}
+
 class TaskItem extends Equatable {
   const TaskItem({
     required this.id,
@@ -25,6 +60,7 @@ class TaskItem extends Equatable {
     required this.priority,
     required this.isDaily,
     required this.isCompleted,
+    this.checklist = const <TaskChecklistItem>[],
     this.sourceTaskId,
   });
 
@@ -37,6 +73,10 @@ class TaskItem extends Equatable {
   final int priority;
   final bool isDaily;
   final bool isCompleted;
+  final List<TaskChecklistItem> checklist;
+
+  int get completedChecklistCount =>
+      checklist.where((item) => item.isCompleted).length;
 
   @override
   List<Object?> get props => <Object?>[
@@ -49,6 +89,7 @@ class TaskItem extends Equatable {
     priority,
     isDaily,
     isCompleted,
+    checklist,
   ];
 }
 
@@ -61,6 +102,7 @@ class TaskDraft extends Equatable {
     required this.priority,
     required this.isDaily,
     required this.isCompleted,
+    this.checklist = const <TaskChecklistItem>[],
   });
 
   final String title;
@@ -70,6 +112,7 @@ class TaskDraft extends Equatable {
   final int priority;
   final bool isDaily;
   final bool isCompleted;
+  final List<TaskChecklistItem> checklist;
 
   @override
   List<Object?> get props => <Object?>[
@@ -80,6 +123,7 @@ class TaskDraft extends Equatable {
     priority,
     isDaily,
     isCompleted,
+    checklist,
   ];
 }
 

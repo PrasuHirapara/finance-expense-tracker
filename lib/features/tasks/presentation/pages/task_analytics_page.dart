@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../domain/entities/analytics_models.dart';
 import '../../../../presentation/widgets/charts/trend_line_chart.dart';
 import '../../../../shared/widgets/app_panel.dart';
-import '../../../../shared/widgets/metric_tile.dart';
 import '../../domain/models/task_models.dart';
 import '../blocs/task_analytics/task_analytics_bloc.dart';
 
@@ -60,51 +59,37 @@ class TaskAnalyticsPage extends StatelessWidget {
                   crossAxisCount: MediaQuery.of(context).size.width >= 1100
                       ? 4
                       : 2,
-                  childAspectRatio: 1.35,
+                  childAspectRatio: 1.6,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
                   children: <Widget>[
-                    MetricTile(
+                    _TaskStatCard(
                       label: 'Completed',
                       value: analytics.completedCount.toString(),
                       icon: Icons.check_circle_rounded,
                       color: const Color(0xFF1F8B4C),
                     ),
-                    MetricTile(
+                    _TaskStatCard(
                       label: 'Pending',
                       value: analytics.pendingCount.toString(),
                       icon: Icons.pending_actions_rounded,
                       color: const Color(0xFFC0392B),
                     ),
-                    MetricTile(
+                    _TaskStatCard(
                       label: 'Daily Streak',
                       value: analytics.dailyTaskStreak.toString(),
                       icon: Icons.bolt_rounded,
                       color: const Color(0xFF2E86DE),
                     ),
-                    MetricTile(
+                    _TaskStatCard(
                       label: 'Categories',
                       value: analytics.categoryBreakdown.length.toString(),
                       icon: Icons.category_rounded,
                       color: const Color(0xFF8E44AD),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                AppPanel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'Priority Distribution',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(_prioritySummary(analytics)),
-                    ],
-                  ),
                 ),
                 const SizedBox(height: 16),
                 AppPanel(
@@ -181,6 +166,20 @@ class TaskAnalyticsPage extends StatelessWidget {
                             );
                           },
                         ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                AppPanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Priority Distribution',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(_prioritySummary(analytics)),
                     ],
                   ),
                 ),
@@ -314,6 +313,19 @@ class TaskAnalyticsPage extends StatelessWidget {
       );
     }
 
+    if (analytics.window == TaskAnalyticsWindow.weekly) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            point.label,
+            textAlign: TextAlign.center,
+            style: textTheme.bodySmall,
+          ),
+        ],
+      );
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
@@ -380,5 +392,56 @@ class TaskAnalyticsPage extends StatelessWidget {
         return 'Sun';
     }
     return '';
+  }
+}
+
+class _TaskStatCard extends StatelessWidget {
+  const _TaskStatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AppPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(icon, color: color),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

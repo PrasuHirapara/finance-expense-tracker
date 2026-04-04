@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../../data/database/app_database.dart';
+import '../../features/credentials/data/repositories/credential_repository.dart';
 import '../../features/tasks/data/repositories/task_category_repository.dart';
 import '../../features/tasks/data/repositories/task_repository.dart';
 import 'app_settings_repository.dart';
@@ -15,6 +16,8 @@ import 'credential_crypto_service.dart';
 import 'credential_security_service.dart';
 import 'firebase_cloud_sync_auth_service.dart';
 import 'firestore_cloud_sync_store_service.dart';
+import 'notification_service.dart';
+import 'reminder_settings_repository.dart';
 
 @pragma('vm:entry-point')
 void cloudSyncCallbackDispatcher() {
@@ -29,8 +32,18 @@ void cloudSyncCallbackDispatcher() {
 
     final database = AppDatabase();
     final appSettingsRepository = AppSettingsRepository();
+    final credentialRepository = CredentialRepository(database);
+    final credentialCryptoService = CredentialCryptoService();
+    final credentialSecurityService = CredentialSecurityService();
     final taskRepository = TaskRepository(database);
     final taskCategoryRepository = TaskCategoryRepository(taskRepository);
+    final notificationService = NotificationService(
+      reminderSettingsRepository: ReminderSettingsRepository(),
+      appSettingsRepository: appSettingsRepository,
+      credentialRepository: credentialRepository,
+      credentialCryptoService: credentialCryptoService,
+      credentialSecurityService: credentialSecurityService,
+    );
     final cloudSyncService = CloudSyncService(
       appSettingsRepository: appSettingsRepository,
       authService: FirebaseCloudSyncAuthService(),
@@ -39,10 +52,11 @@ void cloudSyncCallbackDispatcher() {
         database: database,
         taskRepository: taskRepository,
         taskCategoryRepository: taskCategoryRepository,
-        credentialCryptoService: CredentialCryptoService(),
+        credentialCryptoService: credentialCryptoService,
       ),
-      credentialSecurityService: CredentialSecurityService(),
+      credentialSecurityService: credentialSecurityService,
       scheduler: CloudSyncScheduler(),
+      notificationService: notificationService,
     );
 
     try {

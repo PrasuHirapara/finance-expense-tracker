@@ -83,6 +83,21 @@ class TaskDeleted extends TaskEvent {
   List<Object?> get props => <Object?>[id];
 }
 
+class TaskChecklistItemCompletionChanged extends TaskEvent {
+  const TaskChecklistItemCompletionChanged({
+    required this.taskId,
+    required this.index,
+    required this.isCompleted,
+  });
+
+  final int taskId;
+  final int index;
+  final bool isCompleted;
+
+  @override
+  List<Object?> get props => <Object?>[taskId, index, isCompleted];
+}
+
 class _TasksUpdated extends TaskEvent {
   const _TasksUpdated(this.tasks);
 
@@ -98,6 +113,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     on<TasksDateSelected>(_onDateSelected);
     on<TaskCompletionChanged>(_onCompletionChanged);
     on<TaskDeleted>(_onDeleted);
+    on<TaskChecklistItemCompletionChanged>(_onChecklistItemCompletionChanged);
     on<_TasksUpdated>(_onTasksUpdated);
   }
 
@@ -135,6 +151,17 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   Future<void> _onDeleted(TaskDeleted event, Emitter<TaskState> emit) async {
     await _repository.deleteTask(event.id);
+  }
+
+  Future<void> _onChecklistItemCompletionChanged(
+    TaskChecklistItemCompletionChanged event,
+    Emitter<TaskState> emit,
+  ) async {
+    await _repository.setChecklistItemCompletion(
+      taskId: event.taskId,
+      index: event.index,
+      isCompleted: event.isCompleted,
+    );
   }
 
   void _onTasksUpdated(_TasksUpdated event, Emitter<TaskState> emit) {

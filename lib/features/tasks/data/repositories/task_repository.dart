@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/extensions/date_time_x.dart';
 import '../../../../data/database/app_database.dart';
 import '../../domain/models/task_models.dart';
@@ -11,7 +12,7 @@ class TaskRepository {
   final AppDatabase _database;
 
   Stream<List<TaskItem>> watchTasksForDate(DateTime date) async* {
-    await ensureDailyTasksForDate(date);
+    await ensureDailyTasksThroughDate(date);
     yield* (_database.select(_database.dbTasks)
           ..where(
             (table) =>
@@ -44,7 +45,7 @@ class TaskRepository {
   }
 
   Future<List<TaskItem>> loadTasksBetween(DateTime start, DateTime end) async {
-    await ensureDailyTasksForDate(end);
+    await ensureDailyTasksThroughDate(end);
     final rows =
         await (_database.select(_database.dbTasks)..where(
               (table) =>
@@ -144,6 +145,10 @@ class TaskRepository {
         .write(DbTasksCompanion(isCompleted: Value(isCompleted)));
   }
 
+  Future<void> ensureDailyTasksThroughDate(DateTime selectedDate) async {
+    await ensureDailyTasksForDate(selectedDate);
+  }
+
   Future<void> ensureDailyTasksForDate(DateTime selectedDate) async {
     final targetDate = selectedDate.startOfDay;
     final previousDate = targetDate
@@ -176,7 +181,6 @@ class TaskRepository {
         .toSet();
 
     final clones = <DbTasksCompanion>[];
-
     for (final task in previousDailyTasks) {
       final sourceId = task.sourceTaskId ?? task.id;
       if (existingSources.contains(sourceId)) {
@@ -203,19 +207,30 @@ class TaskRepository {
     }
   }
 
-  Future<TaskAnalyticsData> loadAnalytics(DateTime focusDate) async {
-    await ensureDailyTasksForDate(focusDate);
+  Future<TaskAnalyticsData> loadAnalytics({
+    required DateTime focusDate,
+    required TaskAnalyticsWindow window,
+  }) async {
+    await ensureDailyTasksThroughDate(focusDate);
     final tasks = await (_database.select(
       _database.dbTasks,
     )..orderBy([(table) => OrderingTerm.desc(table.taskDate)])).get();
+    final range = _resolveRange(window, focusDate);
+    final tasksInRange = tasks
+        .where(
+          (task) =>
+              !task.taskDate.isBefore(range.start) &&
+              !task.taskDate.isAfter(range.end),
+        )
+        .toList(growable: false);
 
-    final completedCount = tasks.where((task) => task.isCompleted).length;
-    final pendingCount = tasks.length - completedCount;
+    final completedCount = tasksInRange.where((task) => task.isCompleted).length;
+    final pendingCount = tasksInRange.length - completedCount;
 
     final priorityMap = <int, int>{for (var i = 1; i <= 5; i++) i: 0};
     final categoryMap = <String, int>{};
 
-    for (final task in tasks) {
+    for (final task in tasksInRange) {
       priorityMap.update(task.priority, (value) => value + 1);
       categoryMap.update(
         task.category,
@@ -225,6 +240,9 @@ class TaskRepository {
     }
 
     return TaskAnalyticsData(
+      window: window,
+      rangeStart: range.start,
+      rangeEnd: range.end,
       completedCount: completedCount,
       pendingCount: pendingCount,
       dailyTaskStreak: _calculateDailyTaskStreak(tasks, focusDate),
@@ -242,7 +260,11 @@ class TaskRepository {
               )
               .toList(growable: false)
             ..sort((a, b) => b.count.compareTo(a.count)),
-      consistencyTrend: _buildConsistencyTrend(tasks, focusDate),
+      consistencyTrend: _buildConsistencyTrend(
+        tasks: tasks,
+        range: range,
+        window: window,
+      ),
     );
   }
 
@@ -261,37 +283,88 @@ class TaskRepository {
     return streak;
   }
 
-  List<TaskConsistencyPoint> _buildConsistencyTrend(
-    List<DbTask> tasks,
-    DateTime focusDate,
-  ) {
-    final startDate = focusDate.startOfDay.subtract(const Duration(days: 6));
-    final completedByDate = <DateTime, int>{};
+  List<TaskConsistencyPoint> _buildConsistencyTrend({
+    required List<DbTask> tasks,
+    required _TaskDateRange range,
+    required TaskAnalyticsWindow window,
+  }) {
+    final completedByPeriod = <DateTime, int>{};
+
+    if (window == TaskAnalyticsWindow.yearly) {
+      var cursor = DateTime(range.start.year, range.start.month);
+      final endBucket = DateTime(range.end.year, range.end.month);
+      while (!cursor.isAfter(endBucket)) {
+        completedByPeriod[cursor] = 0;
+        cursor = DateTime(cursor.year, cursor.month + 1);
+      }
+
+      for (final task in tasks.where((task) => task.isCompleted)) {
+        final date = task.taskDate.startOfDay;
+        if (date.isBefore(range.start) || date.isAfter(range.end)) {
+          continue;
+        }
+        final bucket = DateTime(date.year, date.month);
+        completedByPeriod.update(bucket, (value) => value + 1);
+      }
+
+      return completedByPeriod.entries
+          .map(
+            (entry) => TaskConsistencyPoint(
+              date: entry.key,
+              completedCount: entry.value,
+              label: AppConstants.monthLabelFormat.format(entry.key),
+            ),
+          )
+          .toList(growable: false);
+    }
 
     for (
-      var cursor = startDate;
-      !cursor.isAfter(focusDate.startOfDay);
+      var cursor = range.start.startOfDay;
+      !cursor.isAfter(range.end);
       cursor = cursor.add(const Duration(days: 1))
     ) {
-      completedByDate[cursor] = 0;
+      completedByPeriod[cursor] = 0;
     }
 
     for (final task in tasks.where((task) => task.isCompleted)) {
       final date = task.taskDate.startOfDay;
-      if (date.isBefore(startDate) || date.isAfter(focusDate.startOfDay)) {
+      if (date.isBefore(range.start) || date.isAfter(range.end)) {
         continue;
       }
-      completedByDate.update(date, (value) => value + 1);
+      completedByPeriod.update(date, (value) => value + 1);
     }
 
-    return completedByDate.entries
+    return completedByPeriod.entries
         .map(
           (entry) => TaskConsistencyPoint(
             date: entry.key,
             completedCount: entry.value,
-            label: DateFormat('E').format(entry.key),
+            label: window == TaskAnalyticsWindow.weekly
+                ? DateFormat('E').format(entry.key)
+                : DateFormat('d').format(entry.key),
           ),
         )
         .toList(growable: false);
   }
+
+  _TaskDateRange _resolveRange(TaskAnalyticsWindow window, DateTime anchorDate) {
+    switch (window) {
+      case TaskAnalyticsWindow.weekly:
+        return _TaskDateRange(anchorDate.startOfWeek, anchorDate.endOfWeek);
+      case TaskAnalyticsWindow.monthly:
+        return _TaskDateRange(
+          anchorDate.startOfMonth,
+          anchorDate.endOfMonth,
+        );
+      case TaskAnalyticsWindow.yearly:
+        return _TaskDateRange(anchorDate.startOfYear, anchorDate.endOfYear);
+    }
+  }
+}
+
+class _TaskDateRange {
+  const _TaskDateRange(this.start, this.end);
+
+  final DateTime start;
+  final DateTime end;
 }

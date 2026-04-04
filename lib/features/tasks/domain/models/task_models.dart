@@ -1,5 +1,20 @@
 import 'package:equatable/equatable.dart';
 
+enum TaskAnalyticsWindow { weekly, monthly, yearly }
+
+extension TaskAnalyticsWindowX on TaskAnalyticsWindow {
+  String get label {
+    switch (this) {
+      case TaskAnalyticsWindow.weekly:
+        return 'Week';
+      case TaskAnalyticsWindow.monthly:
+        return 'Month';
+      case TaskAnalyticsWindow.yearly:
+        return 'Year';
+    }
+  }
+}
+
 class TaskItem extends Equatable {
   const TaskItem({
     required this.id,
@@ -105,6 +120,9 @@ class TaskConsistencyPoint extends Equatable {
 
 class TaskAnalyticsData extends Equatable {
   const TaskAnalyticsData({
+    required this.window,
+    required this.rangeStart,
+    required this.rangeEnd,
     required this.completedCount,
     required this.pendingCount,
     required this.dailyTaskStreak,
@@ -113,6 +131,9 @@ class TaskAnalyticsData extends Equatable {
     required this.consistencyTrend,
   });
 
+  final TaskAnalyticsWindow window;
+  final DateTime rangeStart;
+  final DateTime rangeEnd;
   final int completedCount;
   final int pendingCount;
   final int dailyTaskStreak;
@@ -122,6 +143,9 @@ class TaskAnalyticsData extends Equatable {
 
   @override
   List<Object?> get props => <Object?>[
+    window,
+    rangeStart,
+    rangeEnd,
     completedCount,
     pendingCount,
     dailyTaskStreak,

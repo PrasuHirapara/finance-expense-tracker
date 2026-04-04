@@ -115,6 +115,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
       remoteStoreService: _firestoreCloudSyncStoreService,
       payloadService: CloudSyncPayloadService(
         database: _database,
+        taskRepository: _taskRepository,
         taskCategoryRepository: _taskCategoryRepository,
         credentialCryptoService: _credentialCryptoService,
       ),

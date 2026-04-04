@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 
 import '../../data/database/app_database.dart';
 import '../../features/tasks/data/repositories/task_category_repository.dart';
+import '../../features/tasks/data/repositories/task_repository.dart';
 import '../models/cloud_sync_models.dart';
 import '../../features/credentials/domain/models/credential_models.dart';
 import 'credential_crypto_service.dart';
@@ -11,13 +12,16 @@ import 'credential_crypto_service.dart';
 class CloudSyncPayloadService {
   CloudSyncPayloadService({
     required AppDatabase database,
+    required TaskRepository taskRepository,
     required TaskCategoryRepository taskCategoryRepository,
     required CredentialCryptoService credentialCryptoService,
   }) : _database = database,
+       _taskRepository = taskRepository,
        _taskCategoryRepository = taskCategoryRepository,
        _credentialCryptoService = credentialCryptoService;
 
   final AppDatabase _database;
+  final TaskRepository _taskRepository;
   final TaskCategoryRepository _taskCategoryRepository;
   final CredentialCryptoService _credentialCryptoService;
 
@@ -29,6 +33,7 @@ class CloudSyncPayloadService {
     bool includeCredentialsInBundle = true,
   }) async {
     final timestamp = exportedAt ?? DateTime.now();
+    await _taskRepository.ensureDailyTasksThroughDate(timestamp);
     final categories = await (_database.select(
       _database.dbCategories,
     )..orderBy([(table) => OrderingTerm.asc(table.id)])).get();
@@ -207,6 +212,7 @@ class CloudSyncPayloadService {
   }
 
   Future<DateTime> computeLocalLatestChangeAt() async {
+    await _taskRepository.ensureDailyTasksThroughDate(DateTime.now());
     final categories = await (_database.select(_database.dbCategories)).get();
     final banks = await (_database.select(_database.dbBanks)).get();
     final entries = await (_database.select(_database.dbFinanceEntries)).get();

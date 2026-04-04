@@ -37,6 +37,7 @@ void cloudSyncCallbackDispatcher() {
       remoteStoreService: FirestoreCloudSyncStoreService(),
       payloadService: CloudSyncPayloadService(
         database: database,
+        taskRepository: taskRepository,
         taskCategoryRepository: taskCategoryRepository,
         credentialCryptoService: CredentialCryptoService(),
       ),

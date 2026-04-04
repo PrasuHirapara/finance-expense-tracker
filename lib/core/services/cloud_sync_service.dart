@@ -212,9 +212,7 @@ class CloudSyncService {
         lastKnownCloudBackupAt: bundle.manifest.exportedAt,
       ),
     );
-    try {
-      await _notificationService.syncCredentialExpiryNotifications();
-    } catch (_) {}
+    _notificationService.requestCredentialExpiryNotificationSync();
   }
 
   Future<void> deleteCloudData(String folderName) async {

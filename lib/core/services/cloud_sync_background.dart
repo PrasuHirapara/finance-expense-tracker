@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../../data/database/app_database.dart';
@@ -22,6 +24,9 @@ import 'reminder_settings_repository.dart';
 @pragma('vm:entry-point')
 void cloudSyncCallbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
+    WidgetsFlutterBinding.ensureInitialized();
+    ui.DartPluginRegistrant.ensureInitialized();
+
     if (task != CloudSyncScheduler.autoBackupTaskName &&
         task != Workmanager.iOSBackgroundTask) {
       return Future<bool>.value(true);
@@ -32,13 +37,14 @@ void cloudSyncCallbackDispatcher() {
 
     final database = AppDatabase();
     final appSettingsRepository = AppSettingsRepository();
+    final reminderSettingsRepository = ReminderSettingsRepository();
     final credentialRepository = CredentialRepository(database);
     final credentialCryptoService = CredentialCryptoService();
     final credentialSecurityService = CredentialSecurityService();
     final taskRepository = TaskRepository(database);
     final taskCategoryRepository = TaskCategoryRepository(taskRepository);
     final notificationService = NotificationService(
-      reminderSettingsRepository: ReminderSettingsRepository(),
+      reminderSettingsRepository: reminderSettingsRepository,
       appSettingsRepository: appSettingsRepository,
       credentialRepository: credentialRepository,
       credentialCryptoService: credentialCryptoService,
@@ -67,6 +73,7 @@ void cloudSyncCallbackDispatcher() {
     } finally {
       await database.close();
       await appSettingsRepository.flush();
+      reminderSettingsRepository.dispose();
       unawaited(appSettingsRepository.dispose());
     }
   });

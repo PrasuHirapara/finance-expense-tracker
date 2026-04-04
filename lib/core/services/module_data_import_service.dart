@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:drift/drift.dart';
@@ -49,8 +48,6 @@ class ModuleDataImportService {
        _appSettingsRepository = appSettingsRepository,
        _credentialCryptoService = credentialCryptoService,
        _notificationService = notificationService;
-
-  static const String _credentialExpiryMetadataKey = '__meta_expiry__';
 
   final AppDatabase _database;
   final AppSettingsRepository _appSettingsRepository;
@@ -629,9 +626,7 @@ class ModuleDataImportService {
       }
     });
 
-    try {
-      await _notificationService.syncCredentialExpiryNotifications();
-    } catch (_) {}
+    _notificationService.requestCredentialExpiryNotificationSync();
 
     return ModuleImportResult(
       savedItems: drafts.length,
@@ -1127,17 +1122,10 @@ class ModuleDataImportService {
   }
 
   List<CredentialField> _withCredentialMetadataFields(CredentialDraft draft) {
-    final fields = List<CredentialField>.from(draft.fields)
-      ..removeWhere((field) => field.keyLabel == _credentialExpiryMetadataKey);
-    if (draft.expiryDate != null) {
-      fields.add(
-        CredentialField(
-          keyLabel: _credentialExpiryMetadataKey,
-          value: draft.expiryDate!.toIso8601String(),
-        ),
-      );
-    }
-    return fields;
+    return withCredentialExpiryMetadataFields(
+      fields: draft.fields,
+      expiryDate: draft.expiryDate,
+    );
   }
 
   bool _isSameDate(DateTime left, DateTime right) {

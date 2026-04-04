@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -31,7 +32,6 @@ class NotificationService {
   static const int _credentialExpiryHour = 9;
   static const int _credentialExpiryMinute = 0;
   static const String _credentialExpiryPayloadPrefix = 'credential_expiry:';
-  static const String _metaExpiryKey = '__meta_expiry__';
 
   final ReminderSettingsRepository _reminderSettingsRepository;
   final AppSettingsRepository _appSettingsRepository;
@@ -42,6 +42,8 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
+  bool _isCredentialSyncWorkerRunning = false;
+  bool _credentialSyncQueued = false;
 
   Future<void> initialize() async {
     if (_initialized) {
@@ -133,7 +135,7 @@ class NotificationService {
       matchDateTimeComponents: DateTimeComponents.time,
     );
 
-    await syncCredentialExpiryNotifications();
+    requestCredentialExpiryNotificationSync();
   }
 
   Future<void> cancelDailyReminders() async {
@@ -174,11 +176,19 @@ class NotificationService {
     }
 
     final androidScheduleMode = await _resolveAndroidScheduleMode();
-    for (final credential in credentials) {
-      final expiryDate = await _extractExpiryDate(
-        credential,
-        encryptionKey: encryptionKey,
-      );
+    final credentialExpiries = await Future.wait(
+      credentials.map((credential) async {
+        final expiryDate = await _extractExpiryDate(
+          credential,
+          encryptionKey: encryptionKey,
+        );
+        return (credential: credential, expiryDate: expiryDate);
+      }),
+    );
+
+    for (final entry in credentialExpiries) {
+      final credential = entry.credential;
+      final expiryDate = entry.expiryDate;
       if (expiryDate == null) {
         continue;
       }
@@ -212,6 +222,16 @@ class NotificationService {
     }
   }
 
+  void requestCredentialExpiryNotificationSync() {
+    _credentialSyncQueued = true;
+    if (_isCredentialSyncWorkerRunning) {
+      return;
+    }
+
+    _isCredentialSyncWorkerRunning = true;
+    unawaited(_drainCredentialSyncQueue());
+  }
+
   Future<void> cancelCredentialExpiryNotifications() async {
     await initialize();
 
@@ -222,8 +242,21 @@ class NotificationService {
     final pending = await _notifications.pendingNotificationRequests();
     for (final request in pending) {
       if (request.payload?.startsWith(_credentialExpiryPayloadPrefix) == true) {
-        await _notifications.cancel(request.id);
+        await _notifications.cancel(id: request.id);
       }
+    }
+  }
+
+  Future<void> _drainCredentialSyncQueue() async {
+    try {
+      while (_credentialSyncQueued) {
+        _credentialSyncQueued = false;
+        try {
+          await syncCredentialExpiryNotifications();
+        } catch (_) {}
+      }
+    } finally {
+      _isCredentialSyncWorkerRunning = false;
     }
   }
 
@@ -301,16 +334,10 @@ class NotificationService {
         record: credential,
         encryptionKey: encryptionKey,
       );
-      for (final field in fields) {
-        if (field.keyLabel == _metaExpiryKey) {
-          return DateTime.tryParse(field.value);
-        }
-      }
+      return extractCredentialExpiryDate(fields);
     } catch (_) {
       return null;
     }
-
-    return null;
   }
 
   tz.TZDateTime? _credentialExpiryScheduleFor(DateTime expiryDate) {

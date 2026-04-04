@@ -16,7 +16,6 @@ class CredentialService {
        _securityService = securityService,
        _notificationService = notificationService;
 
-  static const String _metaExpiryKey = '__meta_expiry__';
   static const int _expiringSoonThresholdDays = 30;
 
   final CredentialRepository _repository;
@@ -99,7 +98,7 @@ class CredentialService {
       encryptionKey: encryptionKey,
     );
     await _repository.addCredential(title: draft.title, payload: payload);
-    await _refreshCredentialExpiryNotifications();
+    _refreshCredentialExpiryNotifications();
   }
 
   Future<void> updateCredential({
@@ -116,7 +115,7 @@ class CredentialService {
       title: draft.title,
       payload: payload,
     );
-    await _refreshCredentialExpiryNotifications();
+    _refreshCredentialExpiryNotifications();
   }
 
   Future<DecryptedCredential> decryptCredential({
@@ -134,13 +133,12 @@ class CredentialService {
     required List<CredentialRecord> records,
     required String encryptionKey,
   }) async {
-    final items = <DecryptedCredential>[];
-    for (final record in records) {
-      items.add(
-        await decryptCredential(record: record, encryptionKey: encryptionKey),
-      );
-    }
-    return items;
+    return Future.wait(
+      records.map(
+        (record) =>
+            decryptCredential(record: record, encryptionKey: encryptionKey),
+      ),
+    );
   }
 
   Future<CredentialSecurityReport> buildSecurityReport({
@@ -227,12 +225,12 @@ class CredentialService {
 
   Future<void> deleteCredential(int id) async {
     await _repository.deleteCredential(id);
-    await _refreshCredentialExpiryNotifications();
+    _refreshCredentialExpiryNotifications();
   }
 
   Future<void> deleteAllCredentials() async {
     await _repository.deleteAllCredentials();
-    await _refreshCredentialExpiryNotifications();
+    _refreshCredentialExpiryNotifications();
   }
 
   Future<void> rotateEncryptionKey({
@@ -263,37 +261,22 @@ class CredentialService {
     }
 
     await _securityService.setEncryptionKey(newEncryptionKey);
-    await _refreshCredentialExpiryNotifications();
+    _refreshCredentialExpiryNotifications();
   }
 
   List<CredentialField> _withMetadataFields(CredentialDraft draft) {
-    final fields = List<CredentialField>.from(draft.fields)
-      ..removeWhere((field) => field.keyLabel == _metaExpiryKey);
-    if (draft.expiryDate != null) {
-      fields.add(
-        CredentialField(
-          keyLabel: _metaExpiryKey,
-          value: draft.expiryDate!.toIso8601String(),
-        ),
-      );
-    }
-    return fields;
+    return withCredentialExpiryMetadataFields(
+      fields: draft.fields,
+      expiryDate: draft.expiryDate,
+    );
   }
 
   DecryptedCredential _mapDecryptedCredential({
     required CredentialRecord record,
     required List<CredentialField> fields,
   }) {
-    DateTime? expiryDate;
-    final visibleFields = <CredentialField>[];
-
-    for (final field in fields) {
-      if (field.keyLabel == _metaExpiryKey) {
-        expiryDate = DateTime.tryParse(field.value);
-        continue;
-      }
-      visibleFields.add(field);
-    }
+    final expiryDate = extractCredentialExpiryDate(fields);
+    final visibleFields = withoutCredentialMetadataFields(fields);
 
     return DecryptedCredential(
       id: record.id,
@@ -335,10 +318,8 @@ class CredentialService {
     return encryptionKey;
   }
 
-  Future<void> _refreshCredentialExpiryNotifications() async {
-    try {
-      await _notificationService.syncCredentialExpiryNotifications();
-    } catch (_) {}
+  void _refreshCredentialExpiryNotifications() {
+    _notificationService.requestCredentialExpiryNotificationSync();
   }
 }
 

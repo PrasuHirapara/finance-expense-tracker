@@ -20,8 +20,6 @@ class CloudSyncPayloadService {
        _taskCategoryRepository = taskCategoryRepository,
        _credentialCryptoService = credentialCryptoService;
 
-  static const String _credentialExpiryMetadataKey = '__meta_expiry__';
-
   final AppDatabase _database;
   final TaskRepository _taskRepository;
   final TaskCategoryRepository _taskCategoryRepository;
@@ -36,22 +34,32 @@ class CloudSyncPayloadService {
   }) async {
     final timestamp = exportedAt ?? DateTime.now();
     await _taskRepository.ensureDailyTasksThroughDate(timestamp);
-    final categories = await (_database.select(
-      _database.dbCategories,
-    )..orderBy([(table) => OrderingTerm.asc(table.id)])).get();
-    final banks = await (_database.select(
-      _database.dbBanks,
-    )..orderBy([(table) => OrderingTerm.asc(table.id)])).get();
-    final entries = await (_database.select(
-      _database.dbFinanceEntries,
-    )..orderBy([(table) => OrderingTerm.asc(table.id)])).get();
-    final tasks = await (_database.select(
-      _database.dbTasks,
-    )..orderBy([(table) => OrderingTerm.asc(table.id)])).get();
-    final credentials = await (_database.select(
-      _database.dbCredentials,
-    )..orderBy([(table) => OrderingTerm.asc(table.id)])).get();
-    final taskCategories = await _taskCategoryRepository.getCategories();
+    final loadedData = await Future.wait<Object?>(<Future<Object?>>[
+      (_database.select(
+        _database.dbCategories,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
+      (_database.select(
+        _database.dbBanks,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
+      (_database.select(
+        _database.dbFinanceEntries,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
+      (_database.select(
+        _database.dbTasks,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
+      (_database.select(
+        _database.dbCredentials,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
+      _taskCategoryRepository.getCategories(),
+      _taskCategoryRepository.lastModifiedAt(),
+    ]);
+    final categories = loadedData[0] as List<DbCategory>;
+    final banks = loadedData[1] as List<DbBank>;
+    final entries = loadedData[2] as List<DbFinanceEntry>;
+    final tasks = loadedData[3] as List<DbTask>;
+    final credentials = loadedData[4] as List<DbCredential>;
+    final taskCategories = loadedData[5] as List<String>;
+    final taskCategoryUpdatedAt = loadedData[6] as DateTime?;
 
     if (includeCredentialsInBundle &&
         encryptCredentialTitlesForCloud &&
@@ -101,8 +109,23 @@ class CloudSyncPayloadService {
                 'nonceBase64': item.nonceBase64,
                 'createdAt': item.createdAt.toIso8601String(),
                 'updatedAt': item.updatedAt.toIso8601String(),
-                'expiryDate': expiryDate?.toIso8601String(),
               };
+
+              if (expiryDate != null) {
+                if (encryptCredentialTitlesForCloud &&
+                    credentialEncryptionKey != null &&
+                    credentialEncryptionKey.trim().isNotEmpty) {
+                  final expiryPayload = await _credentialCryptoService.encryptText(
+                    plainText: expiryDate.toIso8601String(),
+                    encryptionKey: credentialEncryptionKey.trim(),
+                  );
+                  map['expiryEncryptedPayload'] = expiryPayload.encryptedPayload;
+                  map['expirySaltBase64'] = expiryPayload.saltBase64;
+                  map['expiryNonceBase64'] = expiryPayload.nonceBase64;
+                } else {
+                  map['expiryDate'] = expiryDate.toIso8601String();
+                }
+              }
 
               if (encryptCredentialTitlesForCloud) {
                 final titlePayload = await _credentialCryptoService.encryptText(
@@ -125,7 +148,7 @@ class CloudSyncPayloadService {
       'schemaVersion':
           includeCredentialsInBundle
               ? encryptCredentialTitlesForCloud
-                    ? 2
+                    ? 3
                     : 1
               : 0,
       'exportedAt': timestamp.toIso8601String(),
@@ -195,7 +218,14 @@ class CloudSyncPayloadService {
           )
           .toList(growable: false),
     });
-    final localLatestAt = await computeLocalLatestChangeAt();
+    final localLatestAt = _computeLocalLatestChangeAtFromData(
+      categories: categories,
+      banks: banks,
+      entries: entries,
+      tasks: tasks,
+      credentials: credentials,
+      taskCategoryUpdatedAt: taskCategoryUpdatedAt,
+    );
 
     return CloudBackupBundle(
       manifest: CloudSyncManifest(
@@ -220,14 +250,33 @@ class CloudSyncPayloadService {
 
   Future<DateTime> computeLocalLatestChangeAt() async {
     await _taskRepository.ensureDailyTasksThroughDate(DateTime.now());
-    final categories = await (_database.select(_database.dbCategories)).get();
-    final banks = await (_database.select(_database.dbBanks)).get();
-    final entries = await (_database.select(_database.dbFinanceEntries)).get();
-    final tasks = await (_database.select(_database.dbTasks)).get();
-    final credentials = await (_database.select(_database.dbCredentials)).get();
-    final taskCategoryUpdatedAt = await _taskCategoryRepository
-        .lastModifiedAt();
+    final loadedData = await Future.wait<Object?>(<Future<Object?>>[
+      (_database.select(_database.dbCategories)).get(),
+      (_database.select(_database.dbBanks)).get(),
+      (_database.select(_database.dbFinanceEntries)).get(),
+      (_database.select(_database.dbTasks)).get(),
+      (_database.select(_database.dbCredentials)).get(),
+      _taskCategoryRepository.lastModifiedAt(),
+    ]);
 
+    return _computeLocalLatestChangeAtFromData(
+      categories: loadedData[0] as List<DbCategory>,
+      banks: loadedData[1] as List<DbBank>,
+      entries: loadedData[2] as List<DbFinanceEntry>,
+      tasks: loadedData[3] as List<DbTask>,
+      credentials: loadedData[4] as List<DbCredential>,
+      taskCategoryUpdatedAt: loadedData[5] as DateTime?,
+    );
+  }
+
+  DateTime _computeLocalLatestChangeAtFromData({
+    required List<DbCategory> categories,
+    required List<DbBank> banks,
+    required List<DbFinanceEntry> entries,
+    required List<DbTask> tasks,
+    required List<DbCredential> credentials,
+    required DateTime? taskCategoryUpdatedAt,
+  }) {
     final candidates = <DateTime>[
       ...categories.map((item) => item.createdAt),
       ...banks.map((item) => item.createdAt),
@@ -292,14 +341,17 @@ class CloudSyncPayloadService {
                 item,
                 credentialEncryptionKey: credentialEncryptionKey,
               );
+              final payload = await _restoreCredentialPayload(
+                item,
+                title: title,
+                credentialEncryptionKey: credentialEncryptionKey,
+              );
               return DbCredentialsCompanion(
                 id: Value(item['id'] as int),
                 title: Value(title),
-                encryptedPayload: Value(
-                  item['encryptedPayload'] as String? ?? '',
-                ),
-                saltBase64: Value(item['saltBase64'] as String? ?? ''),
-                nonceBase64: Value(item['nonceBase64'] as String? ?? ''),
+                encryptedPayload: Value(payload.encryptedPayload),
+                saltBase64: Value(payload.saltBase64),
+                nonceBase64: Value(payload.nonceBase64),
                 createdAt: Value(
                   DateTime.tryParse(item['createdAt'] as String? ?? '') ??
                       DateTime.now(),
@@ -488,15 +540,95 @@ class CloudSyncPayloadService {
         ),
         encryptionKey: credentialEncryptionKey.trim(),
       );
-      for (final field in fields) {
-        if (field.keyLabel == _credentialExpiryMetadataKey) {
-          return DateTime.tryParse(field.value);
-        }
-      }
+      return extractCredentialExpiryDate(fields);
     } catch (_) {
       return null;
     }
+  }
 
-    return null;
+  Future<EncryptedCredentialPayload> _restoreCredentialPayload(
+    Map<String, dynamic> item, {
+    required String title,
+    String? credentialEncryptionKey,
+  }) async {
+    final originalPayload = EncryptedCredentialPayload(
+      encryptedPayload: item['encryptedPayload'] as String? ?? '',
+      saltBase64: item['saltBase64'] as String? ?? '',
+      nonceBase64: item['nonceBase64'] as String? ?? '',
+    );
+    final expiryDate = await _restoreCredentialExpiryDate(
+      item,
+      credentialEncryptionKey: credentialEncryptionKey,
+    );
+    if (expiryDate == null ||
+        credentialEncryptionKey == null ||
+        credentialEncryptionKey.trim().isEmpty) {
+      return originalPayload;
+    }
+
+    try {
+      final decryptedFields = await _credentialCryptoService.decryptFields(
+        record: CredentialRecord(
+          id: item['id'] as int? ?? 0,
+          title: title,
+          encryptedPayload: originalPayload.encryptedPayload,
+          saltBase64: originalPayload.saltBase64,
+          nonceBase64: originalPayload.nonceBase64,
+          createdAt:
+              DateTime.tryParse(item['createdAt'] as String? ?? '') ??
+              DateTime.now(),
+          updatedAt:
+              DateTime.tryParse(item['updatedAt'] as String? ?? '') ??
+              DateTime.now(),
+        ),
+        encryptionKey: credentialEncryptionKey.trim(),
+      );
+      return _credentialCryptoService.encryptFields(
+        fields: withCredentialExpiryMetadataFields(
+          fields: decryptedFields,
+          expiryDate: expiryDate,
+        ),
+        encryptionKey: credentialEncryptionKey.trim(),
+      );
+    } catch (_) {
+      return originalPayload;
+    }
+  }
+
+  Future<DateTime?> _restoreCredentialExpiryDate(
+    Map<String, dynamic> item, {
+    String? credentialEncryptionKey,
+  }) async {
+    final encryptedExpiry = item['expiryEncryptedPayload'] as String?;
+    if (encryptedExpiry != null && encryptedExpiry.isNotEmpty) {
+      if (credentialEncryptionKey == null ||
+          credentialEncryptionKey.trim().isEmpty) {
+        throw const CloudCredentialEncryptionKeyRequiredException(
+          'Enter your credential encryption key to restore encrypted credential expiry dates from Firestore.',
+        );
+      }
+
+      try {
+        final decryptedValue = await _credentialCryptoService.decryptText(
+          payload: EncryptedCredentialPayload(
+            encryptedPayload: encryptedExpiry,
+            saltBase64: item['expirySaltBase64'] as String? ?? '',
+            nonceBase64: item['expiryNonceBase64'] as String? ?? '',
+          ),
+          encryptionKey: credentialEncryptionKey.trim(),
+        );
+        return DateTime.tryParse(decryptedValue);
+      } catch (_) {
+        throw const CloudCredentialEncryptionKeyInvalidException(
+          'The provided credential encryption key could not decrypt the Firestore credential expiry dates.',
+        );
+      }
+    }
+
+    final plainExpiry = item['expiryDate'] as String?;
+    if (plainExpiry == null || plainExpiry.trim().isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(plainExpiry);
   }
 }

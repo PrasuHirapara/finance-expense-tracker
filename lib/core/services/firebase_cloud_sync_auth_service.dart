@@ -50,7 +50,17 @@ class FirebaseCloudSyncAuthService {
 
   Future<FirebaseCloudSyncAccount?> restoreSession() async {
     await initialize();
-    final user = _firebaseAuth.currentUser;
+    var user = _firebaseAuth.currentUser;
+    if (user == null) {
+      try {
+        user = await _firebaseAuth
+            .authStateChanges()
+            .first
+            .timeout(const Duration(seconds: 5));
+      } on TimeoutException {
+        user = _firebaseAuth.currentUser;
+      }
+    }
     return user == null ? null : FirebaseCloudSyncAccount.fromUser(user);
   }
 

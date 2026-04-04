@@ -3,6 +3,29 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/services/credential_service.dart';
 
+String? validateCredentialEncryptionKey(String value) {
+  final key = value.trim();
+  if (key.isEmpty) {
+    return 'Encryption key is required';
+  }
+  if (key.length < 7) {
+    return 'Use at least 7 characters';
+  }
+  if (!RegExp(r'[A-Z]').hasMatch(key)) {
+    return 'Add at least one uppercase letter';
+  }
+  if (!RegExp(r'[a-z]').hasMatch(key)) {
+    return 'Add at least one lowercase letter';
+  }
+  if (!RegExp(r'\d').hasMatch(key)) {
+    return 'Add at least one number';
+  }
+  if (!RegExp(r'[^A-Za-z0-9]').hasMatch(key)) {
+    return 'Add at least one special character';
+  }
+  return null;
+}
+
 Future<bool?> showCredentialKeySetupDialog(BuildContext context) {
   return showDialog<bool>(
     context: context,
@@ -45,6 +68,11 @@ class _CredentialKeySetupDialogState extends State<_CredentialKeySetupDialog> {
             const Text(
               'Credential data is protected with an encryption key. You must set it before using this tab.',
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Use at least 7 characters with A, a, 1, and @.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: _keyController,
@@ -77,9 +105,17 @@ class _CredentialKeySetupDialogState extends State<_CredentialKeySetupDialog> {
     final key = _keyController.text.trim();
     final confirm = _confirmController.text.trim();
 
-    if (key.isEmpty || confirm.isEmpty) {
+    final validationError = validateCredentialEncryptionKey(key);
+    if (validationError != null) {
       setState(() {
-        _errorText = 'Encryption key is required';
+        _errorText = validationError;
+      });
+      return;
+    }
+
+    if (confirm.isEmpty) {
+      setState(() {
+        _errorText = 'Confirm encryption key is required';
       });
       return;
     }

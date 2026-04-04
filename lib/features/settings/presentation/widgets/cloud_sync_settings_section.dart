@@ -92,14 +92,14 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
                   FilledButton.icon(
                     onPressed: !canUseCloudSync || _isSyncing || _isRestoring
                         ? null
-                        : () => unawaited(_syncNow(context)),
+                        : () => unawaited(_syncNow()),
                     icon: const Icon(Icons.cloud_upload_rounded),
                     label: Text(_isSyncing ? 'Syncing...' : 'Sync Now'),
                   ),
                   FilledButton.tonalIcon(
                     onPressed: !canUseCloudSync || _isSyncing || _isRestoring
                         ? null
-                        : () => unawaited(_restoreFromCloud(context)),
+                        : () => unawaited(_restoreFromCloud()),
                     icon: const Icon(Icons.cloud_download_rounded),
                     label: Text(
                       _isRestoring ? 'Restoring...' : 'Restore from Cloud',
@@ -407,53 +407,54 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     }
   }
 
-  Future<void> _syncNow(BuildContext context) async {
+  Future<void> _syncNow() async {
+    final cloudSyncService = context.read<CloudSyncService>();
+    final messenger = ScaffoldMessenger.of(context);
     setState(() {
       _isSyncing = true;
     });
+    await Future<void>.delayed(Duration.zero);
     try {
-      await context.read<CloudSyncService>().uploadDataToCloud();
-      if (!context.mounted) {
+      await cloudSyncService.uploadDataToCloud();
+      if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Cloud backup completed.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Cloud backup completed.')),
+      );
     } on CloudCredentialEncryptionKeyRequiredException {
+      if (!mounted) {
+        return;
+      }
       final recovered = await _retrySyncWithCredentialKey(
-        context,
         keyWasInvalid: false,
       );
-      if (!recovered || !context.mounted) {
+      if (!recovered || !mounted) {
         return;
       }
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Cloud backup completed.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Cloud backup completed.')),
+      );
     } on CloudCredentialEncryptionKeyInvalidException {
+      if (!mounted) {
+        return;
+      }
       final recovered = await _retrySyncWithCredentialKey(
-        context,
         keyWasInvalid: true,
       );
-      if (!recovered || !context.mounted) {
+      if (!recovered || !mounted) {
         return;
       }
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Cloud backup completed.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Cloud backup completed.')),
+      );
     } catch (error) {
-      if (!context.mounted) {
+      if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Cloud sync failed: $error')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Cloud sync failed: $error')),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -463,15 +464,20 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     }
   }
 
-  Future<void> _restoreFromCloud(BuildContext context) async {
+  Future<void> _restoreFromCloud() async {
+    final service = context.read<CloudSyncService>();
+    final messenger = ScaffoldMessenger.of(context);
     setState(() {
       _isRestoring = true;
     });
+    await Future<void>.delayed(Duration.zero);
     try {
-      final service = context.read<CloudSyncService>();
       final check = await service.inspectRestoreState();
       var forceOverwrite = false;
-      if (check.isLocalNewer && context.mounted) {
+      if (!mounted) {
+        return;
+      }
+      if (check.isLocalNewer) {
         final proceed = await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
@@ -497,29 +503,25 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
         forceOverwrite = true;
       }
 
-      if (!context.mounted) {
+      if (!mounted) {
         return;
       }
       final restored = await _restoreWithCredentialKeyHandling(
-        context,
         forceOverwrite: forceOverwrite,
       );
-      if (!restored || !context.mounted) {
+      if (!restored || !mounted) {
         return;
       }
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Cloud restore completed.')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Cloud restore completed.')),
+      );
     } catch (error) {
-      if (!context.mounted) {
+      if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Restore failed: $error')));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Restore failed: $error')),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -612,13 +614,14 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
   }
 
   Future<bool> _retrySyncWithCredentialKey(
-    BuildContext context, {
+    {
     required bool keyWasInvalid,
   }) async {
     final credentialService = context.read<CredentialService>();
     final cloudSyncService = context.read<CloudSyncService>();
+    final messenger = ScaffoldMessenger.of(context);
     final hasStoredKey = await credentialService.hasEncryptionKey();
-    if (!context.mounted) {
+    if (!mounted) {
       return false;
     }
     final enteredKey = await showCredentialKeyEntryDialog(
@@ -633,17 +636,17 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
       submitLabel: hasStoredKey ? 'Verify & Sync' : 'Save & Sync',
     );
 
-    if (enteredKey == null || !context.mounted) {
+    if (enteredKey == null || !mounted) {
       return false;
     }
 
     final isValid = await credentialService
         .validateEncryptionKeyAgainstStoredCredentials(enteredKey);
     if (!isValid) {
-      if (!context.mounted) {
+      if (!mounted) {
         return false;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(
           content: Text(
             'That encryption key could not unlock the local credential records.',
@@ -661,7 +664,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
   }
 
   Future<bool> _restoreWithCredentialKeyHandling(
-    BuildContext context, {
+    {
     required bool forceOverwrite,
   }) async {
     final cloudSyncService = context.read<CloudSyncService>();
@@ -674,22 +677,20 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
       return true;
     } on CloudCredentialEncryptionKeyRequiredException {
       final requireConfirmation = !(await credentialService.hasEncryptionKey());
-      if (!context.mounted) {
+      if (!mounted) {
         return false;
       }
       return _promptForCredentialKeyAndRestore(
-        context,
         forceOverwrite: forceOverwrite,
         requireConfirmation: requireConfirmation,
         reason:
             'Enter your credential encryption key to restore encrypted credential titles from Firestore.',
       );
     } on CloudCredentialEncryptionKeyInvalidException {
-      if (!context.mounted) {
+      if (!mounted) {
         return false;
       }
       return _promptForCredentialKeyAndRestore(
-        context,
         forceOverwrite: forceOverwrite,
         requireConfirmation: false,
         reason:
@@ -699,7 +700,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
   }
 
   Future<bool> _promptForCredentialKeyAndRestore(
-    BuildContext context, {
+    {
     required bool forceOverwrite,
     required bool requireConfirmation,
     required String reason,
@@ -714,7 +715,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
       submitLabel: requireConfirmation ? 'Save & Restore' : 'Restore',
     );
 
-    if (enteredKey == null || !context.mounted) {
+    if (enteredKey == null || !mounted) {
       return false;
     }
 

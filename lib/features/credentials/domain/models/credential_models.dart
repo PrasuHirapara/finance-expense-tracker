@@ -1,5 +1,42 @@
 import 'package:equatable/equatable.dart';
 
+const String credentialExpiryMetadataKey = '__meta_expiry__';
+
+List<CredentialField> withCredentialExpiryMetadataFields({
+  required Iterable<CredentialField> fields,
+  required DateTime? expiryDate,
+}) {
+  final visibleFields = fields
+      .where((field) => field.keyLabel != credentialExpiryMetadataKey)
+      .toList(growable: true);
+  if (expiryDate != null) {
+    visibleFields.add(
+      CredentialField(
+        keyLabel: credentialExpiryMetadataKey,
+        value: expiryDate.toIso8601String(),
+      ),
+    );
+  }
+  return visibleFields;
+}
+
+DateTime? extractCredentialExpiryDate(Iterable<CredentialField> fields) {
+  for (final field in fields) {
+    if (field.keyLabel == credentialExpiryMetadataKey) {
+      return DateTime.tryParse(field.value);
+    }
+  }
+  return null;
+}
+
+List<CredentialField> withoutCredentialMetadataFields(
+  Iterable<CredentialField> fields,
+) {
+  return fields
+      .where((field) => field.keyLabel != credentialExpiryMetadataKey)
+      .toList(growable: false);
+}
+
 class CredentialField extends Equatable {
   const CredentialField({
     required this.keyLabel,

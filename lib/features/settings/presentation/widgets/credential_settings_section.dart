@@ -237,10 +237,11 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
 
   Future<void> _refresh() async {
     final service = context.read<CredentialService>();
+    final settingsRepository = context.read<AppSettingsRepository>();
     final hasEncryptionKey = await service.hasEncryptionKey();
     final biometricEnabled = await service.isBiometricUnlockEnabled();
     final biometricAvailable = await service.canUseBiometrics();
-    final settings = await context.read<AppSettingsRepository>().getSettings();
+    final settings = await settingsRepository.getSettings();
 
     if (!mounted) {
       return;
@@ -268,6 +269,7 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
     final credentialService = context.read<CredentialService>();
     final settingsRepository = context.read<AppSettingsRepository>();
     final cloudSyncService = context.read<CloudSyncService>();
+    final messenger = ScaffoldMessenger.of(context);
     final oldKey = await showCredentialAuthenticationDialog(
       context,
       title: 'Authenticate',
@@ -300,7 +302,7 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('Unable to update encryption key: $error')),
       );
       return;
@@ -310,9 +312,7 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
       return;
     }
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(
+    messenger.showSnackBar(
       const SnackBar(
         content: Text('Encryption key updated. Cloud backup refreshed if enabled.'),
       ),
@@ -333,18 +333,20 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
   Future<void> _toggleCredentialExpiryNotification(bool enabled) async {
     final settingsRepository = context.read<AppSettingsRepository>();
     final notificationService = context.read<NotificationService>();
+    if (mounted) {
+      setState(() {
+        _credentialExpiryNotificationEnabled = enabled;
+      });
+    }
     await settingsRepository.updateCredentialExpiryNotificationEnabled(enabled);
     if (enabled) {
-      await notificationService.syncCredentialExpiryNotifications();
+      notificationService.requestCredentialExpiryNotificationSync();
     } else {
       await notificationService.cancelCredentialExpiryNotifications();
     }
     if (!mounted) {
       return;
     }
-    setState(() {
-      _credentialExpiryNotificationEnabled = enabled;
-    });
   }
 
   Future<void> _deleteAllCredentials() async {
@@ -542,6 +544,11 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
+                Text(
+                  'Use at least 7 characters with A, a, 1, and @.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: keyController,
                   obscureText: true,
@@ -569,9 +576,18 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
                 onPressed: () {
                   final newKey = keyController.text.trim();
                   final confirmKey = confirmController.text.trim();
-                  if (newKey.isEmpty || confirmKey.isEmpty) {
+                  final validationError = validateCredentialEncryptionKey(
+                    newKey,
+                  );
+                  if (validationError != null) {
                     setDialogState(() {
-                      errorText = 'New encryption key is required';
+                      errorText = validationError;
+                    });
+                    return;
+                  }
+                  if (confirmKey.isEmpty) {
+                    setDialogState(() {
+                      errorText = 'Confirm new key is required';
                     });
                     return;
                   }

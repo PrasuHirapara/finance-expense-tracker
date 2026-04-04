@@ -9,6 +9,7 @@ import 'package:timezone/timezone.dart' as tz;
 import '../../features/credentials/data/repositories/credential_repository.dart';
 import '../../features/credentials/domain/models/credential_models.dart';
 import 'app_settings_repository.dart';
+import 'cancellable_task.dart';
 import 'credential_crypto_service.dart';
 import 'credential_security_service.dart';
 import 'reminder_settings_repository.dart';
@@ -150,14 +151,19 @@ class NotificationService {
     await cancelCredentialExpiryNotifications();
   }
 
-  Future<void> syncCredentialExpiryNotifications() async {
+  Future<void> syncCredentialExpiryNotifications({
+    AppCancellationToken? cancellationToken,
+  }) async {
     await initialize();
+    cancellationToken?.throwIfCancelled();
 
     if (!Platform.isAndroid && !Platform.isIOS) {
       return;
     }
 
-    await cancelCredentialExpiryNotifications();
+    await cancelCredentialExpiryNotifications(
+      cancellationToken: cancellationToken,
+    );
 
     final appSettings = await _appSettingsRepository.getSettings();
     if (!appSettings.notificationsEnabled ||
@@ -175,18 +181,27 @@ class NotificationService {
       return;
     }
 
+    cancellationToken?.throwIfCancelled();
     final androidScheduleMode = await _resolveAndroidScheduleMode();
-    final credentialExpiries = await Future.wait(
-      credentials.map((credential) async {
-        final expiryDate = await _extractExpiryDate(
-          credential,
-          encryptionKey: encryptionKey,
-        );
-        return (credential: credential, expiryDate: expiryDate);
-      }),
-    );
+    final credentialExpiries =
+        <({CredentialRecord credential, DateTime? expiryDate})>[];
+
+    for (var index = 0; index < credentials.length; index++) {
+      if (index % 8 == 0) {
+        await cancellableUiYield(cancellationToken);
+      } else {
+        cancellationToken?.throwIfCancelled();
+      }
+      final credential = credentials[index];
+      final expiryDate = await _extractExpiryDate(
+        credential,
+        encryptionKey: encryptionKey,
+      );
+      credentialExpiries.add((credential: credential, expiryDate: expiryDate));
+    }
 
     for (final entry in credentialExpiries) {
+      cancellationToken?.throwIfCancelled();
       final credential = entry.credential;
       final expiryDate = entry.expiryDate;
       if (expiryDate == null) {
@@ -232,8 +247,11 @@ class NotificationService {
     unawaited(_drainCredentialSyncQueue());
   }
 
-  Future<void> cancelCredentialExpiryNotifications() async {
+  Future<void> cancelCredentialExpiryNotifications({
+    AppCancellationToken? cancellationToken,
+  }) async {
     await initialize();
+    cancellationToken?.throwIfCancelled();
 
     if (!Platform.isAndroid && !Platform.isIOS) {
       return;
@@ -241,6 +259,7 @@ class NotificationService {
 
     final pending = await _notifications.pendingNotificationRequests();
     for (final request in pending) {
+      cancellationToken?.throwIfCancelled();
       if (request.payload?.startsWith(_credentialExpiryPayloadPrefix) == true) {
         await _notifications.cancel(id: request.id);
       }

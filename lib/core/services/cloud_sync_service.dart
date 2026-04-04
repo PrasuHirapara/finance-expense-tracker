@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/app_preferences.dart';
 import '../models/cloud_sync_models.dart';
 import 'app_settings_repository.dart';
+import 'cancellable_task.dart';
 import 'cloud_sync_payload_service.dart';
 import 'cloud_sync_scheduler.dart';
 import 'credential_security_service.dart';
@@ -116,13 +117,16 @@ class CloudSyncService {
     bool interactive = true,
     bool triggeredByScheduler = false,
     String? credentialEncryptionKey,
+    AppCancellationToken? cancellationToken,
   }) async {
+    cancellationToken?.throwIfCancelled();
     final settings = await _appSettingsRepository.getSettings();
     _ensureEnabled(settings);
     if (!await _hasInternetConnection()) {
       throw const SocketException('No internet connection available.');
     }
 
+    cancellationToken?.throwIfCancelled();
     final account = await _authService.requireUser(interactive: interactive);
     final bundle = await _payloadService.buildBackupBundle(
       accountEmail: account.email,
@@ -130,8 +134,14 @@ class CloudSyncService {
           credentialEncryptionKey ??
           await _credentialSecurityService.readEncryptionKey(),
       includeCredentialsInBundle: settings.cloudSync.syncCredentials,
+      cancellationToken: cancellationToken,
     );
-    await _remoteStoreService.uploadBundle(userId: account.uid, bundle: bundle);
+    cancellationToken?.throwIfCancelled();
+    await _remoteStoreService.uploadBundle(
+      userId: account.uid,
+      bundle: bundle,
+      cancellationToken: cancellationToken,
+    );
 
     final nextCloudSync = settings.cloudSync.copyWith(
       lastSuccessfulSyncAt: bundle.manifest.exportedAt,
@@ -146,9 +156,17 @@ class CloudSyncService {
 
   Future<CloudRestoreCheck> inspectRestoreState({
     bool interactive = true,
+    AppCancellationToken? cancellationToken,
   }) async {
-    final manifest = await _downloadManifest(interactive: interactive);
-    final localLatestAt = await _payloadService.computeLocalLatestChangeAt();
+    cancellationToken?.throwIfCancelled();
+    final manifest = await _downloadManifest(
+      interactive: interactive,
+      cancellationToken: cancellationToken,
+    );
+    final localLatestAt = await _payloadService
+        .computeLocalLatestChangeAtWithCancellation(
+          cancellationToken: cancellationToken,
+        );
     return CloudRestoreCheck(
       localLatestAt: localLatestAt,
       remoteLatestAt: manifest.localLatestAt,
@@ -160,22 +178,32 @@ class CloudSyncService {
     bool interactive = true,
     bool forceOverwrite = false,
     String? credentialEncryptionKey,
+    AppCancellationToken? cancellationToken,
   }) async {
+    cancellationToken?.throwIfCancelled();
     final settings = await _appSettingsRepository.getSettings();
     _ensureEnabled(settings);
     if (!await _hasInternetConnection()) {
       throw const SocketException('No internet connection available.');
     }
 
+    cancellationToken?.throwIfCancelled();
     final account = await _authService.requireUser(interactive: interactive);
-    final bundle = await _remoteStoreService.getBundle(account.uid);
+    final bundle = await _remoteStoreService.getBundle(
+      account.uid,
+      cancellationToken: cancellationToken,
+    );
     if (bundle == null) {
       throw const FileSystemException(
         'No cloud backup was found for this account.',
       );
     }
 
-    final localLatestAt = await _payloadService.computeLocalLatestChangeAt();
+    cancellationToken?.throwIfCancelled();
+    final localLatestAt = await _payloadService
+        .computeLocalLatestChangeAtWithCancellation(
+          cancellationToken: cancellationToken,
+        );
     if (!forceOverwrite &&
         localLatestAt.isAfter(bundle.manifest.localLatestAt)) {
       throw CloudSyncConflictException(
@@ -183,10 +211,13 @@ class CloudSyncService {
       );
     }
 
+    cancellationToken?.throwIfCancelled();
     final localRollback = await _payloadService.buildBackupBundle(
       encryptCredentialTitlesForCloud: false,
+      cancellationToken: cancellationToken,
     );
     try {
+      cancellationToken?.throwIfCancelled();
       await _payloadService.restoreBundle(
         credentialPayload: bundle.credentialPayload,
         expensePayload: bundle.expensePayload,
@@ -195,6 +226,7 @@ class CloudSyncService {
             credentialEncryptionKey ??
             await _credentialSecurityService.readEncryptionKey(),
         restoreCredentials: bundle.containsCredentialPayload,
+        cancellationToken: cancellationToken,
       );
     } catch (error) {
       await _payloadService.restoreBundle(
@@ -252,9 +284,15 @@ class CloudSyncService {
 
   Future<CloudSyncManifest> _downloadManifest({
     required bool interactive,
+    AppCancellationToken? cancellationToken,
   }) async {
+    cancellationToken?.throwIfCancelled();
     final account = await _authService.requireUser(interactive: interactive);
-    final manifest = await _remoteStoreService.getManifest(account.uid);
+    cancellationToken?.throwIfCancelled();
+    final manifest = await _remoteStoreService.getManifest(
+      account.uid,
+      cancellationToken: cancellationToken,
+    );
     if (manifest == null) {
       throw const FileSystemException('No cloud backup manifest was found.');
     }

@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/services/app_settings_repository.dart';
+import '../../../../core/services/cancellable_task.dart';
 import '../../../../core/services/cloud_sync_service.dart';
 import '../../../../core/services/module_data_import_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
 import '../../../../shared/widgets/download_result_snackbar.dart';
 import '../../../credentials/data/services/credential_service.dart';
 import '../../../credentials/presentation/widgets/credential_auth_dialog.dart';
@@ -314,7 +318,9 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
 
     messenger.showSnackBar(
       const SnackBar(
-        content: Text('Encryption key updated. Cloud backup refreshed if enabled.'),
+        content: Text(
+          'Encryption key updated. Cloud backup refreshed if enabled.',
+        ),
       ),
     );
     await _refresh();
@@ -333,19 +339,54 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
   Future<void> _toggleCredentialExpiryNotification(bool enabled) async {
     final settingsRepository = context.read<AppSettingsRepository>();
     final notificationService = context.read<NotificationService>();
+    final messenger = ScaffoldMessenger.of(context);
+    final previousValue = _credentialExpiryNotificationEnabled;
     if (mounted) {
       setState(() {
         _credentialExpiryNotificationEnabled = enabled;
       });
     }
-    await settingsRepository.updateCredentialExpiryNotificationEnabled(enabled);
-    if (enabled) {
-      notificationService.requestCredentialExpiryNotificationSync();
-    } else {
+
+    try {
+      await settingsRepository.updateCredentialExpiryNotificationEnabled(
+        enabled,
+      );
+      if (enabled) {
+        await _runBlockingOperation<void>(
+          statusText: 'Scheduling credential expiry notifications...',
+          task: (token) => notificationService
+              .syncCredentialExpiryNotifications(cancellationToken: token),
+        );
+      } else {
+        await notificationService.cancelCredentialExpiryNotifications();
+      }
+    } on AppTaskCancelledException {
+      await settingsRepository.updateCredentialExpiryNotificationEnabled(
+        previousValue,
+      );
       await notificationService.cancelCredentialExpiryNotifications();
-    }
-    if (!mounted) {
-      return;
+      if (mounted) {
+        setState(() {
+          _credentialExpiryNotificationEnabled = previousValue;
+        });
+      }
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Expiry notification setup canceled.')),
+      );
+    } catch (error) {
+      await settingsRepository.updateCredentialExpiryNotificationEnabled(
+        previousValue,
+      );
+      if (mounted) {
+        setState(() {
+          _credentialExpiryNotificationEnabled = previousValue;
+        });
+      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Unable to update expiry notifications: $error'),
+        ),
+      );
     }
   }
 
@@ -528,6 +569,28 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
         ],
       ),
     );
+  }
+
+  Future<T> _runBlockingOperation<T>({
+    required String statusText,
+    required Future<T> Function(AppCancellationToken token) task,
+  }) async {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final token = AppCancellationToken();
+    final route = createCancellableBlockingOverlayRoute<void>(
+      statusText: statusText,
+      onCancel: token.cancel,
+    );
+    unawaited(navigator.push<void>(route));
+    await Future<void>.delayed(Duration.zero);
+
+    try {
+      return await task(token);
+    } finally {
+      if (route.isActive) {
+        navigator.removeRoute(route);
+      }
+    }
   }
 
   Future<String?> _showNewKeyDialog() {

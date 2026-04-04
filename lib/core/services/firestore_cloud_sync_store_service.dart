@@ -1,11 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/cloud_sync_models.dart';
+import 'cancellable_task.dart';
 
 class FirestoreCloudSyncStoreService {
-  FirestoreCloudSyncStoreService({
-    FirebaseFirestore? firestore,
-  }) : _firestore = firestore ?? FirebaseFirestore.instance;
+  FirestoreCloudSyncStoreService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   static const String _usersCollection = 'users';
   static const String _cloudSyncCollection = 'cloud_sync';
@@ -19,7 +19,9 @@ class FirestoreCloudSyncStoreService {
   Future<void> uploadBundle({
     required String userId,
     required CloudBackupBundle bundle,
+    AppCancellationToken? cancellationToken,
   }) async {
+    cancellationToken?.throwIfCancelled();
     final collection = _collection(userId);
     final batch = _firestore.batch();
     final timestamp = Timestamp.fromDate(bundle.manifest.exportedAt);
@@ -45,10 +47,16 @@ class FirestoreCloudSyncStoreService {
       'updatedAt': timestamp,
     });
     await batch.commit();
+    cancellationToken?.throwIfCancelled();
   }
 
-  Future<CloudSyncManifest?> getManifest(String userId) async {
+  Future<CloudSyncManifest?> getManifest(
+    String userId, {
+    AppCancellationToken? cancellationToken,
+  }) async {
+    cancellationToken?.throwIfCancelled();
     final snapshot = await _collection(userId).doc(_manifestDocId).get();
+    cancellationToken?.throwIfCancelled();
     final data = snapshot.data();
     if (!snapshot.exists || data == null) {
       return null;
@@ -56,12 +64,24 @@ class FirestoreCloudSyncStoreService {
     return CloudSyncManifest.fromJson(_normalizeMap(data));
   }
 
-  Future<CloudBackupBundle?> getBundle(String userId) async {
+  Future<CloudBackupBundle?> getBundle(
+    String userId, {
+    AppCancellationToken? cancellationToken,
+  }) async {
+    cancellationToken?.throwIfCancelled();
     final collection = _collection(userId);
-    final manifestSnapshot = await collection.doc(_manifestDocId).get();
-    final credentialSnapshot = await collection.doc(_credentialDocId).get();
-    final expenseSnapshot = await collection.doc(_expenseDocId).get();
-    final taskSnapshot = await collection.doc(_taskDocId).get();
+    final snapshots =
+        await Future.wait<DocumentSnapshot<Map<String, dynamic>>>([
+          collection.doc(_manifestDocId).get(),
+          collection.doc(_credentialDocId).get(),
+          collection.doc(_expenseDocId).get(),
+          collection.doc(_taskDocId).get(),
+        ]);
+    cancellationToken?.throwIfCancelled();
+    final manifestSnapshot = snapshots[0];
+    final credentialSnapshot = snapshots[1];
+    final expenseSnapshot = snapshots[2];
+    final taskSnapshot = snapshots[3];
 
     final manifestData = manifestSnapshot.data();
     final credentialData = credentialSnapshot.data();
@@ -159,7 +179,10 @@ class FirestoreCloudSyncStoreService {
           key,
           value.map((nestedKey, nestedValue) {
             if (nestedValue is Timestamp) {
-              return MapEntry(nestedKey.toString(), nestedValue.toDate().toIso8601String());
+              return MapEntry(
+                nestedKey.toString(),
+                nestedValue.toDate().toIso8601String(),
+              );
             }
             return MapEntry(nestedKey.toString(), nestedValue);
           }),

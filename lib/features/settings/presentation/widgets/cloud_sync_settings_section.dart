@@ -9,6 +9,7 @@ import '../../../../core/models/cloud_sync_models.dart';
 import '../../../../core/services/cancellable_task.dart';
 import '../../../../core/services/cloud_sync_service.dart';
 import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
+import '../../../../core/services/firebase_runtime_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
 import '../../../credentials/data/services/credential_service.dart';
@@ -67,7 +68,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
                       const SizedBox(height: 6),
                       Text(
                         !authService.isAvailable
-                            ? 'Firebase cloud backup is available on mobile builds configured with Firebase.'
+                            ? 'Firebase cloud backup is available on builds configured with Firebase.'
                             : cloudSync.enabled
                             ? 'Firebase cloud backup is enabled for your app data.'
                             : 'Enable cloud sync to upload backups and restore from Firestore.',
@@ -87,6 +88,25 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
               ],
             ),
             const SizedBox(height: 16),
+            if (!authService.isAvailable) ...<Widget>[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.42,
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Text(
+                  '$firebaseConfigMissingMessage Sync, restore, and cloud login are disabled.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             Wrap(
               spacing: 10,
               runSpacing: 10,

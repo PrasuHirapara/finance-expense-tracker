@@ -1,4 +1,5 @@
 import Flutter
+import FirebaseCore
 import UIKit
 import UserNotifications
 import workmanager_apple
@@ -9,6 +10,7 @@ import workmanager_apple
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    FirebaseApp.configure()
     UNUserNotificationCenter.current().delegate = self
     WorkmanagerPlugin.registerPeriodicTask(
       withIdentifier: "com.prasu.daily.use.cloud_sync.auto_backup",

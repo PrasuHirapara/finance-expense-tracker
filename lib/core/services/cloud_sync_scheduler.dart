@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -6,6 +8,9 @@ class CloudSyncScheduler {
   static const String autoBackupTaskName = 'daily_use_auto_backup';
 
   Future<void> schedule(TimeOfDay time) async {
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return;
+    }
     await Workmanager().cancelByUniqueName(autoBackupUniqueName);
     await Workmanager().registerPeriodicTask(
       autoBackupUniqueName,
@@ -20,6 +25,9 @@ class CloudSyncScheduler {
   }
 
   Future<void> cancel() {
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return Future<void>.value();
+    }
     return Workmanager().cancelByUniqueName(autoBackupUniqueName);
   }
 

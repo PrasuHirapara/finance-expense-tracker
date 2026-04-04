@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -16,6 +14,7 @@ import 'cloud_sync_scheduler.dart';
 import 'cloud_sync_service.dart';
 import 'credential_crypto_service.dart';
 import 'credential_security_service.dart';
+import 'firebase_runtime_service.dart';
 import 'firebase_cloud_sync_auth_service.dart';
 import 'firestore_cloud_sync_store_service.dart';
 import 'notification_service.dart';
@@ -31,9 +30,7 @@ void cloudSyncCallbackDispatcher() {
         task != Workmanager.iOSBackgroundTask) {
       return Future<bool>.value(true);
     }
-    if (Platform.isAndroid || Platform.isIOS) {
-      await Firebase.initializeApp();
-    }
+    await initializeFirebaseIfSupported();
 
     final database = AppDatabase();
     final appSettingsRepository = AppSettingsRepository();

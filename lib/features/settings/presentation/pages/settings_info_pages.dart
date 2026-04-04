@@ -11,6 +11,7 @@ import '../../../../core/models/app_preferences.dart';
 import '../../../../core/services/app_data_reset_service.dart';
 import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
+import '../../../../core/services/firebase_runtime_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../auth/presentation/pages/auth_page.dart';
@@ -111,6 +112,15 @@ class _UserSettingsInfoPageState extends State<UserSettingsInfoPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  if (!authService.isAvailable) ...<Widget>[
+                    Text(
+                      '$firebaseConfigMissingMessage Login and cloud backup are disabled on this build.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   if (authService.isAvailable && account == null)
                     FilledButton.icon(
                       onPressed: () => _openFirebaseAuthPage(context),

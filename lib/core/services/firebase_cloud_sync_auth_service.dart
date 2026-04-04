@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -23,6 +24,8 @@ class FirebaseCloudSyncAuthService {
   bool _initialized = false;
 
   bool get isAvailable => Firebase.apps.isNotEmpty;
+  bool get supportsGoogleSignIn =>
+      Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
 
   FirebaseCloudSyncAccount? get currentAccount {
     final user = _firebaseAuth.currentUser;
@@ -38,7 +41,9 @@ class FirebaseCloudSyncAuthService {
         'Firebase is not initialized. Add Firebase setup before using cloud sync.',
       );
     }
-    await _googleSignIn.initialize();
+    if (supportsGoogleSignIn) {
+      await _googleSignIn.initialize();
+    }
     _initialized = true;
   }
 
@@ -53,10 +58,9 @@ class FirebaseCloudSyncAuthService {
     var user = _firebaseAuth.currentUser;
     if (user == null) {
       try {
-        user = await _firebaseAuth
-            .authStateChanges()
-            .first
-            .timeout(const Duration(seconds: 5));
+        user = await _firebaseAuth.authStateChanges().first.timeout(
+          const Duration(seconds: 5),
+        );
       } on TimeoutException {
         user = _firebaseAuth.currentUser;
       }
@@ -108,6 +112,11 @@ class FirebaseCloudSyncAuthService {
   }
 
   Future<FirebaseCloudSyncAccount> signInWithGoogle() async {
+    if (!supportsGoogleSignIn) {
+      throw const FirebaseCloudSyncAuthConfigurationException(
+        'Google sign-in is not available on this platform.',
+      );
+    }
     await initialize();
     final googleUser = await _googleSignIn.authenticate();
     final googleAuth = googleUser.authentication;

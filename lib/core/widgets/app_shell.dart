@@ -13,40 +13,93 @@ class AppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
     return BlocBuilder<ModuleNavigationBloc, ModuleNavigationState>(
       builder: (context, state) {
+        final selectedIndex = switch (state.module) {
+          AppModule.credential => 0,
+          AppModule.expense => 1,
+          AppModule.tasks => 2,
+          AppModule.settings => 3,
+        };
+
+        void onDestinationSelected(int index) {
+          context.read<ModuleNavigationBloc>().add(
+            ModuleSelected(switch (index) {
+              0 => AppModule.credential,
+              1 => AppModule.expense,
+              2 => AppModule.tasks,
+              _ => AppModule.settings,
+            }),
+          );
+        }
+
+        final content = IndexedStack(
+          index: selectedIndex,
+          children: const <Widget>[
+            CredentialModulePage(),
+            ExpenseModulePage(),
+            TasksModulePage(),
+            SettingsModulePage(),
+          ],
+        );
+
+        if (width >= 1100) {
+          return Scaffold(
+            body: SafeArea(
+              child: Row(
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: NavigationRail(
+                      selectedIndex: selectedIndex,
+                      onDestinationSelected: onDestinationSelected,
+                      extended: width >= 1320,
+                      destinations: const <NavigationRailDestination>[
+                        NavigationRailDestination(
+                          icon: Icon(Icons.vpn_key_outlined),
+                          selectedIcon: Icon(Icons.vpn_key_rounded),
+                          label: Text('Credential'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.account_balance_wallet_outlined),
+                          selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+                          label: Text('Expense'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.task_alt_outlined),
+                          selectedIcon: Icon(Icons.task_alt_rounded),
+                          label: Text('Task'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.settings_outlined),
+                          selectedIcon: Icon(Icons.settings_rounded),
+                          label: Text('Settings'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1600),
+                        child: content,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         return Scaffold(
-          body: IndexedStack(
-            index: switch (state.module) {
-              AppModule.credential => 0,
-              AppModule.expense => 1,
-              AppModule.tasks => 2,
-              AppModule.settings => 3,
-            },
-            children: const <Widget>[
-              CredentialModulePage(),
-              ExpenseModulePage(),
-              TasksModulePage(),
-              SettingsModulePage(),
-            ],
-          ),
+          body: content,
           bottomNavigationBar: NavigationBar(
-            selectedIndex: switch (state.module) {
-              AppModule.credential => 0,
-              AppModule.expense => 1,
-              AppModule.tasks => 2,
-              AppModule.settings => 3,
-            },
-            onDestinationSelected: (index) {
-              context.read<ModuleNavigationBloc>().add(
-                ModuleSelected(switch (index) {
-                  0 => AppModule.credential,
-                  1 => AppModule.expense,
-                  2 => AppModule.tasks,
-                  _ => AppModule.settings,
-                }),
-              );
-            },
+            selectedIndex: selectedIndex,
+            onDestinationSelected: onDestinationSelected,
             destinations: const <NavigationDestination>[
               NavigationDestination(
                 icon: Icon(Icons.vpn_key_outlined),

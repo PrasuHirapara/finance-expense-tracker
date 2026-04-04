@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
+import '../../../../core/services/firebase_runtime_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
 
 class AuthPage extends StatefulWidget {
@@ -39,6 +40,10 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final authService = context.read<FirebaseCloudSyncAuthService>();
+    final cloudSyncAvailable = authService.isAvailable;
+    final googleSignInAvailable =
+        cloudSyncAvailable && authService.supportsGoogleSignIn;
 
     return Scaffold(
       body: DecoratedBox(
@@ -100,7 +105,9 @@ class _AuthPageState extends State<AuthPage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              _isLoginMode
+                              !cloudSyncAvailable
+                                  ? '$firebaseConfigMissingMessage Cloud authentication is disabled.'
+                                  : _isLoginMode
                                   ? 'Use your email and password or continue with Google.'
                                   : 'Create a Firebase account, then your profile will be stored in Firestore.',
                               style: theme.textTheme.bodyMedium?.copyWith(
@@ -253,7 +260,7 @@ class _AuthPageState extends State<AuthPage> {
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton.icon(
-                                onPressed: _isSubmitting
+                                onPressed: _isSubmitting || !cloudSyncAvailable
                                     ? null
                                     : _submitEmailPassword,
                                 icon: Icon(
@@ -298,11 +305,15 @@ class _AuthPageState extends State<AuthPage> {
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton.icon(
-                                onPressed: _isSubmitting
+                                onPressed: _isSubmitting || !googleSignInAvailable
                                     ? null
                                     : _continueWithGoogle,
                                 icon: const Icon(Icons.g_mobiledata_rounded),
-                                label: const Text('Continue with Google'),
+                                label: Text(
+                                  googleSignInAvailable
+                                      ? 'Continue with Google'
+                                      : 'Google Sign-In Unavailable',
+                                ),
                               ),
                             ),
                           ],
@@ -320,6 +331,12 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _submitEmailPassword() async {
+    final authService = context.read<FirebaseCloudSyncAuthService>();
+    if (!authService.isAvailable) {
+      _showMessage(firebaseConfigMissingMessage);
+      return;
+    }
+
     final formState = _formKey.currentState;
     if (formState == null || !formState.validate()) {
       return;
@@ -330,7 +347,6 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      final authService = context.read<FirebaseCloudSyncAuthService>();
       if (_isLoginMode) {
         await authService.signInWithEmailPassword(
           email: _emailController.text,
@@ -358,12 +374,22 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   Future<void> _continueWithGoogle() async {
+    final authService = context.read<FirebaseCloudSyncAuthService>();
+    if (!authService.isAvailable) {
+      _showMessage(firebaseConfigMissingMessage);
+      return;
+    }
+    if (!authService.supportsGoogleSignIn) {
+      _showMessage('Google sign-in is not available on this platform.');
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
     });
 
     try {
-      await context.read<FirebaseCloudSyncAuthService>().signInWithGoogle();
+      await authService.signInWithGoogle();
       await _handleAuthSuccess();
     } on FirebaseAuthException catch (error) {
       _showMessage(_friendlyFirebaseAuthMessage(error));

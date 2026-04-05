@@ -8,6 +8,7 @@ import '../../features/expense/domain/models/expense_models.dart';
 import '../../features/expense/presentation/blocs/expense_analytics/expense_analytics_bloc.dart';
 import '../../features/expense/presentation/blocs/expense_form/expense_form_bloc.dart';
 import '../../features/expense/presentation/pages/expense_analytics_page.dart';
+import '../../features/expense/presentation/pages/expense_entry_detail_page.dart';
 import '../../features/expense/presentation/pages/expense_entry_page.dart';
 import '../../features/expense/presentation/pages/expense_entries_page.dart';
 import '../../features/expense/presentation/pages/expense_settings_page.dart';
@@ -27,6 +28,7 @@ class AppRoutes {
 
   static const String expenseAdd = '/expense/add';
   static const String expenseAnalytics = '/expense/analytics';
+  static const String expenseDetail = '/expense/detail';
   static const String expenseEntries = '/expense/entries';
   static const String expenseSettings = '/expense/settings';
   static const String credentialEditor = '/credential/editor';
@@ -52,6 +54,12 @@ class ExpenseEditorArgs {
   const ExpenseEditorArgs({this.entry});
 
   final ExpenseRecord? entry;
+}
+
+class ExpenseDetailArgs {
+  const ExpenseDetailArgs({required this.entryId});
+
+  final int entryId;
 }
 
 class AppRouter {
@@ -89,6 +97,11 @@ class AppRouter {
                   ..add(const ExpenseAnalyticsRequested()),
             child: const ExpenseAnalyticsPage(),
           ),
+        );
+      case AppRoutes.expenseDetail:
+        final args = settings.arguments as ExpenseDetailArgs;
+        return MaterialPageRoute<void>(
+          builder: (context) => ExpenseEntryDetailPage(args: args),
         );
       case AppRoutes.expenseEntries:
         return MaterialPageRoute<void>(

@@ -395,6 +395,11 @@ class ModuleDataImportService {
       );
     }
 
+    final normalizedExpenseImport = _normalizeExpenseImportData(
+      rows: rows,
+      splitBundle: splitBundle,
+    );
+
     return _database.transaction(() async {
       final existingCategories = await _database.getCategories();
       final categoryIds = <String, int>{
@@ -410,7 +415,7 @@ class ModuleDataImportService {
       final fallbackCategory = AppConstants.defaultCategories.last;
       final importedEntryIdMap = <int, int>{};
 
-      for (final row in rows) {
+      for (final row in normalizedExpenseImport.rows) {
         final categoryKey = row.categoryName.toLowerCase();
         if (!categoryIds.containsKey(categoryKey)) {
           final categoryId = await _database
@@ -441,7 +446,7 @@ class ModuleDataImportService {
         }
       }
 
-      for (final row in rows) {
+      for (final row in normalizedExpenseImport.rows) {
         final insertedId = await _database
             .into(_database.dbFinanceEntries)
             .insert(
@@ -466,15 +471,15 @@ class ModuleDataImportService {
         }
       }
 
-      if (splitBundle.hasData) {
+      if (normalizedExpenseImport.splitBundle.hasData) {
         await _importExpenseSplitBundle(
-          splitBundle,
+          normalizedExpenseImport.splitBundle,
           entryIdMap: importedEntryIdMap,
         );
       }
 
       final messageBuffer = StringBuffer(
-        '${rows.length} expense row${rows.length == 1 ? '' : 's'} imported successfully.',
+        '${normalizedExpenseImport.rows.length} expense row${normalizedExpenseImport.rows.length == 1 ? '' : 's'} imported successfully.',
       );
       if (createdCategories > 0 || createdBanks > 0) {
         messageBuffer.write(' Added ');
@@ -492,7 +497,7 @@ class ModuleDataImportService {
       }
 
       return ModuleImportResult(
-        savedItems: rows.length,
+        savedItems: normalizedExpenseImport.rows.length,
         validatedRows: rows.length,
         message: messageBuffer.toString(),
       );
@@ -1015,6 +1020,67 @@ class ModuleDataImportService {
     }
   }
 
+  _NormalizedExpenseImportData _normalizeExpenseImportData({
+    required List<_ValidatedExpenseRow> rows,
+    required _ExpenseSplitImportBundle splitBundle,
+  }) {
+    if (!splitBundle.hasData) {
+      return _NormalizedExpenseImportData(
+        rows: rows,
+        splitBundle: splitBundle,
+      );
+    }
+
+    final legacyManagedLentEntryIds = splitBundle.splitRecords
+        .where(
+          (record) =>
+              record.sourceExpenseEntryId != null &&
+              record.sourceLentEntryId != null,
+        )
+        .map((record) => record.sourceLentEntryId)
+        .whereType<int>()
+        .toSet();
+    final totalAmountByExpenseEntryId = <int, double>{
+      for (final record in splitBundle.splitRecords)
+        if (record.sourceExpenseEntryId != null)
+          record.sourceExpenseEntryId!: record.totalAmount,
+    };
+
+    final normalizedRows = rows
+        .where(
+          (row) =>
+              row.sourceEntryId == null ||
+              !legacyManagedLentEntryIds.contains(row.sourceEntryId),
+        )
+        .map((row) {
+          final sourceEntryId = row.sourceEntryId;
+          if (sourceEntryId != null &&
+              totalAmountByExpenseEntryId.containsKey(sourceEntryId)) {
+            return row.copyWith(amount: totalAmountByExpenseEntryId[sourceEntryId]!);
+          }
+          return row;
+        })
+        .toList(growable: false);
+
+    final normalizedBundle = _ExpenseSplitImportBundle(
+      splitRecords: splitBundle.splitRecords
+          .map(
+            (record) => record.copyWith(
+              sourceLentEntryId:
+                  record.sourceExpenseEntryId != null ? null : record.sourceLentEntryId,
+            ),
+          )
+          .toList(growable: false),
+      splitParticipants: splitBundle.splitParticipants,
+      settlements: splitBundle.settlements,
+    );
+
+    return _NormalizedExpenseImportData(
+      rows: normalizedRows,
+      splitBundle: normalizedBundle,
+    );
+  }
+
   Future<Excel> _loadWorkbook(String filePath) async {
     final file = File(filePath);
     if (!await file.exists()) {
@@ -1483,6 +1549,34 @@ class _ValidatedExpenseRow {
   final String paymentMode;
   final String? counterparty;
   final String notes;
+
+  _ValidatedExpenseRow copyWith({
+    int? sourceEntryId,
+    String? title,
+    double? amount,
+    String? type,
+    String? categoryName,
+    String? bankName,
+    DateTime? date,
+    String? paymentMode,
+    Object? counterparty = _moduleImportUnset,
+    String? notes,
+  }) {
+    return _ValidatedExpenseRow(
+      sourceEntryId: sourceEntryId ?? this.sourceEntryId,
+      title: title ?? this.title,
+      amount: amount ?? this.amount,
+      type: type ?? this.type,
+      categoryName: categoryName ?? this.categoryName,
+      bankName: bankName ?? this.bankName,
+      date: date ?? this.date,
+      paymentMode: paymentMode ?? this.paymentMode,
+      counterparty: identical(counterparty, _moduleImportUnset)
+          ? this.counterparty
+          : counterparty as String?,
+      notes: notes ?? this.notes,
+    );
+  }
 }
 
 class _ExpenseSplitImportBundle {
@@ -1516,6 +1610,26 @@ class _ImportedSplitRecord {
   final int? sourceLentEntryId;
   final double totalAmount;
   final DateTime createdAt;
+
+  _ImportedSplitRecord copyWith({
+    int? sourceId,
+    Object? sourceExpenseEntryId = _moduleImportUnset,
+    Object? sourceLentEntryId = _moduleImportUnset,
+    double? totalAmount,
+    DateTime? createdAt,
+  }) {
+    return _ImportedSplitRecord(
+      sourceId: sourceId ?? this.sourceId,
+      sourceExpenseEntryId: identical(sourceExpenseEntryId, _moduleImportUnset)
+          ? this.sourceExpenseEntryId
+          : sourceExpenseEntryId as int?,
+      sourceLentEntryId: identical(sourceLentEntryId, _moduleImportUnset)
+          ? this.sourceLentEntryId
+          : sourceLentEntryId as int?,
+      totalAmount: totalAmount ?? this.totalAmount,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 }
 
 class _ImportedSplitParticipant {
@@ -1541,6 +1655,18 @@ class _ImportedSplitParticipant {
   final int sortOrder;
   final DateTime createdAt;
 }
+
+class _NormalizedExpenseImportData {
+  const _NormalizedExpenseImportData({
+    required this.rows,
+    required this.splitBundle,
+  });
+
+  final List<_ValidatedExpenseRow> rows;
+  final _ExpenseSplitImportBundle splitBundle;
+}
+
+const Object _moduleImportUnset = Object();
 
 class _ImportedLentSettlement {
   const _ImportedLentSettlement({

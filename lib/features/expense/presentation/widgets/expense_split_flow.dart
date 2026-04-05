@@ -572,7 +572,7 @@ class _LentResolutionPageState extends State<_LentResolutionPage> {
                       ),
                       title: Text(candidate.entry.title),
                       subtitle: Text(
-                        '${AppConstants.shortDateFormat.format(candidate.entry.date)} | ${AppConstants.currency(candidate.entry.amount)}',
+                        '${AppConstants.shortDateFormat.format(candidate.entry.date)} | Pending ${AppConstants.currency(candidate.splitDraft.pendingLentAmount)}',
                       ),
                     ),
                   ),

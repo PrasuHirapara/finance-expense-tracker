@@ -160,6 +160,18 @@ class ExpenseEntryPage extends StatelessWidget {
                     ExpenseAmountChanged(value),
                   ),
                 ),
+                const SizedBox(height: 16),
+                AppSelectField<int>(
+                  label: 'Category',
+                  value: state.categoryId,
+                  options: categoryOptions,
+                  errorText: state.showValidation && state.categoryId == null
+                      ? 'Select a category'
+                      : null,
+                  onChanged: (value) => context.read<ExpenseFormBloc>().add(
+                    ExpenseCategoryChanged(value),
+                  ),
+                ),
                 if (state.type == 'expense') ...<Widget>[
                   const SizedBox(height: 12),
                   Align(
@@ -222,18 +234,6 @@ class ExpenseEntryPage extends StatelessWidget {
                       ),
                     ),
                 ],
-                const SizedBox(height: 16),
-                AppSelectField<int>(
-                  label: 'Category',
-                  value: state.categoryId,
-                  options: categoryOptions,
-                  errorText: state.showValidation && state.categoryId == null
-                      ? 'Select a category'
-                      : null,
-                  onChanged: (value) => context.read<ExpenseFormBloc>().add(
-                    ExpenseCategoryChanged(value),
-                  ),
-                ),
                 if (state.type == 'income') ...<Widget>[
                   const SizedBox(height: 12),
                   Align(

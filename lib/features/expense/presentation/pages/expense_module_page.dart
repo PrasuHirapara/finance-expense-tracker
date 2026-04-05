@@ -295,6 +295,14 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                                           : group.key;
                                     });
                                   },
+                                  onView: (entry) {
+                                    Navigator.of(context).pushNamed(
+                                      AppRoutes.expenseDetail,
+                                      arguments: ExpenseDetailArgs(
+                                        entryId: entry.id,
+                                      ),
+                                    );
+                                  },
                                   onEdit: (entry) {
                                     Navigator.of(context).pushNamed(
                                       AppRoutes.expenseAdd,
@@ -334,7 +342,8 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
       case _ExpenseSummaryFilter.debit:
         return entry.isDebit;
       case _ExpenseSummaryFilter.lent:
-        return entry.type == 'lent';
+        return !entry.isManagedLentEntry &&
+            (entry.type == 'lent' || entry.hasTrackedSplitLent);
       case _ExpenseSummaryFilter.borrowed:
         return entry.type == 'borrowed';
     }
@@ -381,7 +390,13 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete transaction'),
-        content: Text('Delete "${entry.title}"?'),
+        content: Text(
+          entry.isResolutionIncome
+              ? 'Delete "${entry.title}"? This will add the amount back to pending lent.'
+              : entry.splitSummary?.hasSettlements == true
+              ? 'Delete "${entry.title}" and all linked resolution entries?'
+              : 'Delete "${entry.title}"?',
+        ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -578,6 +593,7 @@ class _DateTransactionGroup extends StatelessWidget {
     required this.entryById,
     required this.expanded,
     required this.onTap,
+    required this.onView,
     required this.onEdit,
     required this.onDelete,
   });
@@ -587,6 +603,7 @@ class _DateTransactionGroup extends StatelessWidget {
   final Map<int, ExpenseRecord> entryById;
   final bool expanded;
   final VoidCallback onTap;
+  final ValueChanged<ExpenseRecord> onView;
   final ValueChanged<ExpenseRecord> onEdit;
   final ValueChanged<ExpenseRecord> onDelete;
 
@@ -664,6 +681,7 @@ class _DateTransactionGroup extends StatelessWidget {
                           child: _ExpenseEntryCard(
                             entry: entry,
                             actionEntry: actionEntry,
+                            onView: () => onView(entry),
                             onEdit: () => onEdit(actionEntry),
                             onDelete: () => onDelete(actionEntry),
                           ),
@@ -695,12 +713,14 @@ class _ExpenseEntryCard extends StatelessWidget {
   const _ExpenseEntryCard({
     required this.entry,
     required this.actionEntry,
+    required this.onView,
     required this.onEdit,
     required this.onDelete,
   });
 
   final ExpenseRecord entry;
   final ExpenseRecord actionEntry;
+  final VoidCallback onView;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -755,7 +775,6 @@ class _ExpenseEntryCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       _SplitEntrySummary(
                         entry: entry,
-                        actionEntry: actionEntry,
                       ),
                     ],
                     if (entry.isResolutionIncome) ...<Widget>[
@@ -780,24 +799,26 @@ class _ExpenseEntryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          if (actionEntry.canEdit || actionEntry.canDelete)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: <Widget>[
-                if (actionEntry.canEdit)
-                  TextButton.icon(
-                    onPressed: onEdit,
-                    icon: const Icon(Icons.edit_rounded),
-                    label: const Text('Edit'),
-                  ),
-                if (actionEntry.canDelete)
-                  TextButton.icon(
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    label: const Text('Delete'),
-                  ),
-              ],
-            ),
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 4,
+            children: <Widget>[
+              TextButton(
+                onPressed: onView,
+                child: const Text('View'),
+              ),
+              if (actionEntry.canEdit)
+                TextButton(
+                  onPressed: onEdit,
+                  child: const Text('Edit'),
+                ),
+              if (actionEntry.canDelete)
+                TextButton(
+                  onPressed: onDelete,
+                  child: const Text('Delete'),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -830,11 +851,9 @@ ExpenseRecord _resolveActionEntry(
 class _SplitEntrySummary extends StatelessWidget {
   const _SplitEntrySummary({
     required this.entry,
-    required this.actionEntry,
   });
 
   final ExpenseRecord entry;
-  final ExpenseRecord actionEntry;
 
   @override
   Widget build(BuildContext context) {
@@ -846,19 +865,25 @@ class _SplitEntrySummary extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _SplitSummaryLine(
-          label: 'My share',
-          value: AppConstants.currency(actionEntry.amount),
-        ),
-        const SizedBox(height: 4),
+        if (!entry.isManagedLentEntry) ...<Widget>[
+          _SplitSummaryLine(
+            label: 'My share',
+            value: AppConstants.currency(summary.selfAmount),
+          ),
+          const SizedBox(height: 4),
+        ],
         _SplitSummaryLine(
           label: 'Lent amount',
-          value: AppConstants.currency(summary.pendingLentAmount),
+          value: entry.isManagedLentEntry
+              ? AppConstants.currency(entry.amount)
+              : AppConstants.currency(summary.pendingLentAmount),
         ),
         const SizedBox(height: 4),
         _SplitSummaryLine(
-          label: 'Participants',
-          value: '${summary.participantCount}',
+          label: entry.isManagedLentEntry ? 'Status' : 'Participants',
+          value: entry.isManagedLentEntry
+              ? (summary.isFullySettled ? 'Settled' : 'Pending')
+              : '${summary.participantCount}',
         ),
       ],
     );

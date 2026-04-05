@@ -150,6 +150,7 @@ class ExpenseSplitSummary extends Equatable {
   const ExpenseSplitSummary({
     required this.recordId,
     required this.totalAmount,
+    required this.selfAmount,
     required this.pendingLentAmount,
     required this.participantCount,
     required this.settledParticipantCount,
@@ -161,6 +162,7 @@ class ExpenseSplitSummary extends Equatable {
 
   final int recordId;
   final double totalAmount;
+  final double selfAmount;
   final double pendingLentAmount;
   final int participantCount;
   final int settledParticipantCount;
@@ -176,6 +178,7 @@ class ExpenseSplitSummary extends Equatable {
   List<Object?> get props => <Object?>[
     recordId,
     totalAmount,
+    selfAmount,
     pendingLentAmount,
     participantCount,
     settledParticipantCount,
@@ -249,6 +252,23 @@ class ExpenseRecord extends Equatable {
 
   bool get isCredit => type == 'income' || type == 'borrowed';
   bool get isDebit => !isCredit;
+  bool get hasTrackedSplitLent => splitSummary?.hasLentParticipants ?? false;
+  double get effectiveLentAmount {
+    if (isManagedLentEntry) {
+      return 0;
+    }
+    if (type == 'lent') {
+      return amount;
+    }
+    return splitSummary?.pendingLentAmount ?? 0;
+  }
+
+  double get effectiveDebitAmount {
+    if (isManagedLentEntry || !isDebit) {
+      return 0;
+    }
+    return amount;
+  }
 
   @override
   List<Object?> get props => <Object?>[
@@ -267,6 +287,59 @@ class ExpenseRecord extends Equatable {
     isResolutionIncome,
     canEdit,
     canDelete,
+  ];
+}
+
+class ExpenseResolutionDetail extends Equatable {
+  const ExpenseResolutionDetail({
+    required this.incomeEntryId,
+    required this.title,
+    required this.amount,
+    required this.date,
+    required this.participants,
+  });
+
+  final int incomeEntryId;
+  final String title;
+  final double amount;
+  final DateTime date;
+  final List<ExpenseSplitParticipant> participants;
+
+  @override
+  List<Object?> get props => <Object?>[
+    incomeEntryId,
+    title,
+    amount,
+    date,
+    participants,
+  ];
+}
+
+class ExpenseEntryDetails extends Equatable {
+  const ExpenseEntryDetails({
+    required this.entry,
+    this.splitDraft,
+    this.sourceEntry,
+    this.resolvedParticipants = const <ExpenseSplitParticipant>[],
+    this.resolutionEntries = const <ExpenseResolutionDetail>[],
+  });
+
+  final ExpenseRecord entry;
+  final ExpenseSplitDraft? splitDraft;
+  final ExpenseRecord? sourceEntry;
+  final List<ExpenseSplitParticipant> resolvedParticipants;
+  final List<ExpenseResolutionDetail> resolutionEntries;
+
+  bool get isSplitTracked => splitDraft != null;
+  bool get isResolutionEntry => resolvedParticipants.isNotEmpty || sourceEntry != null;
+
+  @override
+  List<Object?> get props => <Object?>[
+    entry,
+    splitDraft,
+    sourceEntry,
+    resolvedParticipants,
+    resolutionEntries,
   ];
 }
 

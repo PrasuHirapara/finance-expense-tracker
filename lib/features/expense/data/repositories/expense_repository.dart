@@ -256,15 +256,13 @@ class ExpenseRepository {
       final linkedSettlements = await _loadSettlementsByIncomeEntryId(id);
       if (linkedSettlements.isNotEmpty) {
         await _rollbackLentResolution(linkedSettlements);
+        await (_database.delete(
+          _database.dbFinanceEntries,
+        )..where((table) => table.id.equals(id))).go();
+        return;
       }
       final splitRecord = await _findSplitRecordByEntryId(id);
       if (splitRecord != null) {
-        final splitDraft = await _buildSplitDraft(splitRecord);
-        if (splitDraft.hasSettlements) {
-          throw StateError(
-            'This split has settled shares and cannot be deleted.',
-          );
-        }
         await _deleteSplitRecord(splitRecord, deleteLinkedEntries: true);
         return;
       }
@@ -298,8 +296,14 @@ class ExpenseRepository {
     return watchEntries(filter: ExpenseEntryFilter(bankId: bankId)).map((entries) {
       return ExpenseDashboardData(
         totalCredit: _sum(entries, (entry) => entry.isCredit),
-        totalDebit: _sum(entries, (entry) => entry.isDebit),
-        totalLent: _sum(entries, (entry) => entry.type == 'lent'),
+        totalDebit: entries.fold<double>(
+          0,
+          (sum, entry) => sum + entry.effectiveDebitAmount,
+        ),
+        totalLent: entries.fold<double>(
+          0,
+          (sum, entry) => sum + entry.effectiveLentAmount,
+        ),
         totalBorrowed: _sum(entries, (entry) => entry.type == 'borrowed'),
         entries: entries,
       );
@@ -340,9 +344,15 @@ class ExpenseRepository {
       rangeStart: range.start,
       rangeEnd: range.end,
       totalCredit: _sum(entries, (entry) => entry.isCredit),
-      totalDebit: _sum(entries, (entry) => entry.isDebit),
+      totalDebit: entries.fold<double>(
+        0,
+        (sum, entry) => sum + entry.effectiveDebitAmount,
+      ),
       totalBorrowed: _sum(entries, (entry) => entry.type == 'borrowed'),
-      totalLent: _sum(entries, (entry) => entry.type == 'lent'),
+      totalLent: entries.fold<double>(
+        0,
+        (sum, entry) => sum + entry.effectiveLentAmount,
+      ),
       totalExpense: _sum(entries, (entry) => entry.type == 'expense'),
       totalIncome: _sum(entries, (entry) => entry.type == 'income'),
       categoryBreakdown:
@@ -368,19 +378,115 @@ class ExpenseRepository {
     return _buildSplitDraft(splitRecord);
   }
 
-  Future<List<LentResolutionCandidate>> loadResolvableLentEntries() async {
-    final entries = (await loadEntries())
-        .where((entry) => entry.type == 'lent')
+  Future<ExpenseRecord?> loadEntryById(int entryId) async {
+    final records = await _loadEntryMapByIds(<int>[entryId]);
+    return records[entryId];
+  }
+
+  Future<ExpenseEntryDetails?> loadEntryDetails(int entryId) async {
+    final entry = await loadEntryById(entryId);
+    if (entry == null) {
+      return null;
+    }
+
+    final splitDraft = await loadSplitDraftForEntry(entryId);
+    if (splitDraft != null) {
+      final resolutionEntries = splitDraft.recordId == null
+          ? const <ExpenseResolutionDetail>[]
+          : await _loadResolutionDetailsForSplitRecord(splitDraft.recordId!);
+      return ExpenseEntryDetails(
+        entry: entry,
+        splitDraft: splitDraft,
+        resolutionEntries: resolutionEntries,
+      );
+    }
+
+    final settlements = await _loadSettlementsByIncomeEntryId(entryId);
+    if (settlements.isEmpty) {
+      return ExpenseEntryDetails(entry: entry);
+    }
+
+    final splitRecord = await (_database.select(_database.dbSplitRecords)
+          ..where((table) => table.id.equals(settlements.first.splitRecordId)))
+        .getSingleOrNull();
+    final sourceEntryId = splitRecord == null
+        ? null
+        : splitRecord.expenseEntryId ?? splitRecord.lentEntryId;
+    final sourceEntry = sourceEntryId == null
+        ? null
+        : await loadEntryById(sourceEntryId);
+    final participantIds = settlements
+        .map((settlement) => settlement.splitParticipantId)
+        .toSet()
         .toList(growable: false);
+    final participantRows = participantIds.isEmpty
+        ? const <DbSplitParticipant>[]
+        : await (_database.select(_database.dbSplitParticipants)
+              ..where((table) => table.id.isIn(participantIds))
+              ..orderBy(<OrderingTerm Function($DbSplitParticipantsTable)>[
+                (table) => OrderingTerm.asc(table.sortOrder),
+                (table) => OrderingTerm.asc(table.id),
+              ]))
+            .get();
+    final participantsById = <int, DbSplitParticipant>{
+      for (final participant in participantRows) participant.id: participant,
+    };
+
+    return ExpenseEntryDetails(
+      entry: entry,
+      sourceEntry: sourceEntry,
+      resolvedParticipants: settlements.map((settlement) {
+        final participant = participantsById[settlement.splitParticipantId];
+        return ExpenseSplitParticipant(
+          id: participant?.id,
+          name: participant?.participantName ?? 'Participant',
+          amount: settlement.settledAmount,
+          percentage: participant?.percentage ?? 0,
+          isSelf: participant?.isSelf ?? false,
+          settledAmount: settlement.settledAmount,
+          sortOrder: participant?.sortOrder ?? 0,
+        );
+      }).toList(growable: false),
+    );
+  }
+
+  Future<List<LentResolutionCandidate>> loadResolvableLentEntries() async {
+    final entries = await loadEntries();
+    final entryById = <int, ExpenseRecord>{
+      for (final entry in entries) entry.id: entry,
+    };
     final candidates = <LentResolutionCandidate>[];
+    final handledSplitRecordIds = <int>{};
     for (final entry in entries) {
-      final splitDraft =
-          await loadSplitDraftForEntry(entry.id) ?? _buildSyntheticLentDraft(entry);
+      ExpenseRecord candidateEntry = entry;
+      ExpenseSplitDraft? splitDraft;
+
+      if (entry.splitSummary != null && entry.splitSummary!.hasLentParticipants) {
+        if (!handledSplitRecordIds.add(entry.splitSummary!.recordId)) {
+          continue;
+        }
+        final sourceEntryId =
+            entry.splitSummary!.expenseEntryId ?? entry.splitSummary!.lentEntryId;
+        candidateEntry = sourceEntryId == null
+            ? entry
+            : entryById[sourceEntryId] ?? entry;
+        splitDraft = await loadSplitDraftForEntry(candidateEntry.id);
+      } else if (entry.type == 'lent') {
+        splitDraft =
+            await loadSplitDraftForEntry(entry.id) ?? _buildSyntheticLentDraft(entry);
+      }
+
+      if (splitDraft == null) {
+        continue;
+      }
+
       final hasPendingParticipants = splitDraft.participants.any(
         (participant) => !participant.isSelf && !participant.isSettled,
       );
       if (hasPendingParticipants) {
-        candidates.add(LentResolutionCandidate(entry: entry, splitDraft: splitDraft));
+        candidates.add(
+          LentResolutionCandidate(entry: candidateEntry, splitDraft: splitDraft),
+        );
       }
     }
     candidates.sort((a, b) => b.entry.date.compareTo(a.entry.date));
@@ -476,6 +582,11 @@ class ExpenseRepository {
       final summary = ExpenseSplitSummary(
         recordId: splitRecord.id,
         totalAmount: splitRecord.totalAmount,
+        selfAmount: _roundMoney(
+          participants
+              .where((participant) => participant.isSelf)
+              .fold<double>(0, (sum, participant) => sum + participant.amount),
+        ),
         pendingLentAmount: _roundMoney(
           participants
               .where((participant) => !participant.isSelf)
@@ -511,12 +622,12 @@ class ExpenseRepository {
         .map((record) {
           final splitSummary = splitSummariesByEntryId[record.id];
           final isManagedLentEntry =
-              splitSummary != null && splitSummary.lentEntryId == record.id;
+              splitSummary != null &&
+              splitSummary.expenseEntryId != null &&
+              splitSummary.lentEntryId == record.id;
           final isResolutionIncome = resolutionIncomeIds.contains(record.id);
           final canEdit = !isManagedLentEntry && !isResolutionIncome;
-          final canDelete = isManagedLentEntry
-              ? false
-              : splitSummary == null || !splitSummary.hasSettlements;
+          final canDelete = !isManagedLentEntry;
           return ExpenseRecord(
             id: record.id,
             title: record.title,
@@ -535,6 +646,7 @@ class ExpenseRepository {
             canDelete: canDelete,
           );
         })
+        .where((record) => !record.isManagedLentEntry)
         .toList(growable: false);
   }
 
@@ -570,6 +682,33 @@ class ExpenseRepository {
               table.expenseEntryId.isIn(entryIds) | table.lentEntryId.isIn(entryIds),
         ))
         .get();
+  }
+
+  Future<Map<int, ExpenseRecord>> _loadEntryMapByIds(List<int> entryIds) async {
+    if (entryIds.isEmpty) {
+      return <int, ExpenseRecord>{};
+    }
+    final rows = await ((_database.select(_database.dbFinanceEntries)
+              ..where((table) => table.id.isIn(entryIds)))
+            .join(<Join>[
+              innerJoin(
+                _database.dbCategories,
+                _database.dbCategories.id.equalsExp(
+                  _database.dbFinanceEntries.categoryId,
+                ),
+              ),
+              leftOuterJoin(
+                _database.dbBanks,
+                _database.dbBanks.id.equalsExp(
+                  _database.dbFinanceEntries.bankId,
+                ),
+              ),
+            ]))
+        .get();
+    final records = await _mapExpenseRows(rows);
+    return <int, ExpenseRecord>{
+      for (final record in records) record.id: record,
+    };
   }
 
   Future<Map<int, List<DbSplitParticipant>>> _loadParticipantsByRecordIds(
@@ -671,15 +810,13 @@ class ExpenseRepository {
       totalAmount: _roundMoney(splitDraft.totalAmount),
       participants: normalizedParticipants,
     );
-    final selfAmount = _roundMoney(normalizedSplitDraft.selfAmount);
-    final pendingLentAmount = _roundMoney(normalizedSplitDraft.pendingLentAmount);
     final expenseEntryId = existingSplitRecord?.expenseEntryId ?? existingExpenseEntryId;
 
     int resolvedExpenseEntryId;
     if (expenseEntryId == null) {
       resolvedExpenseEntryId = await _insertFinanceEntry(
         draft: draft,
-        amount: selfAmount,
+        amount: normalizedSplitDraft.totalAmount,
         type: 'expense',
         counterparty: null,
       );
@@ -688,31 +825,14 @@ class ExpenseRepository {
       await _updateFinanceEntry(
         entryId: expenseEntryId,
         draft: draft,
-        amount: selfAmount,
+        amount: normalizedSplitDraft.totalAmount,
         type: 'expense',
         counterparty: null,
       );
     }
 
     int? resolvedLentEntryId = existingSplitRecord?.lentEntryId;
-    if (normalizedSplitDraft.hasLentParticipants) {
-      if (resolvedLentEntryId == null) {
-        resolvedLentEntryId = await _insertFinanceEntry(
-          draft: draft,
-          amount: pendingLentAmount,
-          type: 'lent',
-          counterparty: _buildParticipantSummary(normalizedParticipants),
-        );
-      } else {
-        await _updateFinanceEntry(
-          entryId: resolvedLentEntryId,
-          draft: draft,
-          amount: pendingLentAmount,
-          type: 'lent',
-          counterparty: _buildParticipantSummary(normalizedParticipants),
-        );
-      }
-    } else if (resolvedLentEntryId != null) {
+    if (resolvedLentEntryId != null) {
       await (_database.delete(
         _database.dbFinanceEntries,
       )..where((table) => table.id.equals(resolvedLentEntryId!))).go();
@@ -935,6 +1055,80 @@ class ExpenseRepository {
         .get();
   }
 
+  Future<List<ExpenseResolutionDetail>> _loadResolutionDetailsForSplitRecord(
+    int splitRecordId,
+  ) async {
+    final settlements = await (_database.select(_database.dbLentSettlements)
+          ..where((table) => table.splitRecordId.equals(splitRecordId))
+          ..orderBy(<OrderingTerm Function($DbLentSettlementsTable)>[
+            (table) => OrderingTerm.asc(table.incomeEntryId),
+            (table) => OrderingTerm.asc(table.id),
+          ]))
+        .get();
+    if (settlements.isEmpty) {
+      return const <ExpenseResolutionDetail>[];
+    }
+
+    final incomeIds = settlements
+        .map((settlement) => settlement.incomeEntryId)
+        .toSet()
+        .toList(growable: false);
+    final participantIds = settlements
+        .map((settlement) => settlement.splitParticipantId)
+        .toSet()
+        .toList(growable: false);
+    final entryMap = await _loadEntryMapByIds(incomeIds);
+    final participantRows = await (_database.select(_database.dbSplitParticipants)
+          ..where((table) => table.id.isIn(participantIds))
+          ..orderBy(<OrderingTerm Function($DbSplitParticipantsTable)>[
+            (table) => OrderingTerm.asc(table.sortOrder),
+            (table) => OrderingTerm.asc(table.id),
+          ]))
+        .get();
+    final participantsById = <int, DbSplitParticipant>{
+      for (final participant in participantRows) participant.id: participant,
+    };
+
+    final groupedSettlements = <int, List<DbLentSettlement>>{};
+    for (final settlement in settlements) {
+      groupedSettlements
+          .putIfAbsent(settlement.incomeEntryId, () => <DbLentSettlement>[])
+          .add(settlement);
+    }
+
+    final details = <ExpenseResolutionDetail>[];
+    for (final incomeId in incomeIds) {
+      final incomeEntry = entryMap[incomeId];
+      if (incomeEntry == null) {
+        continue;
+      }
+      final grouped = groupedSettlements[incomeId] ?? const <DbLentSettlement>[];
+      details.add(
+        ExpenseResolutionDetail(
+          incomeEntryId: incomeEntry.id,
+          title: incomeEntry.title,
+          amount: incomeEntry.amount,
+          date: incomeEntry.date,
+          participants: grouped.map((settlement) {
+            final participant = participantsById[settlement.splitParticipantId];
+            return ExpenseSplitParticipant(
+              id: participant?.id,
+              name: participant?.participantName ?? 'Participant',
+              amount: settlement.settledAmount,
+              percentage: participant?.percentage ?? 0,
+              isSelf: participant?.isSelf ?? false,
+              settledAmount: settlement.settledAmount,
+              sortOrder: participant?.sortOrder ?? 0,
+            );
+          }).toList(growable: false),
+        ),
+      );
+    }
+
+    details.sort((a, b) => b.date.compareTo(a.date));
+    return details;
+  }
+
   Future<void> _rollbackLentResolution(List<DbLentSettlement> settlements) async {
     final splitRecordIds = <int>{};
     for (final settlement in settlements) {
@@ -969,6 +1163,13 @@ class ExpenseRepository {
     final splitRecord = await (_database.select(_database.dbSplitRecords)
           ..where((table) => table.id.equals(splitRecordId)))
         .getSingle();
+    if (splitRecord.expenseEntryId != null) {
+      await (_database.update(_database.dbFinanceEntries)
+            ..where((table) => table.id.equals(splitRecord.expenseEntryId!)))
+          .write(
+            DbFinanceEntriesCompanion(amount: Value(splitRecord.totalAmount)),
+          );
+    }
     if (splitRecord.lentEntryId == null) {
       return;
     }
@@ -997,7 +1198,18 @@ class ExpenseRepository {
           ..where((table) => table.splitRecordId.equals(splitRecord.id)))
         .get();
     if (settlements.isNotEmpty) {
-      throw StateError('Split records with settlements cannot be deleted.');
+      final incomeEntryIds = settlements
+          .map((settlement) => settlement.incomeEntryId)
+          .toSet()
+          .toList(growable: false);
+      await (_database.delete(_database.dbLentSettlements)
+            ..where((table) => table.splitRecordId.equals(splitRecord.id)))
+          .go();
+      if (incomeEntryIds.isNotEmpty) {
+        await (_database.delete(_database.dbFinanceEntries)
+              ..where((table) => table.id.isIn(incomeEntryIds)))
+            .go();
+      }
     }
     await (_database.delete(_database.dbSplitParticipants)
           ..where((table) => table.splitRecordId.equals(splitRecord.id)))
@@ -1098,21 +1310,6 @@ class ExpenseRepository {
       return null;
     }
     return counterparty.trim();
-  }
-
-  String? _buildParticipantSummary(List<ExpenseSplitParticipant> participants) {
-    final names = participants
-        .where((participant) => !participant.isSelf)
-        .map((participant) => participant.name.trim())
-        .where((name) => name.isNotEmpty)
-        .toList(growable: false);
-    if (names.isEmpty) {
-      return null;
-    }
-    if (names.length <= 2) {
-      return names.join(', ');
-    }
-    return '${names.take(2).join(', ')} +${names.length - 2} more';
   }
 
   Future<void> _removeLegacyDemoEntries() async {

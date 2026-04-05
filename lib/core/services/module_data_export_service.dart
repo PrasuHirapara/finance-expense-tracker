@@ -150,7 +150,10 @@ class ModuleDataExportService {
               'Counterparty',
               'Notes',
               'Split Record',
+              'Split Total',
+              'My Share',
               'Split Pending',
+              'Resolution',
             ],
             data: entries
                 .map(
@@ -171,8 +174,19 @@ class ModuleDataExportService {
                     entry.splitSummary == null
                         ? '-'
                         : IndianNumberFormatter.formatFull(
+                            entry.splitSummary!.totalAmount,
+                          ),
+                    entry.splitSummary == null
+                        ? '-'
+                        : IndianNumberFormatter.formatFull(
+                            entry.splitSummary!.selfAmount,
+                          ),
+                    entry.splitSummary == null
+                        ? '-'
+                        : IndianNumberFormatter.formatFull(
                             entry.splitSummary!.pendingLentAmount,
                           ),
+                    entry.isResolutionIncome ? 'Yes' : 'No',
                   ],
                 )
                 .toList(growable: false),
@@ -192,20 +206,29 @@ class ModuleDataExportService {
                 'Expense Entry ID',
                 'Lent Entry ID',
                 'Total Amount',
+                'My Share',
                 'Pending Lent',
                 'Participants',
+                'Resolutions',
               ],
               data: splitBundle.records
                   .map(
                     (record) => <String>[
                       record.id.toString(),
                       record.expenseEntryId?.toString() ?? '-',
-                      record.lentEntryId?.toString() ?? '-',
+                      record.expenseEntryId != null
+                          ? '-'
+                          : record.lentEntryId?.toString() ?? '-',
                       IndianNumberFormatter.formatFull(record.totalAmount),
+                      IndianNumberFormatter.formatFull(
+                        splitBundle.selfAmountByRecordId[record.id] ?? 0,
+                      ),
                       IndianNumberFormatter.formatFull(
                         splitBundle.pendingAmountByRecordId[record.id] ?? 0,
                       ),
                       (splitBundle.participantCountByRecordId[record.id] ?? 0)
+                          .toString(),
+                      (splitBundle.resolutionCountByRecordId[record.id] ?? 0)
                           .toString(),
                     ],
                   )
@@ -394,14 +417,15 @@ class ModuleDataExportService {
       TextCellValue('Counterparty'),
       TextCellValue('Notes'),
       TextCellValue('Split Record ID'),
+      TextCellValue('Split Total Amount'),
+      TextCellValue('My Share Amount'),
       TextCellValue('Split Pending Amount'),
-      TextCellValue('Managed Lent Entry'),
       TextCellValue('Resolution Income'),
     ]);
     _applyRowStyle(
       entriesSheet,
       rowIndex: 0,
-      columnCount: 14,
+      columnCount: 15,
       style: wrappedHeaderStyle,
     );
 
@@ -423,8 +447,13 @@ class ModuleDataExportService {
             : _numericCell(entry.splitSummary!.recordId),
         entry.splitSummary == null
             ? TextCellValue('')
+            : _numericCell(entry.splitSummary!.totalAmount),
+        entry.splitSummary == null
+            ? TextCellValue('')
+            : _numericCell(entry.splitSummary!.selfAmount),
+        entry.splitSummary == null
+            ? TextCellValue('')
             : _numericCell(entry.splitSummary!.pendingLentAmount),
-        TextCellValue(entry.isManagedLentEntry ? 'Yes' : 'No'),
         TextCellValue(entry.isResolutionIncome ? 'Yes' : 'No'),
       ]);
       _applyCellStyle(
@@ -452,6 +481,18 @@ class ModuleDataExportService {
           columnIndex: 11,
           style: numberStyle,
         );
+        _applyCellStyle(
+          entriesSheet,
+          rowIndex: rowIndex,
+          columnIndex: 12,
+          style: numberStyle,
+        );
+        _applyCellStyle(
+          entriesSheet,
+          rowIndex: rowIndex,
+          columnIndex: 13,
+          style: numberStyle,
+        );
       }
     }
 
@@ -462,12 +503,16 @@ class ModuleDataExportService {
         TextCellValue('Expense Entry ID'),
         TextCellValue('Lent Entry ID'),
         TextCellValue('Total Amount'),
+        TextCellValue('My Share Amount'),
+        TextCellValue('Pending Lent Amount'),
+        TextCellValue('Participant Count'),
+        TextCellValue('Resolution Count'),
         TextCellValue('Created At'),
       ]);
       _applyRowStyle(
         splitRecordsSheet,
         rowIndex: 0,
-        columnCount: 5,
+        columnCount: 9,
         style: wrappedHeaderStyle,
       );
       for (final record in splitBundle.records) {
@@ -477,13 +522,17 @@ class ModuleDataExportService {
           record.expenseEntryId == null
               ? TextCellValue('')
               : _numericCell(record.expenseEntryId!),
-          record.lentEntryId == null
+          record.lentEntryId == null || record.expenseEntryId != null
               ? TextCellValue('')
               : _numericCell(record.lentEntryId!),
           _numericCell(record.totalAmount),
+          _numericCell(splitBundle.selfAmountByRecordId[record.id] ?? 0),
+          _numericCell(splitBundle.pendingAmountByRecordId[record.id] ?? 0),
+          _numericCell(splitBundle.participantCountByRecordId[record.id] ?? 0),
+          _numericCell(splitBundle.resolutionCountByRecordId[record.id] ?? 0),
           TextCellValue(record.createdAt.toIso8601String()),
         ]);
-        for (final columnIndex in <int>[0, 1, 2, 3]) {
+        for (final columnIndex in <int>[0, 1, 2, 3, 4, 5, 6, 7]) {
           _applyCellStyle(
             splitRecordsSheet,
             rowIndex: rowIndex,
@@ -492,7 +541,10 @@ class ModuleDataExportService {
           );
         }
       }
-      _setColumnWidths(splitRecordsSheet, <double>[16, 16, 16, 16, 24]);
+      _setColumnWidths(
+        splitRecordsSheet,
+        <double>[16, 16, 16, 16, 16, 16, 14, 14, 24],
+      );
     }
 
     if (splitBundle.participants.isNotEmpty) {
@@ -594,6 +646,9 @@ class ModuleDataExportService {
       28,
       14,
       16,
+      14,
+      14,
+      14,
       14,
       14,
     ]);
@@ -1072,15 +1127,23 @@ class ModuleDataExportService {
               ]))
             .get();
 
+    final selfAmountByRecordId = <int, double>{};
     final pendingAmountByRecordId = <int, double>{};
     final participantCountByRecordId = <int, int>{};
+    final resolutionCountByRecordId = <int, int>{};
     for (final participant in splitParticipants) {
       participantCountByRecordId.update(
         participant.splitRecordId,
         (value) => value + 1,
         ifAbsent: () => 1,
       );
-      if (!participant.isSelf) {
+      if (participant.isSelf) {
+        selfAmountByRecordId.update(
+          participant.splitRecordId,
+          (value) => value + participant.amount,
+          ifAbsent: () => participant.amount,
+        );
+      } else {
         pendingAmountByRecordId.update(
           participant.splitRecordId,
           (value) => value + (participant.amount - participant.settledAmount),
@@ -1088,15 +1151,26 @@ class ModuleDataExportService {
         );
       }
     }
+    for (final settlement in settlements) {
+      resolutionCountByRecordId.update(
+        settlement.splitRecordId,
+        (value) => value + 1,
+        ifAbsent: () => 1,
+      );
+    }
 
     return _ExpenseSplitExportBundle(
       records: splitRecords,
       participants: splitParticipants,
       settlements: settlements,
+      selfAmountByRecordId: selfAmountByRecordId.map(
+        (key, value) => MapEntry(key, double.parse(value.toStringAsFixed(2))),
+      ),
       pendingAmountByRecordId: pendingAmountByRecordId.map(
         (key, value) => MapEntry(key, double.parse(value.toStringAsFixed(2))),
       ),
       participantCountByRecordId: participantCountByRecordId,
+      resolutionCountByRecordId: resolutionCountByRecordId,
     );
   }
 
@@ -1276,17 +1350,21 @@ class _ExpenseExportSummary {
   });
 
   factory _ExpenseExportSummary.fromEntries(List<ExpenseRecord> entries) {
-    double sumWhere(bool Function(ExpenseRecord entry) predicate) {
-      return entries
-          .where(predicate)
-          .fold<double>(0, (sum, entry) => sum + entry.amount);
-    }
-
     return _ExpenseExportSummary(
-      totalCredit: sumWhere((entry) => entry.isCredit),
-      totalDebit: sumWhere((entry) => entry.isDebit),
-      totalBorrowed: sumWhere((entry) => entry.type == 'borrowed'),
-      totalLent: sumWhere((entry) => entry.type == 'lent'),
+      totalCredit: entries
+          .where((entry) => entry.isCredit)
+          .fold<double>(0, (sum, entry) => sum + entry.amount),
+      totalDebit: entries.fold<double>(
+        0,
+        (sum, entry) => sum + entry.effectiveDebitAmount,
+      ),
+      totalBorrowed: entries
+          .where((entry) => entry.type == 'borrowed')
+          .fold<double>(0, (sum, entry) => sum + entry.amount),
+      totalLent: entries.fold<double>(
+        0,
+        (sum, entry) => sum + entry.effectiveLentAmount,
+      ),
     );
   }
 
@@ -1303,15 +1381,19 @@ class _ExpenseSplitExportBundle {
     this.records = const <DbSplitRecord>[],
     this.participants = const <DbSplitParticipant>[],
     this.settlements = const <DbLentSettlement>[],
+    this.selfAmountByRecordId = const <int, double>{},
     this.pendingAmountByRecordId = const <int, double>{},
     this.participantCountByRecordId = const <int, int>{},
+    this.resolutionCountByRecordId = const <int, int>{},
   });
 
   final List<DbSplitRecord> records;
   final List<DbSplitParticipant> participants;
   final List<DbLentSettlement> settlements;
+  final Map<int, double> selfAmountByRecordId;
   final Map<int, double> pendingAmountByRecordId;
   final Map<int, int> participantCountByRecordId;
+  final Map<int, int> resolutionCountByRecordId;
 }
 
 class _TaskExportSummary {

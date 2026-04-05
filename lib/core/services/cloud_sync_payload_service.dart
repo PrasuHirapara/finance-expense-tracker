@@ -28,6 +28,8 @@ class CloudSyncPayloadService {
   final CredentialCryptoService _credentialCryptoService;
   final HashAlgorithm _hashAlgorithm = Sha256();
 
+  static const int _expensePayloadSchemaVersion = 3;
+
   Future<CloudBackupBundle> buildBackupBundle({
     DateTime? exportedAt,
     String? accountEmail,
@@ -79,6 +81,12 @@ class CloudSyncPayloadService {
     final credentials = loadedData[7] as List<DbCredential>;
     final taskCategories = loadedData[8] as List<String>;
     final taskCategoryUpdatedAt = loadedData[9] as DateTime?;
+    final normalizedExpensePayload = _buildNormalizedExpensePayloadMaps(
+      entries: entries,
+      splitRecords: splitRecords,
+      splitParticipants: splitParticipants,
+      lentSettlements: lentSettlements,
+    );
     final credentialHashSource = <String, dynamic>{
       'syncEnabled': includeCredentialsInBundle,
       'records': includeCredentialsInBundle
@@ -118,61 +126,10 @@ class CloudSyncPayloadService {
             },
           )
           .toList(growable: false),
-      'entries': entries
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'title': item.title,
-              'amount': item.amount,
-              'type': item.type,
-              'categoryId': item.categoryId,
-              'bankId': item.bankId,
-              'entryDate': item.entryDate.toIso8601String(),
-              'paymentMode': item.paymentMode,
-              'notes': item.notes,
-              'counterparty': item.counterparty,
-              'createdAt': item.createdAt.toIso8601String(),
-            },
-          )
-          .toList(growable: false),
-      'splitRecords': splitRecords
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'expenseEntryId': item.expenseEntryId,
-              'lentEntryId': item.lentEntryId,
-              'totalAmount': item.totalAmount,
-              'createdAt': item.createdAt.toIso8601String(),
-            },
-          )
-          .toList(growable: false),
-      'splitParticipants': splitParticipants
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'splitRecordId': item.splitRecordId,
-              'participantName': item.participantName,
-              'amount': item.amount,
-              'percentage': item.percentage,
-              'isSelf': item.isSelf,
-              'settledAmount': item.settledAmount,
-              'sortOrder': item.sortOrder,
-              'createdAt': item.createdAt.toIso8601String(),
-            },
-          )
-          .toList(growable: false),
-      'lentSettlements': lentSettlements
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'splitRecordId': item.splitRecordId,
-              'splitParticipantId': item.splitParticipantId,
-              'incomeEntryId': item.incomeEntryId,
-              'settledAmount': item.settledAmount,
-              'createdAt': item.createdAt.toIso8601String(),
-            },
-          )
-          .toList(growable: false),
+      'entries': normalizedExpensePayload.entries,
+      'splitRecords': normalizedExpensePayload.splitRecords,
+      'splitParticipants': normalizedExpensePayload.splitParticipants,
+      'lentSettlements': normalizedExpensePayload.lentSettlements,
     };
     final taskHashSource = <String, dynamic>{
       'categories': taskCategories,
@@ -304,7 +261,7 @@ class CloudSyncPayloadService {
     });
 
     final expenseJson = jsonEncode(<String, dynamic>{
-      'schemaVersion': 2,
+      'schemaVersion': _expensePayloadSchemaVersion,
       'exportedAt': timestamp.toIso8601String(),
       'categories': categories
           .map(
@@ -326,61 +283,10 @@ class CloudSyncPayloadService {
             },
           )
           .toList(growable: false),
-      'entries': entries
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'title': item.title,
-              'amount': item.amount,
-              'type': item.type,
-              'categoryId': item.categoryId,
-              'bankId': item.bankId,
-              'entryDate': item.entryDate.toIso8601String(),
-              'paymentMode': item.paymentMode,
-              'notes': item.notes,
-              'counterparty': item.counterparty,
-              'createdAt': item.createdAt.toIso8601String(),
-            },
-          )
-          .toList(growable: false),
-      'splitRecords': splitRecords
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'expenseEntryId': item.expenseEntryId,
-              'lentEntryId': item.lentEntryId,
-              'totalAmount': item.totalAmount,
-              'createdAt': item.createdAt.toIso8601String(),
-            },
-          )
-          .toList(growable: false),
-      'splitParticipants': splitParticipants
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'splitRecordId': item.splitRecordId,
-              'participantName': item.participantName,
-              'amount': item.amount,
-              'percentage': item.percentage,
-              'isSelf': item.isSelf,
-              'settledAmount': item.settledAmount,
-              'sortOrder': item.sortOrder,
-              'createdAt': item.createdAt.toIso8601String(),
-            },
-          )
-          .toList(growable: false),
-      'lentSettlements': lentSettlements
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'splitRecordId': item.splitRecordId,
-              'splitParticipantId': item.splitParticipantId,
-              'incomeEntryId': item.incomeEntryId,
-              'settledAmount': item.settledAmount,
-              'createdAt': item.createdAt.toIso8601String(),
-            },
-          )
-          .toList(growable: false),
+      'entries': normalizedExpensePayload.entries,
+      'splitRecords': normalizedExpensePayload.splitRecords,
+      'splitParticipants': normalizedExpensePayload.splitParticipants,
+      'lentSettlements': normalizedExpensePayload.lentSettlements,
     });
 
     final taskJson = jsonEncode(<String, dynamic>{
@@ -427,10 +333,10 @@ class CloudSyncPayloadService {
               ? credentials.length
               : 0,
           CloudSyncDomain.expense.folderName:
-              entries.length +
-              splitRecords.length +
-              splitParticipants.length +
-              lentSettlements.length,
+              normalizedExpensePayload.entries.length +
+              normalizedExpensePayload.splitRecords.length +
+              normalizedExpensePayload.splitParticipants.length +
+              normalizedExpensePayload.lentSettlements.length,
           CloudSyncDomain.task.folderName: tasks.length,
         },
         domainHashes: domainHashes,
@@ -526,7 +432,7 @@ class CloudSyncPayloadService {
     final credential = restoreCredentials
         ? jsonDecode(credentialPayload) as Map<String, dynamic>
         : const <String, dynamic>{};
-
+    final normalizedExpensePayload = _normalizeExpenseRestorePayload(expense);
     final categories =
         (expense['categories'] as List<dynamic>? ?? const <dynamic>[])
             .whereType<Map<String, dynamic>>()
@@ -534,21 +440,10 @@ class CloudSyncPayloadService {
     final banks = (expense['banks'] as List<dynamic>? ?? const <dynamic>[])
         .whereType<Map<String, dynamic>>()
         .toList(growable: false);
-    final entries = (expense['entries'] as List<dynamic>? ?? const <dynamic>[])
-        .whereType<Map<String, dynamic>>()
-        .toList(growable: false);
-    final splitRecords =
-        (expense['splitRecords'] as List<dynamic>? ?? const <dynamic>[])
-            .whereType<Map<String, dynamic>>()
-            .toList(growable: false);
-    final splitParticipants =
-        (expense['splitParticipants'] as List<dynamic>? ?? const <dynamic>[])
-            .whereType<Map<String, dynamic>>()
-            .toList(growable: false);
-    final lentSettlements =
-        (expense['lentSettlements'] as List<dynamic>? ?? const <dynamic>[])
-            .whereType<Map<String, dynamic>>()
-            .toList(growable: false);
+    final entries = normalizedExpensePayload.entries;
+    final splitRecords = normalizedExpensePayload.splitRecords;
+    final splitParticipants = normalizedExpensePayload.splitParticipants;
+    final lentSettlements = normalizedExpensePayload.lentSettlements;
     final taskCategories =
         (task['categories'] as List<dynamic>? ?? const <dynamic>[])
             .map((item) => item.toString())
@@ -964,8 +859,177 @@ class CloudSyncPayloadService {
     return DateTime.tryParse(plainExpiry);
   }
 
+  _NormalizedExpenseSyncPayload _buildNormalizedExpensePayloadMaps({
+    required List<DbFinanceEntry> entries,
+    required List<DbSplitRecord> splitRecords,
+    required List<DbSplitParticipant> splitParticipants,
+    required List<DbLentSettlement> lentSettlements,
+  }) {
+    final legacyManagedLentEntryIds = splitRecords
+        .where((item) => item.expenseEntryId != null && item.lentEntryId != null)
+        .map((item) => item.lentEntryId)
+        .whereType<int>()
+        .toSet();
+    final totalAmountByExpenseEntryId = <int, double>{
+      for (final item in splitRecords)
+        if (item.expenseEntryId != null) item.expenseEntryId!: item.totalAmount,
+    };
+
+    return _NormalizedExpenseSyncPayload(
+      entries: entries
+          .where((item) => !legacyManagedLentEntryIds.contains(item.id))
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'title': item.title,
+              'amount': totalAmountByExpenseEntryId[item.id] ?? item.amount,
+              'type': item.type,
+              'categoryId': item.categoryId,
+              'bankId': item.bankId,
+              'entryDate': item.entryDate.toIso8601String(),
+              'paymentMode': item.paymentMode,
+              'notes': item.notes,
+              'counterparty': item.counterparty,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+      splitRecords: splitRecords
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'expenseEntryId': item.expenseEntryId,
+              'lentEntryId': item.expenseEntryId != null ? null : item.lentEntryId,
+              'totalAmount': item.totalAmount,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+      splitParticipants: splitParticipants
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'splitRecordId': item.splitRecordId,
+              'participantName': item.participantName,
+              'amount': item.amount,
+              'percentage': item.percentage,
+              'isSelf': item.isSelf,
+              'settledAmount': item.settledAmount,
+              'sortOrder': item.sortOrder,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+      lentSettlements: lentSettlements
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'splitRecordId': item.splitRecordId,
+              'splitParticipantId': item.splitParticipantId,
+              'incomeEntryId': item.incomeEntryId,
+              'settledAmount': item.settledAmount,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+    );
+  }
+
+  _NormalizedExpenseSyncPayload _normalizeExpenseRestorePayload(
+    Map<String, dynamic> expense,
+  ) {
+    final rawEntries = (expense['entries'] as List<dynamic>? ?? const <dynamic>[])
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
+    final rawSplitRecords =
+        (expense['splitRecords'] as List<dynamic>? ?? const <dynamic>[])
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+    final rawSplitParticipants =
+        (expense['splitParticipants'] as List<dynamic>? ?? const <dynamic>[])
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+    final rawLentSettlements =
+        (expense['lentSettlements'] as List<dynamic>? ?? const <dynamic>[])
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+
+    if (rawSplitRecords.isEmpty) {
+      return _NormalizedExpenseSyncPayload(
+        entries: rawEntries
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList(growable: false),
+        splitRecords: const <Map<String, dynamic>>[],
+        splitParticipants: rawSplitParticipants
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList(growable: false),
+        lentSettlements: rawLentSettlements
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList(growable: false),
+      );
+    }
+
+    final legacyManagedLentEntryIds = rawSplitRecords
+        .where(
+          (item) =>
+              item['expenseEntryId'] != null && item['lentEntryId'] != null,
+        )
+        .map((item) => item['lentEntryId'])
+        .whereType<int>()
+        .toSet();
+    final totalAmountByExpenseEntryId = <int, double>{
+      for (final item in rawSplitRecords)
+        if (item['expenseEntryId'] is int)
+          item['expenseEntryId'] as int:
+              (item['totalAmount'] as num?)?.toDouble() ?? 0,
+    };
+
+    return _NormalizedExpenseSyncPayload(
+      entries: rawEntries
+          .where((item) => !legacyManagedLentEntryIds.contains(item['id']))
+          .map((item) {
+            final normalized = Map<String, dynamic>.from(item);
+            final entryId = normalized['id'];
+            if (entryId is int && totalAmountByExpenseEntryId.containsKey(entryId)) {
+              normalized['amount'] = totalAmountByExpenseEntryId[entryId];
+            }
+            return normalized;
+          })
+          .toList(growable: false),
+      splitRecords: rawSplitRecords
+          .map((item) {
+            final normalized = Map<String, dynamic>.from(item);
+            if (normalized['expenseEntryId'] != null) {
+              normalized['lentEntryId'] = null;
+            }
+            return normalized;
+          })
+          .toList(growable: false),
+      splitParticipants: rawSplitParticipants
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(growable: false),
+      lentSettlements: rawLentSettlements
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(growable: false),
+    );
+  }
+
   Future<String> _hashJsonContent(Map<String, dynamic> content) async {
     final digest = await _hashAlgorithm.hash(utf8.encode(jsonEncode(content)));
     return base64UrlEncode(digest.bytes);
   }
+}
+
+class _NormalizedExpenseSyncPayload {
+  const _NormalizedExpenseSyncPayload({
+    required this.entries,
+    required this.splitRecords,
+    required this.splitParticipants,
+    required this.lentSettlements,
+  });
+
+  final List<Map<String, dynamic>> entries;
+  final List<Map<String, dynamic>> splitRecords;
+  final List<Map<String, dynamic>> splitParticipants;
+  final List<Map<String, dynamic>> lentSettlements;
 }

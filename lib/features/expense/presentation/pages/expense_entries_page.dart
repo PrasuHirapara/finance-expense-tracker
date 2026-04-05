@@ -245,7 +245,6 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                                           const SizedBox(height: 8),
                                           _SplitEntrySummary(
                                             entry: entry,
-                                            actionEntry: actionEntry,
                                           ),
                                         ],
                                       ],
@@ -261,29 +260,36 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              if (actionEntry.canEdit || actionEntry.canDelete)
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: <Widget>[
-                                    if (actionEntry.canEdit)
-                                      TextButton.icon(
-                                        onPressed: () => Navigator.of(context).pushNamed(
-                                          AppRoutes.expenseAdd,
-                                          arguments: ExpenseEditorArgs(
-                                            entry: actionEntry,
-                                          ),
+                              Wrap(
+                                alignment: WrapAlignment.end,
+                                spacing: 4,
+                                children: <Widget>[
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pushNamed(
+                                      AppRoutes.expenseDetail,
+                                      arguments: ExpenseDetailArgs(
+                                        entryId: entry.id,
+                                      ),
+                                    ),
+                                    child: const Text('View'),
+                                  ),
+                                  if (actionEntry.canEdit)
+                                    TextButton(
+                                      onPressed: () => Navigator.of(context).pushNamed(
+                                        AppRoutes.expenseAdd,
+                                        arguments: ExpenseEditorArgs(
+                                          entry: actionEntry,
                                         ),
-                                        icon: const Icon(Icons.edit_rounded),
-                                        label: const Text('Edit'),
                                       ),
-                                    if (actionEntry.canDelete)
-                                      TextButton.icon(
-                                        onPressed: () => _deleteEntry(actionEntry),
-                                        icon: const Icon(Icons.delete_outline_rounded),
-                                        label: const Text('Delete'),
-                                      ),
-                                  ],
-                                ),
+                                      child: const Text('Edit'),
+                                    ),
+                                  if (actionEntry.canDelete)
+                                    TextButton(
+                                      onPressed: () => _deleteEntry(actionEntry),
+                                      child: const Text('Delete'),
+                                    ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -310,7 +316,13 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete transaction'),
-        content: Text('Delete "${entry.title}"?'),
+        content: Text(
+          entry.isResolutionIncome
+              ? 'Delete "${entry.title}"? This will add the amount back to pending lent.'
+              : entry.splitSummary?.hasSettlements == true
+              ? 'Delete "${entry.title}" and all linked resolution entries?'
+              : 'Delete "${entry.title}"?',
+        ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -395,11 +407,9 @@ ExpenseRecord _resolveActionEntry(
 class _SplitEntrySummary extends StatelessWidget {
   const _SplitEntrySummary({
     required this.entry,
-    required this.actionEntry,
   });
 
   final ExpenseRecord entry;
-  final ExpenseRecord actionEntry;
 
   @override
   Widget build(BuildContext context) {
@@ -411,19 +421,25 @@ class _SplitEntrySummary extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _SplitSummaryLine(
-          label: 'My share',
-          value: AppConstants.currency(actionEntry.amount),
-        ),
-        const SizedBox(height: 4),
+        if (!entry.isManagedLentEntry) ...<Widget>[
+          _SplitSummaryLine(
+            label: 'My share',
+            value: AppConstants.currency(summary.selfAmount),
+          ),
+          const SizedBox(height: 4),
+        ],
         _SplitSummaryLine(
           label: 'Lent amount',
-          value: AppConstants.currency(summary.pendingLentAmount),
+          value: entry.isManagedLentEntry
+              ? AppConstants.currency(entry.amount)
+              : AppConstants.currency(summary.pendingLentAmount),
         ),
         const SizedBox(height: 4),
         _SplitSummaryLine(
-          label: 'Participants',
-          value: '${summary.participantCount}',
+          label: entry.isManagedLentEntry ? 'Status' : 'Participants',
+          value: entry.isManagedLentEntry
+              ? (summary.isFullySettled ? 'Settled' : 'Pending')
+              : '${summary.participantCount}',
         ),
       ],
     );

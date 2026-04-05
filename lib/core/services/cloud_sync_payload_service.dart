@@ -51,6 +51,15 @@ class CloudSyncPayloadService {
         _database.dbFinanceEntries,
       )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
       (_database.select(
+        _database.dbSplitRecords,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
+      (_database.select(
+        _database.dbSplitParticipants,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
+      (_database.select(
+        _database.dbLentSettlements,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
+      (_database.select(
         _database.dbTasks,
       )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
       (_database.select(
@@ -63,10 +72,13 @@ class CloudSyncPayloadService {
     final categories = loadedData[0] as List<DbCategory>;
     final banks = loadedData[1] as List<DbBank>;
     final entries = loadedData[2] as List<DbFinanceEntry>;
-    final tasks = loadedData[3] as List<DbTask>;
-    final credentials = loadedData[4] as List<DbCredential>;
-    final taskCategories = loadedData[5] as List<String>;
-    final taskCategoryUpdatedAt = loadedData[6] as DateTime?;
+    final splitRecords = loadedData[3] as List<DbSplitRecord>;
+    final splitParticipants = loadedData[4] as List<DbSplitParticipant>;
+    final lentSettlements = loadedData[5] as List<DbLentSettlement>;
+    final tasks = loadedData[6] as List<DbTask>;
+    final credentials = loadedData[7] as List<DbCredential>;
+    final taskCategories = loadedData[8] as List<String>;
+    final taskCategoryUpdatedAt = loadedData[9] as DateTime?;
     final credentialHashSource = <String, dynamic>{
       'syncEnabled': includeCredentialsInBundle,
       'records': includeCredentialsInBundle
@@ -119,6 +131,44 @@ class CloudSyncPayloadService {
               'paymentMode': item.paymentMode,
               'notes': item.notes,
               'counterparty': item.counterparty,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+      'splitRecords': splitRecords
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'expenseEntryId': item.expenseEntryId,
+              'lentEntryId': item.lentEntryId,
+              'totalAmount': item.totalAmount,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+      'splitParticipants': splitParticipants
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'splitRecordId': item.splitRecordId,
+              'participantName': item.participantName,
+              'amount': item.amount,
+              'percentage': item.percentage,
+              'isSelf': item.isSelf,
+              'settledAmount': item.settledAmount,
+              'sortOrder': item.sortOrder,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+      'lentSettlements': lentSettlements
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'splitRecordId': item.splitRecordId,
+              'splitParticipantId': item.splitParticipantId,
+              'incomeEntryId': item.incomeEntryId,
+              'settledAmount': item.settledAmount,
               'createdAt': item.createdAt.toIso8601String(),
             },
           )
@@ -254,7 +304,7 @@ class CloudSyncPayloadService {
     });
 
     final expenseJson = jsonEncode(<String, dynamic>{
-      'schemaVersion': 1,
+      'schemaVersion': 2,
       'exportedAt': timestamp.toIso8601String(),
       'categories': categories
           .map(
@@ -293,6 +343,44 @@ class CloudSyncPayloadService {
             },
           )
           .toList(growable: false),
+      'splitRecords': splitRecords
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'expenseEntryId': item.expenseEntryId,
+              'lentEntryId': item.lentEntryId,
+              'totalAmount': item.totalAmount,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+      'splitParticipants': splitParticipants
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'splitRecordId': item.splitRecordId,
+              'participantName': item.participantName,
+              'amount': item.amount,
+              'percentage': item.percentage,
+              'isSelf': item.isSelf,
+              'settledAmount': item.settledAmount,
+              'sortOrder': item.sortOrder,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+      'lentSettlements': lentSettlements
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'splitRecordId': item.splitRecordId,
+              'splitParticipantId': item.splitParticipantId,
+              'incomeEntryId': item.incomeEntryId,
+              'settledAmount': item.settledAmount,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
     });
 
     final taskJson = jsonEncode(<String, dynamic>{
@@ -320,6 +408,9 @@ class CloudSyncPayloadService {
       categories: categories,
       banks: banks,
       entries: entries,
+      splitRecords: splitRecords,
+      splitParticipants: splitParticipants,
+      lentSettlements: lentSettlements,
       tasks: tasks,
       credentials: credentials,
       taskCategoryUpdatedAt: taskCategoryUpdatedAt,
@@ -335,7 +426,11 @@ class CloudSyncPayloadService {
           CloudSyncDomain.credential.folderName: includeCredentialsInBundle
               ? credentials.length
               : 0,
-          CloudSyncDomain.expense.folderName: entries.length,
+          CloudSyncDomain.expense.folderName:
+              entries.length +
+              splitRecords.length +
+              splitParticipants.length +
+              lentSettlements.length,
           CloudSyncDomain.task.folderName: tasks.length,
         },
         domainHashes: domainHashes,
@@ -361,6 +456,9 @@ class CloudSyncPayloadService {
       (_database.select(_database.dbCategories)).get(),
       (_database.select(_database.dbBanks)).get(),
       (_database.select(_database.dbFinanceEntries)).get(),
+      (_database.select(_database.dbSplitRecords)).get(),
+      (_database.select(_database.dbSplitParticipants)).get(),
+      (_database.select(_database.dbLentSettlements)).get(),
       (_database.select(_database.dbTasks)).get(),
       (_database.select(_database.dbCredentials)).get(),
       _taskCategoryRepository.lastModifiedAt(),
@@ -371,9 +469,12 @@ class CloudSyncPayloadService {
       categories: loadedData[0] as List<DbCategory>,
       banks: loadedData[1] as List<DbBank>,
       entries: loadedData[2] as List<DbFinanceEntry>,
-      tasks: loadedData[3] as List<DbTask>,
-      credentials: loadedData[4] as List<DbCredential>,
-      taskCategoryUpdatedAt: loadedData[5] as DateTime?,
+      splitRecords: loadedData[3] as List<DbSplitRecord>,
+      splitParticipants: loadedData[4] as List<DbSplitParticipant>,
+      lentSettlements: loadedData[5] as List<DbLentSettlement>,
+      tasks: loadedData[6] as List<DbTask>,
+      credentials: loadedData[7] as List<DbCredential>,
+      taskCategoryUpdatedAt: loadedData[8] as DateTime?,
     );
   }
 
@@ -381,6 +482,9 @@ class CloudSyncPayloadService {
     required List<DbCategory> categories,
     required List<DbBank> banks,
     required List<DbFinanceEntry> entries,
+    required List<DbSplitRecord> splitRecords,
+    required List<DbSplitParticipant> splitParticipants,
+    required List<DbLentSettlement> lentSettlements,
     required List<DbTask> tasks,
     required List<DbCredential> credentials,
     required DateTime? taskCategoryUpdatedAt,
@@ -390,6 +494,9 @@ class CloudSyncPayloadService {
       ...banks.map((item) => item.createdAt),
       ...entries.map((item) => item.createdAt),
       ...entries.map((item) => item.entryDate),
+      ...splitRecords.map((item) => item.createdAt),
+      ...splitParticipants.map((item) => item.createdAt),
+      ...lentSettlements.map((item) => item.createdAt),
       ...tasks.map((item) => item.createdAt),
       ...tasks.map((item) => item.taskDate),
       ...credentials.map((item) => item.updatedAt),
@@ -430,6 +537,18 @@ class CloudSyncPayloadService {
     final entries = (expense['entries'] as List<dynamic>? ?? const <dynamic>[])
         .whereType<Map<String, dynamic>>()
         .toList(growable: false);
+    final splitRecords =
+        (expense['splitRecords'] as List<dynamic>? ?? const <dynamic>[])
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+    final splitParticipants =
+        (expense['splitParticipants'] as List<dynamic>? ?? const <dynamic>[])
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
+    final lentSettlements =
+        (expense['lentSettlements'] as List<dynamic>? ?? const <dynamic>[])
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
     final taskCategories =
         (task['categories'] as List<dynamic>? ?? const <dynamic>[])
             .map((item) => item.toString())
@@ -483,6 +602,9 @@ class CloudSyncPayloadService {
 
     await _database.transaction(() async {
       cancellationToken?.throwIfCancelled();
+      await _database.delete(_database.dbLentSettlements).go();
+      await _database.delete(_database.dbSplitParticipants).go();
+      await _database.delete(_database.dbSplitRecords).go();
       await _database.delete(_database.dbFinanceEntries).go();
       await _database.delete(_database.dbBanks).go();
       await _database.delete(_database.dbCategories).go();
@@ -556,6 +678,92 @@ class CloudSyncPayloadService {
                     paymentMode: Value(item['paymentMode'] as String? ?? ''),
                     notes: Value(item['notes'] as String? ?? ''),
                     counterparty: Value(item['counterparty'] as String?),
+                    createdAt: Value(
+                      DateTime.tryParse(item['createdAt'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                  );
+                })
+                .toList(growable: false),
+          );
+        });
+      }
+
+      if (splitRecords.isNotEmpty) {
+        cancellationToken?.throwIfCancelled();
+        await _database.batch((batch) {
+          batch.insertAll(
+            _database.dbSplitRecords,
+            splitRecords
+                .map((item) {
+                  return DbSplitRecordsCompanion(
+                    id: Value(item['id'] as int),
+                    expenseEntryId: Value(item['expenseEntryId'] as int?),
+                    lentEntryId: Value(item['lentEntryId'] as int?),
+                    totalAmount: Value(
+                      (item['totalAmount'] as num?)?.toDouble() ?? 0,
+                    ),
+                    createdAt: Value(
+                      DateTime.tryParse(item['createdAt'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                  );
+                })
+                .toList(growable: false),
+          );
+        });
+      }
+
+      if (splitParticipants.isNotEmpty) {
+        cancellationToken?.throwIfCancelled();
+        await _database.batch((batch) {
+          batch.insertAll(
+            _database.dbSplitParticipants,
+            splitParticipants
+                .map((item) {
+                  return DbSplitParticipantsCompanion(
+                    id: Value(item['id'] as int),
+                    splitRecordId: Value(item['splitRecordId'] as int? ?? 0),
+                    participantName: Value(
+                      item['participantName'] as String? ?? '',
+                    ),
+                    amount: Value((item['amount'] as num?)?.toDouble() ?? 0),
+                    percentage: Value(
+                      (item['percentage'] as num?)?.toDouble() ?? 0,
+                    ),
+                    isSelf: Value(item['isSelf'] as bool? ?? false),
+                    settledAmount: Value(
+                      (item['settledAmount'] as num?)?.toDouble() ?? 0,
+                    ),
+                    sortOrder: Value(item['sortOrder'] as int? ?? 0),
+                    createdAt: Value(
+                      DateTime.tryParse(item['createdAt'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                  );
+                })
+                .toList(growable: false),
+          );
+        });
+      }
+
+      if (lentSettlements.isNotEmpty) {
+        cancellationToken?.throwIfCancelled();
+        await _database.batch((batch) {
+          batch.insertAll(
+            _database.dbLentSettlements,
+            lentSettlements
+                .map((item) {
+                  return DbLentSettlementsCompanion(
+                    id: Value(item['id'] as int),
+                    splitRecordId: Value(item['splitRecordId'] as int? ?? 0),
+                    splitParticipantId: Value(
+                      item['splitParticipantId'] as int? ?? 0,
+                    ),
+                    incomeEntryId: Value(item['incomeEntryId'] as int? ?? 0),
+                    settledAmount: Value(
+                      (item['settledAmount'] as num?)?.toDouble() ?? 0,
+                    ),
                     createdAt: Value(
                       DateTime.tryParse(item['createdAt'] as String? ?? '') ??
                           DateTime.now(),

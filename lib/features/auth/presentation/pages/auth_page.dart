@@ -2,10 +2,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/services/cancellable_task.dart';
 import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
 import '../../../../core/services/firebase_runtime_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
-import '../../../../shared/widgets/blocking_loading_overlay.dart';
+import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key, this.closeOnSuccess = false});
@@ -349,17 +350,18 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      await runWithBlockingLoadingOverlay<void>(
+      await runWithCancellableBlockingOverlay<void>(
         context: context,
         title: _isLoginMode ? 'Logging in' : 'Creating account',
         statusText: _isLoginMode
             ? 'Signing in to your Firebase account...'
             : 'Creating your Firebase account...',
-        task: () async {
+        task: (token) async {
           if (_isLoginMode) {
             await authService.signInWithEmailPassword(
               email: _emailController.text,
               password: _passwordController.text,
+              cancellationToken: token,
             );
             return;
           }
@@ -368,10 +370,13 @@ class _AuthPageState extends State<AuthPage> {
             email: _emailController.text,
             password: _passwordController.text,
             displayName: _displayNameController.text,
+            cancellationToken: token,
           );
         },
       );
       await _handleAuthSuccess();
+    } on AppTaskCancelledException {
+      _showMessage(_isLoginMode ? 'Login canceled.' : 'Registration canceled.');
     } on FirebaseAuthException catch (error) {
       _showMessage(_friendlyFirebaseAuthMessage(error));
     } catch (error) {
@@ -401,13 +406,17 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      await runWithBlockingLoadingOverlay<void>(
+      await runWithCancellableBlockingOverlay<void>(
         context: context,
         title: 'Signing in',
         statusText: 'Connecting to your Google account...',
-        task: authService.signInWithGoogle,
+        task: (token) => authService.signInWithGoogle(
+          cancellationToken: token,
+        ),
       );
       await _handleAuthSuccess();
+    } on AppTaskCancelledException {
+      _showMessage('Google sign-in canceled.');
     } on FirebaseAuthException catch (error) {
       _showMessage(_friendlyFirebaseAuthMessage(error));
     } catch (error) {

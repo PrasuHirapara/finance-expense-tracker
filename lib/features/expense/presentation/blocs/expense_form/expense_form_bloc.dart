@@ -20,6 +20,8 @@ class ExpenseFormState extends Equatable {
     this.counterparty = '',
     this.categories = const <ExpenseCategory>[],
     this.banks = const <BankName>[],
+    this.splitDraft,
+    this.lentResolutionDraft,
     this.showValidation = false,
     this.errorMessage,
   });
@@ -37,10 +39,26 @@ class ExpenseFormState extends Equatable {
   final String counterparty;
   final List<ExpenseCategory> categories;
   final List<BankName> banks;
+  final ExpenseSplitDraft? splitDraft;
+  final LentResolutionDraft? lentResolutionDraft;
   final bool showValidation;
   final String? errorMessage;
 
   double? get parsedAmount => double.tryParse(amount);
+  ExpenseCategory? get selectedCategory {
+    for (final category in categories) {
+      if (category.id == categoryId) {
+        return category;
+      }
+    }
+    return null;
+  }
+
+  bool get isLentIncome =>
+      type == 'income' && selectedCategory?.name.toLowerCase() == 'lent';
+
+  bool get canConfigureSplit => type == 'expense' && (parsedAmount ?? 0) > 0;
+  bool get canResolveLent => isLentIncome && (parsedAmount ?? 0) > 0;
   bool get isValid =>
       title.trim().isNotEmpty &&
       (parsedAmount ?? 0) > 0 &&
@@ -64,6 +82,10 @@ class ExpenseFormState extends Equatable {
     String? counterparty,
     List<ExpenseCategory>? categories,
     List<BankName>? banks,
+    ExpenseSplitDraft? splitDraft,
+    bool clearSplitDraft = false,
+    LentResolutionDraft? lentResolutionDraft,
+    bool clearLentResolutionDraft = false,
     bool? showValidation,
     String? errorMessage,
   }) {
@@ -81,6 +103,10 @@ class ExpenseFormState extends Equatable {
       counterparty: counterparty ?? this.counterparty,
       categories: categories ?? this.categories,
       banks: banks ?? this.banks,
+      splitDraft: clearSplitDraft ? null : splitDraft ?? this.splitDraft,
+      lentResolutionDraft: clearLentResolutionDraft
+          ? null
+          : lentResolutionDraft ?? this.lentResolutionDraft,
       showValidation: showValidation ?? this.showValidation,
       errorMessage: errorMessage,
     );
@@ -101,6 +127,8 @@ class ExpenseFormState extends Equatable {
     counterparty,
     categories,
     banks,
+    splitDraft,
+    lentResolutionDraft,
     showValidation,
     errorMessage,
   ];
@@ -191,6 +219,24 @@ class ExpenseSubmitted extends ExpenseFormEvent {
   const ExpenseSubmitted();
 }
 
+class ExpenseSplitDraftChanged extends ExpenseFormEvent {
+  const ExpenseSplitDraftChanged(this.value);
+
+  final ExpenseSplitDraft? value;
+
+  @override
+  List<Object?> get props => <Object?>[value];
+}
+
+class ExpenseLentResolutionChanged extends ExpenseFormEvent {
+  const ExpenseLentResolutionChanged(this.value);
+
+  final LentResolutionDraft? value;
+
+  @override
+  List<Object?> get props => <Object?>[value];
+}
+
 class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
   ExpenseFormBloc(this._repository)
     : super(
@@ -201,17 +247,21 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
       ) {
     on<ExpenseFormInitialized>(_onInitialized);
     on<ExpenseTypeChanged>(
-      (event, emit) => emit(state.copyWith(type: event.value)),
+      (event, emit) => emit(
+        state.copyWith(
+          type: event.value,
+          clearSplitDraft:
+              event.value != 'expense' && state.splitDraft != null,
+          clearLentResolutionDraft:
+              event.value != 'income' && state.lentResolutionDraft != null,
+        ),
+      ),
     );
     on<ExpenseTitleChanged>(
       (event, emit) => emit(state.copyWith(title: event.value)),
     );
-    on<ExpenseAmountChanged>(
-      (event, emit) => emit(state.copyWith(amount: event.value)),
-    );
-    on<ExpenseCategoryChanged>(
-      (event, emit) => emit(state.copyWith(categoryId: event.value)),
-    );
+    on<ExpenseAmountChanged>(_onAmountChanged);
+    on<ExpenseCategoryChanged>(_onCategoryChanged);
     on<ExpenseBankChanged>(
       (event, emit) => emit(
         event.value == null
@@ -231,6 +281,20 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
     on<ExpenseCounterpartyChanged>(
       (event, emit) => emit(state.copyWith(counterparty: event.value)),
     );
+    on<ExpenseSplitDraftChanged>(
+      (event, emit) => emit(
+        event.value == null
+            ? state.copyWith(clearSplitDraft: true)
+            : state.copyWith(splitDraft: event.value),
+      ),
+    );
+    on<ExpenseLentResolutionChanged>(
+      (event, emit) => emit(
+        event.value == null
+            ? state.copyWith(clearLentResolutionDraft: true)
+            : state.copyWith(lentResolutionDraft: event.value),
+      ),
+    );
     on<ExpenseSubmitted>(_onSubmitted);
   }
 
@@ -241,8 +305,12 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
     Emitter<ExpenseFormState> emit,
   ) async {
     emit(state.copyWith(status: ExpenseFormStatus.loading));
+    await _repository.ensureLentCategory();
     final categories = await _repository.watchCategories().first;
     final banks = await _repository.watchBanks().first;
+    final splitDraft = event.existingExpense == null
+        ? null
+        : await _repository.loadSplitDraftForEntry(event.existingExpense!.id);
     emit(
       state.copyWith(
         status: ExpenseFormStatus.ready,
@@ -251,7 +319,7 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
         banks: banks,
         type: event.existingExpense?.type ?? state.type,
         title: event.existingExpense?.title ?? state.title,
-        amount: _formatAmount(event.existingExpense?.amount),
+        amount: _formatAmount(splitDraft?.totalAmount ?? event.existingExpense?.amount),
         categoryId:
             event.existingExpense?.category.id ??
             (categories.isEmpty ? null : categories.first.id),
@@ -262,6 +330,47 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
         notes: event.existingExpense?.notes ?? state.notes,
         counterparty:
             event.existingExpense?.counterparty ?? state.counterparty,
+        splitDraft: splitDraft,
+        clearLentResolutionDraft: true,
+      ),
+    );
+  }
+
+  void _onAmountChanged(
+    ExpenseAmountChanged event,
+    Emitter<ExpenseFormState> emit,
+  ) {
+    final nextAmount = double.tryParse(event.value);
+    final shouldClearSplit =
+        state.splitDraft != null &&
+        nextAmount != null &&
+        !_matchesAmount(state.splitDraft!.totalAmount, nextAmount);
+    emit(
+      state.copyWith(
+        amount: event.value,
+        clearSplitDraft: shouldClearSplit,
+        clearLentResolutionDraft: state.lentResolutionDraft != null,
+      ),
+    );
+  }
+
+  void _onCategoryChanged(
+    ExpenseCategoryChanged event,
+    Emitter<ExpenseFormState> emit,
+  ) {
+    ExpenseCategory? category;
+    for (final item in state.categories) {
+      if (item.id == event.value) {
+        category = item;
+        break;
+      }
+    }
+    final shouldClearResolution =
+        category?.name.toLowerCase() != 'lent' && state.lentResolutionDraft != null;
+    emit(
+      state.copyWith(
+        categoryId: event.value,
+        clearLentResolutionDraft: shouldClearResolution,
       ),
     );
   }
@@ -284,6 +393,9 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
     );
 
     try {
+      final splitDraft = state.splitDraft == null || !state.canConfigureSplit
+          ? null
+          : state.splitDraft!.copyWith(totalAmount: state.parsedAmount!);
       final draft = ExpenseDraft(
         title: state.title,
         amount: state.parsedAmount!,
@@ -296,6 +408,10 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
         counterparty: state.counterparty.trim().isEmpty
             ? null
             : state.counterparty.trim(),
+        splitDraft: splitDraft,
+        lentResolutionDraft: state.canResolveLent
+            ? state.lentResolutionDraft
+            : null,
       );
       if (state.isEditing) {
         await _repository.updateExpense(id: state.expenseId!, draft: draft);
@@ -321,4 +437,6 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
         ? amount.toStringAsFixed(0)
         : amount.toString();
   }
+
+  bool _matchesAmount(double left, double right) => (left - right).abs() <= 0.01;
 }

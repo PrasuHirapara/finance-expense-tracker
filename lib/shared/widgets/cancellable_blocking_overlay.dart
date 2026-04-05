@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+
+import '../../core/services/cancellable_task.dart';
 
 Future<T?> showCancellableBlockingOverlay<T>({
   required BuildContext context,
@@ -17,6 +20,33 @@ Future<T?> showCancellableBlockingOverlay<T>({
       onCancel: onCancel,
     ),
   );
+}
+
+Future<T> runWithCancellableBlockingOverlay<T>({
+  required BuildContext context,
+  required String statusText,
+  required Future<T> Function(AppCancellationToken token) task,
+  String title = 'Do not close the app',
+  bool useRootNavigator = true,
+}) async {
+  final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
+  final token = AppCancellationToken();
+  late final RawDialogRoute<void> route;
+  route = createCancellableBlockingOverlayRoute<void>(
+    title: title,
+    statusText: statusText,
+    onCancel: token.cancel,
+  );
+  unawaited(navigator.push<void>(route));
+  await Future<void>.delayed(Duration.zero);
+
+  try {
+    return await task(token);
+  } finally {
+    if (route.isActive) {
+      navigator.removeRoute(route);
+    }
+  }
 }
 
 RawDialogRoute<T> createCancellableBlockingOverlayRoute<T>({

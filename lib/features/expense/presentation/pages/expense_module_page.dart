@@ -62,6 +62,9 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                   (entry) => _matchesSearchQuery(entry, _searchController.text),
                 )
                 .toList(growable: false);
+            final entryById = <int, ExpenseRecord>{
+              for (final entry in dashboard.entries) entry.id: entry,
+            };
             final groupedEntries = _groupEntries(filteredEntries);
             final expandedDate =
                 groupedEntries.keys.any((date) => date == _expandedDate)
@@ -283,6 +286,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                                 child: _DateTransactionGroup(
                                   date: group.key,
                                   entries: group.value,
+                                  entryById: entryById,
                                   expanded: expandedDate == group.key,
                                   onTap: () {
                                     setState(() {
@@ -395,13 +399,22 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
       return;
     }
 
-    await context.read<ExpenseRepository>().deleteExpense(entry.id);
-    if (!context.mounted) {
-      return;
+    try {
+      await context.read<ExpenseRepository>().deleteExpense(entry.id);
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('"${entry.title}" deleted.')));
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('"${entry.title}" deleted.')));
   }
 }
 
@@ -562,6 +575,7 @@ class _DateTransactionGroup extends StatelessWidget {
   const _DateTransactionGroup({
     required this.date,
     required this.entries,
+    required this.entryById,
     required this.expanded,
     required this.onTap,
     required this.onEdit,
@@ -570,6 +584,7 @@ class _DateTransactionGroup extends StatelessWidget {
 
   final DateTime date;
   final List<ExpenseRecord> entries;
+  final Map<int, ExpenseRecord> entryById;
   final bool expanded;
   final VoidCallback onTap;
   final ValueChanged<ExpenseRecord> onEdit;
@@ -642,14 +657,18 @@ class _DateTransactionGroup extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: entries
                     .map(
-                      (entry) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _ExpenseEntryCard(
-                          entry: entry,
-                          onEdit: () => onEdit(entry),
-                          onDelete: () => onDelete(entry),
-                        ),
-                      ),
+                      (entry) {
+                        final actionEntry = _resolveActionEntry(entry, entryById);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _ExpenseEntryCard(
+                            entry: entry,
+                            actionEntry: actionEntry,
+                            onEdit: () => onEdit(actionEntry),
+                            onDelete: () => onDelete(actionEntry),
+                          ),
+                        );
+                      },
                     )
                     .toList(growable: false),
               ),
@@ -675,11 +694,13 @@ class _DateTransactionGroup extends StatelessWidget {
 class _ExpenseEntryCard extends StatelessWidget {
   const _ExpenseEntryCard({
     required this.entry,
+    required this.actionEntry,
     required this.onEdit,
     required this.onDelete,
   });
 
   final ExpenseRecord entry;
+  final ExpenseRecord actionEntry;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -730,6 +751,22 @@ class _ExpenseEntryCard extends StatelessWidget {
                         ),
                       ),
                     ],
+                    if (entry.splitSummary != null) ...<Widget>[
+                      const SizedBox(height: 6),
+                      _SplitEntrySummary(
+                        entry: entry,
+                        actionEntry: actionEntry,
+                      ),
+                    ],
+                    if (entry.isResolutionIncome) ...<Widget>[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Lent resolution income',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -743,21 +780,24 @@ class _ExpenseEntryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: <Widget>[
-              TextButton.icon(
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_rounded),
-                label: const Text('Edit'),
-              ),
-              TextButton.icon(
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline_rounded),
-                label: const Text('Delete'),
-              ),
-            ],
-          ),
+          if (actionEntry.canEdit || actionEntry.canDelete)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: <Widget>[
+                if (actionEntry.canEdit)
+                  TextButton.icon(
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.edit_rounded),
+                    label: const Text('Edit'),
+                  ),
+                if (actionEntry.canDelete)
+                  TextButton.icon(
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    label: const Text('Delete'),
+                  ),
+              ],
+            ),
         ],
       ),
     );
@@ -774,5 +814,88 @@ class _ExpenseEntryCard extends StatelessWidget {
       default:
         return 'Expense';
     }
+  }
+}
+
+ExpenseRecord _resolveActionEntry(
+  ExpenseRecord entry,
+  Map<int, ExpenseRecord> entryById,
+) {
+  if (entry.isManagedLentEntry && entry.splitSummary?.expenseEntryId != null) {
+    return entryById[entry.splitSummary!.expenseEntryId!] ?? entry;
+  }
+  return entry;
+}
+
+class _SplitEntrySummary extends StatelessWidget {
+  const _SplitEntrySummary({
+    required this.entry,
+    required this.actionEntry,
+  });
+
+  final ExpenseRecord entry;
+  final ExpenseRecord actionEntry;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = entry.splitSummary;
+    if (summary == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _SplitSummaryLine(
+          label: 'My share',
+          value: AppConstants.currency(actionEntry.amount),
+        ),
+        const SizedBox(height: 4),
+        _SplitSummaryLine(
+          label: 'Lent amount',
+          value: AppConstants.currency(summary.pendingLentAmount),
+        ),
+        const SizedBox(height: 4),
+        _SplitSummaryLine(
+          label: 'Participants',
+          value: '${summary.participantCount}',
+        ),
+      ],
+    );
+  }
+}
+
+class _SplitSummaryLine extends StatelessWidget {
+  const _SplitSummaryLine({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        SizedBox(
+          width: 88,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ],
+    );
   }
 }

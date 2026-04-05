@@ -78,6 +78,12 @@ class AppConstants {
         ),
       ];
 
+  static final DefaultCategorySeed lentCategorySeed = DefaultCategorySeed(
+    name: 'Lent',
+    iconCodePoint: Icons.savings_rounded.codePoint,
+    colorValue: 0xFF1ABC9C,
+  );
+
   static const List<IconData> categoryIconChoices = <IconData>[
     Icons.restaurant_rounded,
     Icons.school_rounded,

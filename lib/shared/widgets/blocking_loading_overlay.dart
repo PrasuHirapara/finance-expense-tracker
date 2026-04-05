@@ -9,11 +9,21 @@ Future<T> runWithBlockingLoadingOverlay<T>({
   required Future<T> Function() task,
   String title = 'Please wait',
   bool useRootNavigator = true,
+  VoidCallback? onCancel,
+  String cancelLabel = 'Cancel',
 }) async {
   final navigator = Navigator.of(context, rootNavigator: useRootNavigator);
-  final route = createBlockingLoadingOverlayRoute<void>(
+  late final RawDialogRoute<void> route;
+  route = createBlockingLoadingOverlayRoute<void>(
     title: title,
     statusText: statusText,
+    cancelLabel: cancelLabel,
+    onCancel: () {
+      if (route.isActive) {
+        navigator.removeRoute(route);
+      }
+      onCancel?.call();
+    },
   );
   unawaited(navigator.push<void>(route));
   await Future<void>.delayed(Duration.zero);
@@ -30,13 +40,20 @@ Future<T> runWithBlockingLoadingOverlay<T>({
 RawDialogRoute<T> createBlockingLoadingOverlayRoute<T>({
   required String statusText,
   String title = 'Please wait',
+  required VoidCallback onCancel,
+  String cancelLabel = 'Cancel',
 }) {
   return RawDialogRoute<T>(
     barrierDismissible: false,
     barrierLabel: title,
     barrierColor: Colors.transparent,
     pageBuilder: (dialogContext, _, _) {
-      return _BlockingLoadingOverlay(title: title, statusText: statusText);
+      return _BlockingLoadingOverlay(
+        title: title,
+        statusText: statusText,
+        onCancel: onCancel,
+        cancelLabel: cancelLabel,
+      );
     },
   );
 }
@@ -45,10 +62,14 @@ class _BlockingLoadingOverlay extends StatelessWidget {
   const _BlockingLoadingOverlay({
     required this.title,
     required this.statusText,
+    required this.onCancel,
+    required this.cancelLabel,
   });
 
   final String title;
   final String statusText;
+  final VoidCallback onCancel;
+  final String cancelLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -124,6 +145,11 @@ class _BlockingLoadingOverlay extends StatelessWidget {
                                   statusText,
                                   textAlign: TextAlign.center,
                                   style: theme.textTheme.bodyLarge,
+                                ),
+                                const SizedBox(height: 18),
+                                FilledButton.tonal(
+                                  onPressed: onCancel,
+                                  child: Text(cancelLabel),
                                 ),
                               ],
                             ),

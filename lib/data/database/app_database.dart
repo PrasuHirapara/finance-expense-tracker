@@ -41,6 +41,43 @@ class DbFinanceEntries extends Table {
       dateTime().clientDefault(() => DateTime.now())();
 }
 
+class DbSplitRecords extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  @ReferenceName('expenseSplitRecords')
+  IntColumn get expenseEntryId =>
+      integer().nullable().references(DbFinanceEntries, #id)();
+  @ReferenceName('lentSplitRecords')
+  IntColumn get lentEntryId =>
+      integer().nullable().references(DbFinanceEntries, #id)();
+  RealColumn get totalAmount => real()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+}
+
+class DbSplitParticipants extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get splitRecordId => integer().references(DbSplitRecords, #id)();
+  TextColumn get participantName => text()();
+  RealColumn get amount => real()();
+  RealColumn get percentage => real()();
+  BoolColumn get isSelf => boolean().withDefault(const Constant(false))();
+  RealColumn get settledAmount => real().withDefault(const Constant(0))();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+}
+
+class DbLentSettlements extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get splitRecordId => integer().references(DbSplitRecords, #id)();
+  IntColumn get splitParticipantId =>
+      integer().references(DbSplitParticipants, #id)();
+  IntColumn get incomeEntryId => integer().references(DbFinanceEntries, #id)();
+  RealColumn get settledAmount => real()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+}
+
 class DbTasks extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get sourceTaskId => integer().nullable()();
@@ -72,6 +109,9 @@ class DbCredentials extends Table {
     DbCategories,
     DbBanks,
     DbFinanceEntries,
+    DbSplitRecords,
+    DbSplitParticipants,
+    DbLentSettlements,
     DbTasks,
     DbCredentials,
   ],
@@ -80,7 +120,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -95,6 +135,11 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) {
         await m.createTable(dbCredentials);
+      }
+      if (from < 4) {
+        await m.createTable(dbSplitRecords);
+        await m.createTable(dbSplitParticipants);
+        await m.createTable(dbLentSettlements);
       }
     },
   );

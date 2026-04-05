@@ -1,5 +1,6 @@
 import '../../domain/models/credential_models.dart';
 import '../repositories/credential_repository.dart';
+import '../../../../core/services/cancellable_task.dart';
 import '../../../../core/extensions/date_time_x.dart';
 import '../../../../core/services/credential_crypto_service.dart';
 import '../../../../core/services/notification_service.dart';
@@ -121,34 +122,48 @@ class CredentialService {
   Future<DecryptedCredential> decryptCredential({
     required CredentialRecord record,
     required String encryptionKey,
+    AppCancellationToken? cancellationToken,
   }) async {
+    cancellationToken?.throwIfCancelled();
     final fields = await _cryptoService.decryptFields(
       record: record,
       encryptionKey: encryptionKey,
     );
+    cancellationToken?.throwIfCancelled();
     return _mapDecryptedCredential(record: record, fields: fields);
   }
 
   Future<List<DecryptedCredential>> decryptCredentials({
     required List<CredentialRecord> records,
     required String encryptionKey,
+    AppCancellationToken? cancellationToken,
   }) async {
-    return Future.wait(
-      records.map(
-        (record) =>
-            decryptCredential(record: record, encryptionKey: encryptionKey),
-      ),
-    );
+    final decrypted = <DecryptedCredential>[];
+    for (final record in records) {
+      cancellationToken?.throwIfCancelled();
+      decrypted.add(
+        await decryptCredential(
+          record: record,
+          encryptionKey: encryptionKey,
+          cancellationToken: cancellationToken,
+        ),
+      );
+      await cancellableUiYield(cancellationToken);
+    }
+    return decrypted;
   }
 
   Future<CredentialSecurityReport> buildSecurityReport({
     required String encryptionKey,
     String query = '',
+    AppCancellationToken? cancellationToken,
   }) async {
+    cancellationToken?.throwIfCancelled();
     final records = await _repository.loadCredentials(query: query);
     final credentials = await decryptCredentials(
       records: records,
       encryptionKey: encryptionKey,
+      cancellationToken: cancellationToken,
     );
 
     final reusedPasswords = <CredentialPasswordIssue>[];
@@ -156,11 +171,13 @@ class CredentialService {
     final today = DateTime.now().startOfDay;
 
     for (final credential in credentials) {
+      cancellationToken?.throwIfCancelled();
       final sensitiveFields = credential.fields
           .where((field) => _isSensitiveField(field.keyLabel))
           .toList(growable: false);
 
       for (final field in sensitiveFields) {
+        cancellationToken?.throwIfCancelled();
         final normalizedSecret = field.value.trim();
         if (normalizedSecret.isNotEmpty) {
           passwordUsage.putIfAbsent(normalizedSecret, () => <_PasswordUsage>[]).add(
@@ -172,9 +189,11 @@ class CredentialService {
           );
         }
       }
+      await cancellableUiYield(cancellationToken);
     }
 
     for (final usages in passwordUsage.values) {
+      cancellationToken?.throwIfCancelled();
       if (usages.length < 2) {
         continue;
       }
@@ -188,11 +207,13 @@ class CredentialService {
           ),
         );
       }
+      await cancellableUiYield(cancellationToken);
     }
 
     final expiredItems = <CredentialExpiryReminder>[];
     final expiringSoonItems = <CredentialExpiryReminder>[];
     for (final credential in credentials) {
+      cancellationToken?.throwIfCancelled();
       final expiryDate = credential.expiryDate;
       if (expiryDate == null) {
         continue;
@@ -211,6 +232,7 @@ class CredentialService {
       } else if (daysRemaining <= _expiringSoonThresholdDays) {
         expiringSoonItems.add(reminder);
       }
+      await cancellableUiYield(cancellationToken);
     }
 
     expiredItems.sort((a, b) => a.expiryDate.compareTo(b.expiryDate));

@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:drift/drift.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../data/database/app_database.dart';
 import '../../features/credentials/domain/models/credential_models.dart';
 import '../../features/expense/domain/models/expense_models.dart';
 import '../../features/tasks/domain/models/task_models.dart';
@@ -17,9 +18,10 @@ import '../models/module_export_models.dart';
 import 'app_settings_repository.dart';
 
 class ModuleDataExportService {
-  ModuleDataExportService(this._appSettingsRepository);
+  ModuleDataExportService(this._appSettingsRepository, this._database);
 
   final AppSettingsRepository _appSettingsRepository;
+  final AppDatabase _database;
 
   Future<String> exportExpenseData({
     required DateTimeRange range,
@@ -72,6 +74,7 @@ class ModuleDataExportService {
     );
     final timestamp = DateTime.now();
     final summary = _ExpenseExportSummary.fromEntries(entries);
+    final splitBundle = await _loadExpenseSplitExportBundle(entries);
     final document = pw.Document();
 
     document.addPage(
@@ -136,6 +139,7 @@ class ModuleDataExportService {
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
             cellStyle: const pw.TextStyle(fontSize: 8.5),
             headers: const <String>[
+              'Entry ID',
               'Date',
               'Title',
               'Type',
@@ -145,10 +149,13 @@ class ModuleDataExportService {
               'Mode',
               'Counterparty',
               'Notes',
+              'Split Record',
+              'Split Pending',
             ],
             data: entries
                 .map(
                   (entry) => <String>[
+                    entry.id.toString(),
                     AppConstants.shortDateFormat.format(entry.date),
                     entry.title,
                     _expenseTypeLabel(entry.type),
@@ -160,10 +167,117 @@ class ModuleDataExportService {
                         ? entry.counterparty!.trim()
                         : '-',
                     entry.notes.trim().isNotEmpty ? entry.notes.trim() : '-',
+                    entry.splitSummary?.recordId.toString() ?? '-',
+                    entry.splitSummary == null
+                        ? '-'
+                        : IndianNumberFormatter.formatFull(
+                            entry.splitSummary!.pendingLentAmount,
+                          ),
                   ],
                 )
                 .toList(growable: false),
           ),
+          if (splitBundle.records.isNotEmpty) ...<pw.Widget>[
+            pw.SizedBox(height: 18),
+            pw.Text(
+              'Split Records',
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 8),
+            pw.TableHelper.fromTextArray(
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              cellStyle: const pw.TextStyle(fontSize: 8.5),
+              headers: const <String>[
+                'Split Record ID',
+                'Expense Entry ID',
+                'Lent Entry ID',
+                'Total Amount',
+                'Pending Lent',
+                'Participants',
+              ],
+              data: splitBundle.records
+                  .map(
+                    (record) => <String>[
+                      record.id.toString(),
+                      record.expenseEntryId?.toString() ?? '-',
+                      record.lentEntryId?.toString() ?? '-',
+                      IndianNumberFormatter.formatFull(record.totalAmount),
+                      IndianNumberFormatter.formatFull(
+                        splitBundle.pendingAmountByRecordId[record.id] ?? 0,
+                      ),
+                      (splitBundle.participantCountByRecordId[record.id] ?? 0)
+                          .toString(),
+                    ],
+                  )
+                  .toList(growable: false),
+            ),
+          ],
+          if (splitBundle.participants.isNotEmpty) ...<pw.Widget>[
+            pw.SizedBox(height: 18),
+            pw.Text(
+              'Split Participants',
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 8),
+            pw.TableHelper.fromTextArray(
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              cellStyle: const pw.TextStyle(fontSize: 8.5),
+              headers: const <String>[
+                'Participant ID',
+                'Split Record ID',
+                'Name',
+                'Amount',
+                'Percentage',
+                'Self',
+                'Settled Amount',
+              ],
+              data: splitBundle.participants
+                  .map(
+                    (participant) => <String>[
+                      participant.id.toString(),
+                      participant.splitRecordId.toString(),
+                      participant.participantName,
+                      IndianNumberFormatter.formatFull(participant.amount),
+                      participant.percentage.toStringAsFixed(2),
+                      participant.isSelf ? 'Yes' : 'No',
+                      IndianNumberFormatter.formatFull(participant.settledAmount),
+                    ],
+                  )
+                  .toList(growable: false),
+            ),
+          ],
+          if (splitBundle.settlements.isNotEmpty) ...<pw.Widget>[
+            pw.SizedBox(height: 18),
+            pw.Text(
+              'Lent Settlements',
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 8),
+            pw.TableHelper.fromTextArray(
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              cellStyle: const pw.TextStyle(fontSize: 8.5),
+              headers: const <String>[
+                'Settlement ID',
+                'Split Record ID',
+                'Participant ID',
+                'Income Entry ID',
+                'Settled Amount',
+              ],
+              data: splitBundle.settlements
+                  .map(
+                    (settlement) => <String>[
+                      settlement.id.toString(),
+                      settlement.splitRecordId.toString(),
+                      settlement.splitParticipantId.toString(),
+                      settlement.incomeEntryId.toString(),
+                      IndianNumberFormatter.formatFull(
+                        settlement.settledAmount,
+                      ),
+                    ],
+                  )
+                  .toList(growable: false),
+            ),
+          ],
         ],
       ),
     );
@@ -190,6 +304,7 @@ class ModuleDataExportService {
     final summarySheet = excel['Summary'];
     final entriesSheet = excel['Entries'];
     final summary = _ExpenseExportSummary.fromEntries(entries);
+    final splitBundle = await _loadExpenseSplitExportBundle(entries);
     final headerStyle = CellStyle(bold: true);
     final numberStyle = CellStyle(
       numberFormat: const CustomNumericNumFormat(
@@ -268,6 +383,7 @@ class ModuleDataExportService {
     );
 
     entriesSheet.appendRow(<CellValue?>[
+      TextCellValue('Entry ID'),
       TextCellValue('Date'),
       TextCellValue('Title'),
       TextCellValue('Type'),
@@ -277,17 +393,22 @@ class ModuleDataExportService {
       TextCellValue('Payment Mode'),
       TextCellValue('Counterparty'),
       TextCellValue('Notes'),
+      TextCellValue('Split Record ID'),
+      TextCellValue('Split Pending Amount'),
+      TextCellValue('Managed Lent Entry'),
+      TextCellValue('Resolution Income'),
     ]);
     _applyRowStyle(
       entriesSheet,
       rowIndex: 0,
-      columnCount: 9,
+      columnCount: 14,
       style: wrappedHeaderStyle,
     );
 
     for (final entry in entries) {
       final rowIndex = entriesSheet.maxRows;
       entriesSheet.appendRow(<CellValue?>[
+        _numericCell(entry.id),
         TextCellValue(AppConstants.shortDateFormat.format(entry.date)),
         TextCellValue(entry.title),
         TextCellValue(_expenseTypeLabel(entry.type)),
@@ -297,17 +418,171 @@ class ModuleDataExportService {
         TextCellValue(entry.paymentMode),
         TextCellValue(entry.counterparty ?? ''),
         TextCellValue(entry.notes),
+        entry.splitSummary == null
+            ? TextCellValue('')
+            : _numericCell(entry.splitSummary!.recordId),
+        entry.splitSummary == null
+            ? TextCellValue('')
+            : _numericCell(entry.splitSummary!.pendingLentAmount),
+        TextCellValue(entry.isManagedLentEntry ? 'Yes' : 'No'),
+        TextCellValue(entry.isResolutionIncome ? 'Yes' : 'No'),
       ]);
       _applyCellStyle(
         entriesSheet,
         rowIndex: rowIndex,
-        columnIndex: 5,
+        columnIndex: 0,
         style: numberStyle,
       );
+      _applyCellStyle(
+        entriesSheet,
+        rowIndex: rowIndex,
+        columnIndex: 6,
+        style: numberStyle,
+      );
+      if (entry.splitSummary != null) {
+        _applyCellStyle(
+          entriesSheet,
+          rowIndex: rowIndex,
+          columnIndex: 10,
+          style: numberStyle,
+        );
+        _applyCellStyle(
+          entriesSheet,
+          rowIndex: rowIndex,
+          columnIndex: 11,
+          style: numberStyle,
+        );
+      }
+    }
+
+    if (splitBundle.records.isNotEmpty) {
+      final splitRecordsSheet = excel['Split Records'];
+      splitRecordsSheet.appendRow(<CellValue?>[
+        TextCellValue('Split Record ID'),
+        TextCellValue('Expense Entry ID'),
+        TextCellValue('Lent Entry ID'),
+        TextCellValue('Total Amount'),
+        TextCellValue('Created At'),
+      ]);
+      _applyRowStyle(
+        splitRecordsSheet,
+        rowIndex: 0,
+        columnCount: 5,
+        style: wrappedHeaderStyle,
+      );
+      for (final record in splitBundle.records) {
+        final rowIndex = splitRecordsSheet.maxRows;
+        splitRecordsSheet.appendRow(<CellValue?>[
+          _numericCell(record.id),
+          record.expenseEntryId == null
+              ? TextCellValue('')
+              : _numericCell(record.expenseEntryId!),
+          record.lentEntryId == null
+              ? TextCellValue('')
+              : _numericCell(record.lentEntryId!),
+          _numericCell(record.totalAmount),
+          TextCellValue(record.createdAt.toIso8601String()),
+        ]);
+        for (final columnIndex in <int>[0, 1, 2, 3]) {
+          _applyCellStyle(
+            splitRecordsSheet,
+            rowIndex: rowIndex,
+            columnIndex: columnIndex,
+            style: numberStyle,
+          );
+        }
+      }
+      _setColumnWidths(splitRecordsSheet, <double>[16, 16, 16, 16, 24]);
+    }
+
+    if (splitBundle.participants.isNotEmpty) {
+      final splitParticipantsSheet = excel['Split Participants'];
+      splitParticipantsSheet.appendRow(<CellValue?>[
+        TextCellValue('Participant ID'),
+        TextCellValue('Split Record ID'),
+        TextCellValue('Participant Name'),
+        TextCellValue('Amount'),
+        TextCellValue('Percentage'),
+        TextCellValue('Is Self'),
+        TextCellValue('Settled Amount'),
+        TextCellValue('Sort Order'),
+        TextCellValue('Created At'),
+      ]);
+      _applyRowStyle(
+        splitParticipantsSheet,
+        rowIndex: 0,
+        columnCount: 9,
+        style: wrappedHeaderStyle,
+      );
+      for (final participant in splitBundle.participants) {
+        final rowIndex = splitParticipantsSheet.maxRows;
+        splitParticipantsSheet.appendRow(<CellValue?>[
+          _numericCell(participant.id),
+          _numericCell(participant.splitRecordId),
+          TextCellValue(participant.participantName),
+          _numericCell(participant.amount),
+          _numericCell(participant.percentage),
+          TextCellValue(participant.isSelf ? 'Yes' : 'No'),
+          _numericCell(participant.settledAmount),
+          _numericCell(participant.sortOrder),
+          TextCellValue(participant.createdAt.toIso8601String()),
+        ]);
+        for (final columnIndex in <int>[0, 1, 3, 4, 6, 7]) {
+          _applyCellStyle(
+            splitParticipantsSheet,
+            rowIndex: rowIndex,
+            columnIndex: columnIndex,
+            style: numberStyle,
+          );
+        }
+      }
+      _setColumnWidths(
+        splitParticipantsSheet,
+        <double>[16, 16, 24, 14, 14, 12, 16, 12, 24],
+      );
+    }
+
+    if (splitBundle.settlements.isNotEmpty) {
+      final settlementsSheet = excel['Lent Settlements'];
+      settlementsSheet.appendRow(<CellValue?>[
+        TextCellValue('Settlement ID'),
+        TextCellValue('Split Record ID'),
+        TextCellValue('Split Participant ID'),
+        TextCellValue('Income Entry ID'),
+        TextCellValue('Settled Amount'),
+        TextCellValue('Created At'),
+      ]);
+      _applyRowStyle(
+        settlementsSheet,
+        rowIndex: 0,
+        columnCount: 6,
+        style: wrappedHeaderStyle,
+      );
+      for (final settlement in splitBundle.settlements) {
+        final rowIndex = settlementsSheet.maxRows;
+        settlementsSheet.appendRow(<CellValue?>[
+          _numericCell(settlement.id),
+          _numericCell(settlement.splitRecordId),
+          _numericCell(settlement.splitParticipantId),
+          _numericCell(settlement.incomeEntryId),
+          _numericCell(settlement.settledAmount),
+          TextCellValue(settlement.createdAt.toIso8601String()),
+        ]);
+        for (final columnIndex in <int>[0, 1, 2, 3, 4]) {
+          _applyCellStyle(
+            settlementsSheet,
+            rowIndex: rowIndex,
+            columnIndex: columnIndex,
+            style: numberStyle,
+          );
+        }
+      }
+      _setColumnWidths(settlementsSheet, <double>[16, 16, 18, 16, 16, 24]);
     }
 
     _setColumnWidths(summarySheet, <double>[26, 22]);
     _setColumnWidths(entriesSheet, <double>[
+      12,
       14,
       24,
       14,
@@ -317,6 +592,10 @@ class ModuleDataExportService {
       18,
       18,
       28,
+      14,
+      16,
+      14,
+      14,
     ]);
 
     final bytes = excel.save();
@@ -743,6 +1022,84 @@ class ModuleDataExportService {
     return file.path;
   }
 
+  Future<_ExpenseSplitExportBundle> _loadExpenseSplitExportBundle(
+    List<ExpenseRecord> entries,
+  ) async {
+    final entryIds = entries.map((entry) => entry.id).toSet().toList(growable: false);
+    if (entryIds.isEmpty) {
+      return const _ExpenseSplitExportBundle();
+    }
+
+    final directlyLinkedSplitRecords =
+        await (_database.select(_database.dbSplitRecords)..where(
+          (table) =>
+              table.expenseEntryId.isIn(entryIds) | table.lentEntryId.isIn(entryIds),
+        ))
+            .get();
+    final settlementsByIncomeEntry =
+        await (_database.select(_database.dbLentSettlements)
+              ..where((table) => table.incomeEntryId.isIn(entryIds)))
+            .get();
+    final splitRecordIds = <int>{
+      ...directlyLinkedSplitRecords.map((record) => record.id),
+      ...settlementsByIncomeEntry.map((settlement) => settlement.splitRecordId),
+    }.toList(growable: false);
+    final splitRecords = splitRecordIds.isEmpty
+        ? <DbSplitRecord>[]
+        : await (_database.select(_database.dbSplitRecords)
+              ..where((table) => table.id.isIn(splitRecordIds))
+              ..orderBy(<OrderingTerm Function($DbSplitRecordsTable)>[
+                (table) => OrderingTerm.asc(table.id),
+              ]))
+            .get();
+    final splitParticipants = splitRecordIds.isEmpty
+        ? <DbSplitParticipant>[]
+        : await (_database.select(_database.dbSplitParticipants)
+              ..where((table) => table.splitRecordId.isIn(splitRecordIds))
+              ..orderBy(<OrderingTerm Function($DbSplitParticipantsTable)>[
+                (table) => OrderingTerm.asc(table.splitRecordId),
+                (table) => OrderingTerm.asc(table.sortOrder),
+                (table) => OrderingTerm.asc(table.id),
+              ]))
+            .get();
+    final settlements = splitRecordIds.isEmpty
+        ? <DbLentSettlement>[]
+        : await (_database.select(_database.dbLentSettlements)
+              ..where((table) => table.splitRecordId.isIn(splitRecordIds))
+              ..orderBy(<OrderingTerm Function($DbLentSettlementsTable)>[
+                (table) => OrderingTerm.asc(table.splitRecordId),
+                (table) => OrderingTerm.asc(table.id),
+              ]))
+            .get();
+
+    final pendingAmountByRecordId = <int, double>{};
+    final participantCountByRecordId = <int, int>{};
+    for (final participant in splitParticipants) {
+      participantCountByRecordId.update(
+        participant.splitRecordId,
+        (value) => value + 1,
+        ifAbsent: () => 1,
+      );
+      if (!participant.isSelf) {
+        pendingAmountByRecordId.update(
+          participant.splitRecordId,
+          (value) => value + (participant.amount - participant.settledAmount),
+          ifAbsent: () => participant.amount - participant.settledAmount,
+        );
+      }
+    }
+
+    return _ExpenseSplitExportBundle(
+      records: splitRecords,
+      participants: splitParticipants,
+      settlements: settlements,
+      pendingAmountByRecordId: pendingAmountByRecordId.map(
+        (key, value) => MapEntry(key, double.parse(value.toStringAsFixed(2))),
+      ),
+      participantCountByRecordId: participantCountByRecordId,
+    );
+  }
+
   void _appendSummaryNumberRow(
     Sheet sheet,
     String label,
@@ -939,6 +1296,22 @@ class _ExpenseExportSummary {
   final double totalLent;
 
   double get netFlow => totalCredit - totalDebit;
+}
+
+class _ExpenseSplitExportBundle {
+  const _ExpenseSplitExportBundle({
+    this.records = const <DbSplitRecord>[],
+    this.participants = const <DbSplitParticipant>[],
+    this.settlements = const <DbLentSettlement>[],
+    this.pendingAmountByRecordId = const <int, double>{},
+    this.participantCountByRecordId = const <int, int>{},
+  });
+
+  final List<DbSplitRecord> records;
+  final List<DbSplitParticipant> participants;
+  final List<DbLentSettlement> settlements;
+  final Map<int, double> pendingAmountByRecordId;
+  final Map<int, int> participantCountByRecordId;
 }
 
 class _TaskExportSummary {

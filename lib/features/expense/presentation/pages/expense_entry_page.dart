@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../data/repositories/expense_repository.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_select_field.dart';
 import '../blocs/expense_form/expense_form_bloc.dart';
+import '../widgets/expense_split_flow.dart';
 
 class ExpenseEntryPage extends StatelessWidget {
   const ExpenseEntryPage({super.key});
@@ -158,6 +160,68 @@ class ExpenseEntryPage extends StatelessWidget {
                     ExpenseAmountChanged(value),
                   ),
                 ),
+                if (state.type == 'expense') ...<Widget>[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: () async {
+                        if ((state.parsedAmount ?? 0) <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Enter the expense amount first.'),
+                            ),
+                          );
+                          return;
+                        }
+                        final result = await showExpenseSplitEditor(
+                          context,
+                          totalAmount: state.parsedAmount ?? 0,
+                          initialDraft: state.splitDraft,
+                        );
+                        if (result != null && context.mounted) {
+                          context.read<ExpenseFormBloc>().add(
+                            ExpenseSplitDraftChanged(result),
+                          );
+                        }
+                      },
+                      child: Text(
+                        state.splitDraft == null
+                            ? 'Split Expense'
+                            : 'Edit Split Expense',
+                      ),
+                    ),
+                  ),
+                  if (state.splitDraft != null)
+                    AppPanel(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          _SplitSummaryRow(
+                            label: 'My share',
+                            value: AppConstants.currency(
+                              state.splitDraft!.selfAmount,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _SplitSummaryRow(
+                            label: 'Lent amount',
+                            value: AppConstants.currency(
+                              state.splitDraft!.pendingLentAmount,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          _SplitSummaryRow(
+                            label: 'Participants',
+                            value: state.splitDraft!.participants
+                                .map((participant) => participant.name)
+                                .join(', '),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
                 const SizedBox(height: 16),
                 AppSelectField<int>(
                   label: 'Category',
@@ -170,6 +234,74 @@ class ExpenseEntryPage extends StatelessWidget {
                     ExpenseCategoryChanged(value),
                   ),
                 ),
+                if (state.type == 'income') ...<Widget>[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: () async {
+                        if ((state.parsedAmount ?? 0) <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Enter the income amount first.'),
+                            ),
+                          );
+                          return;
+                        }
+                        if (!state.isLentIncome) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Select the Lent category to resolve lent shares.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        final result = await showLentResolutionEditor(
+                          context,
+                          repository: context.read<ExpenseRepository>(),
+                          incomeAmount: state.parsedAmount ?? 0,
+                          initialDraft: state.lentResolutionDraft,
+                        );
+                        if (result != null && context.mounted) {
+                          context.read<ExpenseFormBloc>().add(
+                            ExpenseLentResolutionChanged(result),
+                          );
+                        }
+                      },
+                      child: Text(
+                        state.lentResolutionDraft == null
+                            ? 'Resolve Lent'
+                            : 'Edit Lent Resolution',
+                      ),
+                    ),
+                  ),
+                  if (state.lentResolutionDraft != null)
+                    AppPanel(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          _SplitSummaryRow(
+                            label: 'Selected shares',
+                            value: '${state.lentResolutionDraft!.participants.length}',
+                          ),
+                          const SizedBox(height: 8),
+                          _SplitSummaryRow(
+                            label: 'Settlement amount',
+                            value: AppConstants.currency(
+                              state.lentResolutionDraft!.participants.fold<double>(
+                                0,
+                                (sum, participant) =>
+                                    sum + participant.pendingAmount,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
                 const SizedBox(height: 16),
                 AppSelectField<int?>(
                   label: 'Bank Name (Optional)',
@@ -261,6 +393,36 @@ class ExpenseEntryPage extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+class _SplitSummaryRow extends StatelessWidget {
+  const _SplitSummaryRow({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        SizedBox(
+          width: 96,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Text(value)),
+      ],
     );
   }
 }

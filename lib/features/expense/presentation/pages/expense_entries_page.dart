@@ -37,6 +37,9 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
             stream: repository.watchEntries(filter: _filter),
             builder: (context, entrySnapshot) {
               final entries = entrySnapshot.data ?? const <ExpenseRecord>[];
+              final entryById = <int, ExpenseRecord>{
+                for (final entry in entries) entry.id: entry,
+              };
 
               return ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -188,8 +191,9 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                       ),
                     )
                   else
-                    ...entries.map(
-                      (entry) => Padding(
+                    ...entries.map((entry) {
+                      final actionEntry = _resolveActionEntry(entry, entryById);
+                      return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: AppPanel(
                           child: Column(
@@ -237,6 +241,13 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                                                 .onSurfaceVariant,
                                           ),
                                         ),
+                                        if (entry.splitSummary != null) ...<Widget>[
+                                          const SizedBox(height: 8),
+                                          _SplitEntrySummary(
+                                            entry: entry,
+                                            actionEntry: actionEntry,
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -250,29 +261,34 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: <Widget>[
-                                  TextButton.icon(
-                                    onPressed: () => Navigator.of(context).pushNamed(
-                                      AppRoutes.expenseAdd,
-                                      arguments: ExpenseEditorArgs(entry: entry),
-                                    ),
-                                    icon: const Icon(Icons.edit_rounded),
-                                    label: const Text('Edit'),
-                                  ),
-                                  TextButton.icon(
-                                    onPressed: () => _deleteEntry(entry),
-                                    icon: const Icon(Icons.delete_outline_rounded),
-                                    label: const Text('Delete'),
-                                  ),
-                                ],
-                              ),
+                              if (actionEntry.canEdit || actionEntry.canDelete)
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: <Widget>[
+                                    if (actionEntry.canEdit)
+                                      TextButton.icon(
+                                        onPressed: () => Navigator.of(context).pushNamed(
+                                          AppRoutes.expenseAdd,
+                                          arguments: ExpenseEditorArgs(
+                                            entry: actionEntry,
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.edit_rounded),
+                                        label: const Text('Edit'),
+                                      ),
+                                    if (actionEntry.canDelete)
+                                      TextButton.icon(
+                                        onPressed: () => _deleteEntry(actionEntry),
+                                        icon: const Icon(Icons.delete_outline_rounded),
+                                        label: const Text('Delete'),
+                                      ),
+                                  ],
+                                ),
                             ],
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                 ],
               );
             },
@@ -312,13 +328,22 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
       return;
     }
 
-    await repository.deleteExpense(entry.id);
-    if (!mounted) {
-      return;
+    try {
+      await repository.deleteExpense(entry.id);
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('"${entry.title}" deleted.')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString())),
+      );
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('"${entry.title}" deleted.')),
-    );
   }
 }
 
@@ -355,4 +380,87 @@ class _ExpenseFilterOptions {
 
   final List<ExpenseCategory> categories;
   final List<BankName> banks;
+}
+
+ExpenseRecord _resolveActionEntry(
+  ExpenseRecord entry,
+  Map<int, ExpenseRecord> entryById,
+) {
+  if (entry.isManagedLentEntry && entry.splitSummary?.expenseEntryId != null) {
+    return entryById[entry.splitSummary!.expenseEntryId!] ?? entry;
+  }
+  return entry;
+}
+
+class _SplitEntrySummary extends StatelessWidget {
+  const _SplitEntrySummary({
+    required this.entry,
+    required this.actionEntry,
+  });
+
+  final ExpenseRecord entry;
+  final ExpenseRecord actionEntry;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = entry.splitSummary;
+    if (summary == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _SplitSummaryLine(
+          label: 'My share',
+          value: AppConstants.currency(actionEntry.amount),
+        ),
+        const SizedBox(height: 4),
+        _SplitSummaryLine(
+          label: 'Lent amount',
+          value: AppConstants.currency(summary.pendingLentAmount),
+        ),
+        const SizedBox(height: 4),
+        _SplitSummaryLine(
+          label: 'Participants',
+          value: '${summary.participantCount}',
+        ),
+      ],
+    );
+  }
+}
+
+class _SplitSummaryLine extends StatelessWidget {
+  const _SplitSummaryLine({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        SizedBox(
+          width: 88,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ],
+    );
+  }
 }

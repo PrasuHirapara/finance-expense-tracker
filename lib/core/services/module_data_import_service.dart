@@ -78,6 +78,7 @@ class ModuleDataImportService {
     final headerStyle = CellStyle(bold: true);
 
     expenseSheet.appendRow(<CellValue?>[
+      TextCellValue('Entry ID'),
       TextCellValue('Title*'),
       TextCellValue('Amount*'),
       TextCellValue('Type*'),
@@ -89,6 +90,7 @@ class ModuleDataImportService {
       TextCellValue('Notes'),
     ]);
     expenseSheet.appendRow(<CellValue?>[
+      TextCellValue(''),
       TextCellValue('Lunch with team'),
       DoubleCellValue(450),
       TextCellValue('Expense'),
@@ -102,10 +104,11 @@ class ModuleDataImportService {
     _applyRowStyle(
       expenseSheet,
       rowIndex: 0,
-      columnCount: 9,
+      columnCount: 10,
       style: headerStyle,
     );
     _setColumnWidths(expenseSheet, <double>[
+      12,
       28,
       14,
       16,
@@ -120,6 +123,10 @@ class ModuleDataImportService {
     referenceSheet.appendRow(<CellValue?>[
       TextCellValue('Field'),
       TextCellValue('Requirement'),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Entry ID'),
+      TextCellValue('Optional. Used automatically by app-generated exports to preserve split metadata.'),
     ]);
     referenceSheet.appendRow(<CellValue?>[
       TextCellValue('Title'),
@@ -156,6 +163,12 @@ class ModuleDataImportService {
     referenceSheet.appendRow(<CellValue?>[
       TextCellValue('Counterparty / Notes'),
       TextCellValue('Optional'),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Split metadata sheets'),
+      TextCellValue(
+        'Optional. If the workbook also contains "Split Records", "Split Participants", and "Lent Settlements" sheets from an app export, split relationships are restored automatically.',
+      ),
     ]);
     referenceSheet.appendRow(const <CellValue?>[]);
     final typeRange = _appendReferenceList(
@@ -198,23 +211,23 @@ class ModuleDataImportService {
       rules: <_ExcelDropdownRule>[
         _ExcelDropdownRule(
           sheetName: 'Expenses',
-          targetRange: 'C2:C200',
+          targetRange: 'D2:D200',
           formula: typeRange.asFormula,
         ),
         _ExcelDropdownRule(
           sheetName: 'Expenses',
-          targetRange: 'D2:D200',
+          targetRange: 'E2:E200',
           formula: categoryRange.asFormula,
         ),
         if (banks.isNotEmpty)
           _ExcelDropdownRule(
             sheetName: 'Expenses',
-            targetRange: 'E2:E200',
+            targetRange: 'F2:F200',
             formula: bankRange.asFormula,
           ),
         _ExcelDropdownRule(
           sheetName: 'Expenses',
-          targetRange: 'G2:G200',
+          targetRange: 'H2:H200',
           formula: paymentModeRange.asFormula,
         ),
       ],
@@ -319,9 +332,11 @@ class ModuleDataImportService {
   Future<ModuleImportResult> importExpenseExcel(String filePath) async {
     final workbook = await _loadWorkbook(filePath);
     final sheet = _resolveSheet(workbook, preferredSheetName: 'Expenses');
+    final splitBundle = _parseExpenseSplitWorkbook(workbook);
     final headerMap = _resolveHeaderMap(
       headerRow: sheet.row(0),
       aliases: const <String, List<String>>{
+        'entryId': <String>['entry id', 'entryid'],
         'title': <String>['title'],
         'amount': <String>['amount'],
         'type': <String>['type'],
@@ -393,6 +408,7 @@ class ModuleDataImportService {
       var createdCategories = 0;
       var createdBanks = 0;
       final fallbackCategory = AppConstants.defaultCategories.last;
+      final importedEntryIdMap = <int, int>{};
 
       for (final row in rows) {
         final categoryKey = row.categoryName.toLowerCase();
@@ -426,7 +442,7 @@ class ModuleDataImportService {
       }
 
       for (final row in rows) {
-        await _database
+        final insertedId = await _database
             .into(_database.dbFinanceEntries)
             .insert(
               DbFinanceEntriesCompanion.insert(
@@ -445,6 +461,16 @@ class ModuleDataImportService {
                 counterparty: Value(row.counterparty),
               ),
             );
+        if (row.sourceEntryId != null) {
+          importedEntryIdMap[row.sourceEntryId!] = insertedId;
+        }
+      }
+
+      if (splitBundle.hasData) {
+        await _importExpenseSplitBundle(
+          splitBundle,
+          entryIdMap: importedEntryIdMap,
+        );
       }
 
       final messageBuffer = StringBuffer(
@@ -641,6 +667,7 @@ class ModuleDataImportService {
     required int rowNumber,
     required Map<String, int> headerMap,
   }) {
+    final sourceEntryId = _parseOptionalInt(_cellAt(row, headerMap['entryId']));
     final title = _cellText(_cellAt(row, headerMap['title']));
     final category = _cellText(_cellAt(row, headerMap['category']));
     final bank = _cellText(_cellAt(row, headerMap['bank']));
@@ -692,6 +719,7 @@ class ModuleDataImportService {
     }
 
     return _ValidatedExpenseRow(
+      sourceEntryId: sourceEntryId,
       title: title,
       amount: amount!,
       type: type!,
@@ -702,6 +730,289 @@ class ModuleDataImportService {
       counterparty: counterpartyText.isEmpty ? null : counterpartyText,
       notes: notes,
     );
+  }
+
+  _ExpenseSplitImportBundle _parseExpenseSplitWorkbook(Excel workbook) {
+    final splitRecordsSheet = workbook.tables['Split Records'];
+    final splitParticipantsSheet = workbook.tables['Split Participants'];
+    final settlementsSheet = workbook.tables['Lent Settlements'];
+
+    final splitRecords = splitRecordsSheet == null
+        ? const <_ImportedSplitRecord>[]
+        : _parseSplitRecordSheet(splitRecordsSheet);
+    final splitParticipants = splitParticipantsSheet == null
+        ? const <_ImportedSplitParticipant>[]
+        : _parseSplitParticipantSheet(splitParticipantsSheet);
+    final settlements = settlementsSheet == null
+        ? const <_ImportedLentSettlement>[]
+        : _parseLentSettlementSheet(settlementsSheet);
+
+    return _ExpenseSplitImportBundle(
+      splitRecords: splitRecords,
+      splitParticipants: splitParticipants,
+      settlements: settlements,
+    );
+  }
+
+  List<_ImportedSplitRecord> _parseSplitRecordSheet(Sheet sheet) {
+    final headerMap = _resolveHeaderMap(
+      headerRow: sheet.row(0),
+      aliases: const <String, List<String>>{
+        'splitRecordId': <String>['split record id', 'splitrecordid'],
+        'expenseEntryId': <String>['expense entry id', 'expenseentryid'],
+        'lentEntryId': <String>['lent entry id', 'lententryid'],
+        'totalAmount': <String>['total amount', 'totalamount'],
+        'createdAt': <String>['created at', 'createdat'],
+      },
+      requiredKeys: const <String>['splitRecordId', 'totalAmount'],
+    );
+
+    final rows = <_ImportedSplitRecord>[];
+    for (var rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
+      final row = sheet.row(rowIndex);
+      if (_isBlankRow(row, headerMap.values)) {
+        continue;
+      }
+      final sourceId = _parseOptionalInt(_cellAt(row, headerMap['splitRecordId']));
+      final totalAmount = _parseAmount(_cellAt(row, headerMap['totalAmount']));
+      if (sourceId == null || totalAmount == null) {
+        throw ModuleImportException(
+          'The Split Records sheet contains invalid data.',
+          <String>['Row ${rowIndex + 1}: Split Record ID and Total Amount are required.'],
+        );
+      }
+      rows.add(
+        _ImportedSplitRecord(
+          sourceId: sourceId,
+          sourceExpenseEntryId: _parseOptionalInt(
+            _cellAt(row, headerMap['expenseEntryId']),
+          ),
+          sourceLentEntryId: _parseOptionalInt(
+            _cellAt(row, headerMap['lentEntryId']),
+          ),
+          totalAmount: totalAmount,
+          createdAt:
+              DateTime.tryParse(_cellText(_cellAt(row, headerMap['createdAt']))) ??
+              DateTime.now(),
+        ),
+      );
+    }
+    return rows;
+  }
+
+  List<_ImportedSplitParticipant> _parseSplitParticipantSheet(Sheet sheet) {
+    final headerMap = _resolveHeaderMap(
+      headerRow: sheet.row(0),
+      aliases: const <String, List<String>>{
+        'participantId': <String>['participant id', 'participantid'],
+        'splitRecordId': <String>['split record id', 'splitrecordid'],
+        'participantName': <String>['participant name', 'participantname'],
+        'amount': <String>['amount'],
+        'percentage': <String>['percentage'],
+        'isSelf': <String>['is self', 'isself'],
+        'settledAmount': <String>['settled amount', 'settledamount'],
+        'sortOrder': <String>['sort order', 'sortorder'],
+        'createdAt': <String>['created at', 'createdat'],
+      },
+      requiredKeys: const <String>[
+        'participantId',
+        'splitRecordId',
+        'participantName',
+        'amount',
+        'percentage',
+      ],
+    );
+
+    final rows = <_ImportedSplitParticipant>[];
+    for (var rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
+      final row = sheet.row(rowIndex);
+      if (_isBlankRow(row, headerMap.values)) {
+        continue;
+      }
+      final sourceId = _parseOptionalInt(_cellAt(row, headerMap['participantId']));
+      final sourceSplitRecordId = _parseOptionalInt(
+        _cellAt(row, headerMap['splitRecordId']),
+      );
+      final participantName = _cellText(_cellAt(row, headerMap['participantName']));
+      final amount = _parseAmount(_cellAt(row, headerMap['amount']));
+      final percentage = _parseAmount(_cellAt(row, headerMap['percentage']));
+      if (sourceId == null ||
+          sourceSplitRecordId == null ||
+          participantName.isEmpty ||
+          amount == null ||
+          percentage == null) {
+        throw ModuleImportException(
+          'The Split Participants sheet contains invalid data.',
+          <String>[
+            'Row ${rowIndex + 1}: Participant ID, Split Record ID, Participant Name, Amount, and Percentage are required.',
+          ],
+        );
+      }
+      rows.add(
+        _ImportedSplitParticipant(
+          sourceId: sourceId,
+          sourceSplitRecordId: sourceSplitRecordId,
+          participantName: participantName,
+          amount: amount,
+          percentage: percentage,
+          isSelf: _parseBool(_cellAt(row, headerMap['isSelf'])),
+          settledAmount:
+              _parseAmount(_cellAt(row, headerMap['settledAmount'])) ?? 0,
+          sortOrder: _parseOptionalInt(_cellAt(row, headerMap['sortOrder'])) ?? 0,
+          createdAt:
+              DateTime.tryParse(_cellText(_cellAt(row, headerMap['createdAt']))) ??
+              DateTime.now(),
+        ),
+      );
+    }
+    return rows;
+  }
+
+  List<_ImportedLentSettlement> _parseLentSettlementSheet(Sheet sheet) {
+    final headerMap = _resolveHeaderMap(
+      headerRow: sheet.row(0),
+      aliases: const <String, List<String>>{
+        'settlementId': <String>['settlement id', 'settlementid'],
+        'splitRecordId': <String>['split record id', 'splitrecordid'],
+        'splitParticipantId': <String>[
+          'split participant id',
+          'splitparticipantid',
+        ],
+        'incomeEntryId': <String>['income entry id', 'incomeentryid'],
+        'settledAmount': <String>['settled amount', 'settledamount'],
+        'createdAt': <String>['created at', 'createdat'],
+      },
+      requiredKeys: const <String>[
+        'settlementId',
+        'splitRecordId',
+        'splitParticipantId',
+        'incomeEntryId',
+        'settledAmount',
+      ],
+    );
+
+    final rows = <_ImportedLentSettlement>[];
+    for (var rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
+      final row = sheet.row(rowIndex);
+      if (_isBlankRow(row, headerMap.values)) {
+        continue;
+      }
+      final sourceId = _parseOptionalInt(_cellAt(row, headerMap['settlementId']));
+      final sourceSplitRecordId = _parseOptionalInt(
+        _cellAt(row, headerMap['splitRecordId']),
+      );
+      final sourceSplitParticipantId = _parseOptionalInt(
+        _cellAt(row, headerMap['splitParticipantId']),
+      );
+      final sourceIncomeEntryId = _parseOptionalInt(
+        _cellAt(row, headerMap['incomeEntryId']),
+      );
+      final settledAmount = _parseAmount(_cellAt(row, headerMap['settledAmount']));
+      if (sourceId == null ||
+          sourceSplitRecordId == null ||
+          sourceSplitParticipantId == null ||
+          sourceIncomeEntryId == null ||
+          settledAmount == null) {
+        throw ModuleImportException(
+          'The Lent Settlements sheet contains invalid data.',
+          <String>[
+            'Row ${rowIndex + 1}: Settlement ID, Split Record ID, Split Participant ID, Income Entry ID, and Settled Amount are required.',
+          ],
+        );
+      }
+      rows.add(
+        _ImportedLentSettlement(
+          sourceId: sourceId,
+          sourceSplitRecordId: sourceSplitRecordId,
+          sourceSplitParticipantId: sourceSplitParticipantId,
+          sourceIncomeEntryId: sourceIncomeEntryId,
+          settledAmount: settledAmount,
+          createdAt:
+              DateTime.tryParse(_cellText(_cellAt(row, headerMap['createdAt']))) ??
+              DateTime.now(),
+        ),
+      );
+    }
+    return rows;
+  }
+
+  Future<void> _importExpenseSplitBundle(
+    _ExpenseSplitImportBundle bundle, {
+    required Map<int, int> entryIdMap,
+  }) async {
+    final splitRecordIdMap = <int, int>{};
+    final splitParticipantIdMap = <int, int>{};
+
+    for (final record in bundle.splitRecords) {
+      final expenseEntryId = record.sourceExpenseEntryId == null
+          ? null
+          : entryIdMap[record.sourceExpenseEntryId!];
+      final lentEntryId = record.sourceLentEntryId == null
+          ? null
+          : entryIdMap[record.sourceLentEntryId!];
+      final insertedId = await _database.into(_database.dbSplitRecords).insert(
+        DbSplitRecordsCompanion.insert(
+          expenseEntryId: Value(expenseEntryId),
+          lentEntryId: Value(lentEntryId),
+          totalAmount: record.totalAmount,
+          createdAt: Value(record.createdAt),
+        ),
+      );
+      splitRecordIdMap[record.sourceId] = insertedId;
+    }
+
+    for (final participant in bundle.splitParticipants) {
+      final splitRecordId = splitRecordIdMap[participant.sourceSplitRecordId];
+      if (splitRecordId == null) {
+        throw ModuleImportException(
+          'Split participant import failed because split records are missing.',
+          <String>[
+            'Participant ${participant.sourceId} references missing Split Record ID ${participant.sourceSplitRecordId}.',
+          ],
+        );
+      }
+      final insertedId = await _database
+          .into(_database.dbSplitParticipants)
+          .insert(
+            DbSplitParticipantsCompanion.insert(
+              splitRecordId: splitRecordId,
+              participantName: participant.participantName,
+              amount: participant.amount,
+              percentage: participant.percentage,
+              isSelf: Value(participant.isSelf),
+              settledAmount: Value(participant.settledAmount),
+              sortOrder: Value(participant.sortOrder),
+              createdAt: Value(participant.createdAt),
+            ),
+          );
+      splitParticipantIdMap[participant.sourceId] = insertedId;
+    }
+
+    for (final settlement in bundle.settlements) {
+      final splitRecordId = splitRecordIdMap[settlement.sourceSplitRecordId];
+      final splitParticipantId =
+          splitParticipantIdMap[settlement.sourceSplitParticipantId];
+      final incomeEntryId = entryIdMap[settlement.sourceIncomeEntryId];
+      if (splitRecordId == null ||
+          splitParticipantId == null ||
+          incomeEntryId == null) {
+        throw ModuleImportException(
+          'Lent settlement import failed because linked records are missing.',
+          <String>[
+            'Settlement ${settlement.sourceId} references a missing split record, participant, or income entry.',
+          ],
+        );
+      }
+      await _database.into(_database.dbLentSettlements).insert(
+        DbLentSettlementsCompanion.insert(
+          splitRecordId: splitRecordId,
+          splitParticipantId: splitParticipantId,
+          incomeEntryId: incomeEntryId,
+          settledAmount: settlement.settledAmount,
+          createdAt: Value(settlement.createdAt),
+        ),
+      );
+    }
   }
 
   Future<Excel> _loadWorkbook(String filePath) async {
@@ -824,6 +1135,19 @@ class ModuleDataImportService {
         final text = _cellText(cell).replaceAll(',', '');
         return double.tryParse(text);
     }
+  }
+
+  int? _parseOptionalInt(Data? cell) {
+    final value = _parseAmount(cell);
+    if (value == null) {
+      return null;
+    }
+    return value.round();
+  }
+
+  bool _parseBool(Data? cell) {
+    final text = _cellText(cell).trim().toLowerCase();
+    return text == 'yes' || text == 'true' || text == '1';
   }
 
   DateTime? _parseDate(Data? cell) {
@@ -1137,6 +1461,7 @@ class ModuleDataImportService {
 
 class _ValidatedExpenseRow {
   const _ValidatedExpenseRow({
+    required this.sourceEntryId,
     required this.title,
     required this.amount,
     required this.type,
@@ -1148,6 +1473,7 @@ class _ValidatedExpenseRow {
     required this.notes,
   });
 
+  final int? sourceEntryId;
   final String title;
   final double amount;
   final String type;
@@ -1157,6 +1483,81 @@ class _ValidatedExpenseRow {
   final String paymentMode;
   final String? counterparty;
   final String notes;
+}
+
+class _ExpenseSplitImportBundle {
+  const _ExpenseSplitImportBundle({
+    this.splitRecords = const <_ImportedSplitRecord>[],
+    this.splitParticipants = const <_ImportedSplitParticipant>[],
+    this.settlements = const <_ImportedLentSettlement>[],
+  });
+
+  final List<_ImportedSplitRecord> splitRecords;
+  final List<_ImportedSplitParticipant> splitParticipants;
+  final List<_ImportedLentSettlement> settlements;
+
+  bool get hasData =>
+      splitRecords.isNotEmpty ||
+      splitParticipants.isNotEmpty ||
+      settlements.isNotEmpty;
+}
+
+class _ImportedSplitRecord {
+  const _ImportedSplitRecord({
+    required this.sourceId,
+    required this.sourceExpenseEntryId,
+    required this.sourceLentEntryId,
+    required this.totalAmount,
+    required this.createdAt,
+  });
+
+  final int sourceId;
+  final int? sourceExpenseEntryId;
+  final int? sourceLentEntryId;
+  final double totalAmount;
+  final DateTime createdAt;
+}
+
+class _ImportedSplitParticipant {
+  const _ImportedSplitParticipant({
+    required this.sourceId,
+    required this.sourceSplitRecordId,
+    required this.participantName,
+    required this.amount,
+    required this.percentage,
+    required this.isSelf,
+    required this.settledAmount,
+    required this.sortOrder,
+    required this.createdAt,
+  });
+
+  final int sourceId;
+  final int sourceSplitRecordId;
+  final String participantName;
+  final double amount;
+  final double percentage;
+  final bool isSelf;
+  final double settledAmount;
+  final int sortOrder;
+  final DateTime createdAt;
+}
+
+class _ImportedLentSettlement {
+  const _ImportedLentSettlement({
+    required this.sourceId,
+    required this.sourceSplitRecordId,
+    required this.sourceSplitParticipantId,
+    required this.sourceIncomeEntryId,
+    required this.settledAmount,
+    required this.createdAt,
+  });
+
+  final int sourceId;
+  final int sourceSplitRecordId;
+  final int sourceSplitParticipantId;
+  final int sourceIncomeEntryId;
+  final double settledAmount;
+  final DateTime createdAt;
 }
 
 class _PreparedCredentialImport {

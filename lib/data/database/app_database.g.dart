@@ -1254,6 +1254,1378 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
   }
 }
 
+class $DbSplitRecordsTable extends DbSplitRecords
+    with TableInfo<$DbSplitRecordsTable, DbSplitRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DbSplitRecordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _expenseEntryIdMeta = const VerificationMeta(
+    'expenseEntryId',
+  );
+  @override
+  late final GeneratedColumn<int> expenseEntryId = GeneratedColumn<int>(
+    'expense_entry_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES db_finance_entries (id)',
+    ),
+  );
+  static const VerificationMeta _lentEntryIdMeta = const VerificationMeta(
+    'lentEntryId',
+  );
+  @override
+  late final GeneratedColumn<int> lentEntryId = GeneratedColumn<int>(
+    'lent_entry_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES db_finance_entries (id)',
+    ),
+  );
+  static const VerificationMeta _totalAmountMeta = const VerificationMeta(
+    'totalAmount',
+  );
+  @override
+  late final GeneratedColumn<double> totalAmount = GeneratedColumn<double>(
+    'total_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    expenseEntryId,
+    lentEntryId,
+    totalAmount,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'db_split_records';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DbSplitRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('expense_entry_id')) {
+      context.handle(
+        _expenseEntryIdMeta,
+        expenseEntryId.isAcceptableOrUnknown(
+          data['expense_entry_id']!,
+          _expenseEntryIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('lent_entry_id')) {
+      context.handle(
+        _lentEntryIdMeta,
+        lentEntryId.isAcceptableOrUnknown(
+          data['lent_entry_id']!,
+          _lentEntryIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_amount')) {
+      context.handle(
+        _totalAmountMeta,
+        totalAmount.isAcceptableOrUnknown(
+          data['total_amount']!,
+          _totalAmountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_totalAmountMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DbSplitRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DbSplitRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      expenseEntryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expense_entry_id'],
+      ),
+      lentEntryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}lent_entry_id'],
+      ),
+      totalAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}total_amount'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DbSplitRecordsTable createAlias(String alias) {
+    return $DbSplitRecordsTable(attachedDatabase, alias);
+  }
+}
+
+class DbSplitRecord extends DataClass implements Insertable<DbSplitRecord> {
+  final int id;
+  final int? expenseEntryId;
+  final int? lentEntryId;
+  final double totalAmount;
+  final DateTime createdAt;
+  const DbSplitRecord({
+    required this.id,
+    this.expenseEntryId,
+    this.lentEntryId,
+    required this.totalAmount,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || expenseEntryId != null) {
+      map['expense_entry_id'] = Variable<int>(expenseEntryId);
+    }
+    if (!nullToAbsent || lentEntryId != null) {
+      map['lent_entry_id'] = Variable<int>(lentEntryId);
+    }
+    map['total_amount'] = Variable<double>(totalAmount);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DbSplitRecordsCompanion toCompanion(bool nullToAbsent) {
+    return DbSplitRecordsCompanion(
+      id: Value(id),
+      expenseEntryId: expenseEntryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(expenseEntryId),
+      lentEntryId: lentEntryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lentEntryId),
+      totalAmount: Value(totalAmount),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DbSplitRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DbSplitRecord(
+      id: serializer.fromJson<int>(json['id']),
+      expenseEntryId: serializer.fromJson<int?>(json['expenseEntryId']),
+      lentEntryId: serializer.fromJson<int?>(json['lentEntryId']),
+      totalAmount: serializer.fromJson<double>(json['totalAmount']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'expenseEntryId': serializer.toJson<int?>(expenseEntryId),
+      'lentEntryId': serializer.toJson<int?>(lentEntryId),
+      'totalAmount': serializer.toJson<double>(totalAmount),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DbSplitRecord copyWith({
+    int? id,
+    Value<int?> expenseEntryId = const Value.absent(),
+    Value<int?> lentEntryId = const Value.absent(),
+    double? totalAmount,
+    DateTime? createdAt,
+  }) => DbSplitRecord(
+    id: id ?? this.id,
+    expenseEntryId: expenseEntryId.present
+        ? expenseEntryId.value
+        : this.expenseEntryId,
+    lentEntryId: lentEntryId.present ? lentEntryId.value : this.lentEntryId,
+    totalAmount: totalAmount ?? this.totalAmount,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DbSplitRecord copyWithCompanion(DbSplitRecordsCompanion data) {
+    return DbSplitRecord(
+      id: data.id.present ? data.id.value : this.id,
+      expenseEntryId: data.expenseEntryId.present
+          ? data.expenseEntryId.value
+          : this.expenseEntryId,
+      lentEntryId: data.lentEntryId.present
+          ? data.lentEntryId.value
+          : this.lentEntryId,
+      totalAmount: data.totalAmount.present
+          ? data.totalAmount.value
+          : this.totalAmount,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbSplitRecord(')
+          ..write('id: $id, ')
+          ..write('expenseEntryId: $expenseEntryId, ')
+          ..write('lentEntryId: $lentEntryId, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, expenseEntryId, lentEntryId, totalAmount, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DbSplitRecord &&
+          other.id == this.id &&
+          other.expenseEntryId == this.expenseEntryId &&
+          other.lentEntryId == this.lentEntryId &&
+          other.totalAmount == this.totalAmount &&
+          other.createdAt == this.createdAt);
+}
+
+class DbSplitRecordsCompanion extends UpdateCompanion<DbSplitRecord> {
+  final Value<int> id;
+  final Value<int?> expenseEntryId;
+  final Value<int?> lentEntryId;
+  final Value<double> totalAmount;
+  final Value<DateTime> createdAt;
+  const DbSplitRecordsCompanion({
+    this.id = const Value.absent(),
+    this.expenseEntryId = const Value.absent(),
+    this.lentEntryId = const Value.absent(),
+    this.totalAmount = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  DbSplitRecordsCompanion.insert({
+    this.id = const Value.absent(),
+    this.expenseEntryId = const Value.absent(),
+    this.lentEntryId = const Value.absent(),
+    required double totalAmount,
+    this.createdAt = const Value.absent(),
+  }) : totalAmount = Value(totalAmount);
+  static Insertable<DbSplitRecord> custom({
+    Expression<int>? id,
+    Expression<int>? expenseEntryId,
+    Expression<int>? lentEntryId,
+    Expression<double>? totalAmount,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (expenseEntryId != null) 'expense_entry_id': expenseEntryId,
+      if (lentEntryId != null) 'lent_entry_id': lentEntryId,
+      if (totalAmount != null) 'total_amount': totalAmount,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  DbSplitRecordsCompanion copyWith({
+    Value<int>? id,
+    Value<int?>? expenseEntryId,
+    Value<int?>? lentEntryId,
+    Value<double>? totalAmount,
+    Value<DateTime>? createdAt,
+  }) {
+    return DbSplitRecordsCompanion(
+      id: id ?? this.id,
+      expenseEntryId: expenseEntryId ?? this.expenseEntryId,
+      lentEntryId: lentEntryId ?? this.lentEntryId,
+      totalAmount: totalAmount ?? this.totalAmount,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (expenseEntryId.present) {
+      map['expense_entry_id'] = Variable<int>(expenseEntryId.value);
+    }
+    if (lentEntryId.present) {
+      map['lent_entry_id'] = Variable<int>(lentEntryId.value);
+    }
+    if (totalAmount.present) {
+      map['total_amount'] = Variable<double>(totalAmount.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbSplitRecordsCompanion(')
+          ..write('id: $id, ')
+          ..write('expenseEntryId: $expenseEntryId, ')
+          ..write('lentEntryId: $lentEntryId, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DbSplitParticipantsTable extends DbSplitParticipants
+    with TableInfo<$DbSplitParticipantsTable, DbSplitParticipant> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DbSplitParticipantsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _splitRecordIdMeta = const VerificationMeta(
+    'splitRecordId',
+  );
+  @override
+  late final GeneratedColumn<int> splitRecordId = GeneratedColumn<int>(
+    'split_record_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES db_split_records (id)',
+    ),
+  );
+  static const VerificationMeta _participantNameMeta = const VerificationMeta(
+    'participantName',
+  );
+  @override
+  late final GeneratedColumn<String> participantName = GeneratedColumn<String>(
+    'participant_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _percentageMeta = const VerificationMeta(
+    'percentage',
+  );
+  @override
+  late final GeneratedColumn<double> percentage = GeneratedColumn<double>(
+    'percentage',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isSelfMeta = const VerificationMeta('isSelf');
+  @override
+  late final GeneratedColumn<bool> isSelf = GeneratedColumn<bool>(
+    'is_self',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_self" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _settledAmountMeta = const VerificationMeta(
+    'settledAmount',
+  );
+  @override
+  late final GeneratedColumn<double> settledAmount = GeneratedColumn<double>(
+    'settled_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    splitRecordId,
+    participantName,
+    amount,
+    percentage,
+    isSelf,
+    settledAmount,
+    sortOrder,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'db_split_participants';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DbSplitParticipant> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('split_record_id')) {
+      context.handle(
+        _splitRecordIdMeta,
+        splitRecordId.isAcceptableOrUnknown(
+          data['split_record_id']!,
+          _splitRecordIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_splitRecordIdMeta);
+    }
+    if (data.containsKey('participant_name')) {
+      context.handle(
+        _participantNameMeta,
+        participantName.isAcceptableOrUnknown(
+          data['participant_name']!,
+          _participantNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_participantNameMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('percentage')) {
+      context.handle(
+        _percentageMeta,
+        percentage.isAcceptableOrUnknown(data['percentage']!, _percentageMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_percentageMeta);
+    }
+    if (data.containsKey('is_self')) {
+      context.handle(
+        _isSelfMeta,
+        isSelf.isAcceptableOrUnknown(data['is_self']!, _isSelfMeta),
+      );
+    }
+    if (data.containsKey('settled_amount')) {
+      context.handle(
+        _settledAmountMeta,
+        settledAmount.isAcceptableOrUnknown(
+          data['settled_amount']!,
+          _settledAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DbSplitParticipant map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DbSplitParticipant(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      splitRecordId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}split_record_id'],
+      )!,
+      participantName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}participant_name'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}amount'],
+      )!,
+      percentage: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}percentage'],
+      )!,
+      isSelf: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_self'],
+      )!,
+      settledAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}settled_amount'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DbSplitParticipantsTable createAlias(String alias) {
+    return $DbSplitParticipantsTable(attachedDatabase, alias);
+  }
+}
+
+class DbSplitParticipant extends DataClass
+    implements Insertable<DbSplitParticipant> {
+  final int id;
+  final int splitRecordId;
+  final String participantName;
+  final double amount;
+  final double percentage;
+  final bool isSelf;
+  final double settledAmount;
+  final int sortOrder;
+  final DateTime createdAt;
+  const DbSplitParticipant({
+    required this.id,
+    required this.splitRecordId,
+    required this.participantName,
+    required this.amount,
+    required this.percentage,
+    required this.isSelf,
+    required this.settledAmount,
+    required this.sortOrder,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['split_record_id'] = Variable<int>(splitRecordId);
+    map['participant_name'] = Variable<String>(participantName);
+    map['amount'] = Variable<double>(amount);
+    map['percentage'] = Variable<double>(percentage);
+    map['is_self'] = Variable<bool>(isSelf);
+    map['settled_amount'] = Variable<double>(settledAmount);
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DbSplitParticipantsCompanion toCompanion(bool nullToAbsent) {
+    return DbSplitParticipantsCompanion(
+      id: Value(id),
+      splitRecordId: Value(splitRecordId),
+      participantName: Value(participantName),
+      amount: Value(amount),
+      percentage: Value(percentage),
+      isSelf: Value(isSelf),
+      settledAmount: Value(settledAmount),
+      sortOrder: Value(sortOrder),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DbSplitParticipant.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DbSplitParticipant(
+      id: serializer.fromJson<int>(json['id']),
+      splitRecordId: serializer.fromJson<int>(json['splitRecordId']),
+      participantName: serializer.fromJson<String>(json['participantName']),
+      amount: serializer.fromJson<double>(json['amount']),
+      percentage: serializer.fromJson<double>(json['percentage']),
+      isSelf: serializer.fromJson<bool>(json['isSelf']),
+      settledAmount: serializer.fromJson<double>(json['settledAmount']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'splitRecordId': serializer.toJson<int>(splitRecordId),
+      'participantName': serializer.toJson<String>(participantName),
+      'amount': serializer.toJson<double>(amount),
+      'percentage': serializer.toJson<double>(percentage),
+      'isSelf': serializer.toJson<bool>(isSelf),
+      'settledAmount': serializer.toJson<double>(settledAmount),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DbSplitParticipant copyWith({
+    int? id,
+    int? splitRecordId,
+    String? participantName,
+    double? amount,
+    double? percentage,
+    bool? isSelf,
+    double? settledAmount,
+    int? sortOrder,
+    DateTime? createdAt,
+  }) => DbSplitParticipant(
+    id: id ?? this.id,
+    splitRecordId: splitRecordId ?? this.splitRecordId,
+    participantName: participantName ?? this.participantName,
+    amount: amount ?? this.amount,
+    percentage: percentage ?? this.percentage,
+    isSelf: isSelf ?? this.isSelf,
+    settledAmount: settledAmount ?? this.settledAmount,
+    sortOrder: sortOrder ?? this.sortOrder,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DbSplitParticipant copyWithCompanion(DbSplitParticipantsCompanion data) {
+    return DbSplitParticipant(
+      id: data.id.present ? data.id.value : this.id,
+      splitRecordId: data.splitRecordId.present
+          ? data.splitRecordId.value
+          : this.splitRecordId,
+      participantName: data.participantName.present
+          ? data.participantName.value
+          : this.participantName,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      percentage: data.percentage.present
+          ? data.percentage.value
+          : this.percentage,
+      isSelf: data.isSelf.present ? data.isSelf.value : this.isSelf,
+      settledAmount: data.settledAmount.present
+          ? data.settledAmount.value
+          : this.settledAmount,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbSplitParticipant(')
+          ..write('id: $id, ')
+          ..write('splitRecordId: $splitRecordId, ')
+          ..write('participantName: $participantName, ')
+          ..write('amount: $amount, ')
+          ..write('percentage: $percentage, ')
+          ..write('isSelf: $isSelf, ')
+          ..write('settledAmount: $settledAmount, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    splitRecordId,
+    participantName,
+    amount,
+    percentage,
+    isSelf,
+    settledAmount,
+    sortOrder,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DbSplitParticipant &&
+          other.id == this.id &&
+          other.splitRecordId == this.splitRecordId &&
+          other.participantName == this.participantName &&
+          other.amount == this.amount &&
+          other.percentage == this.percentage &&
+          other.isSelf == this.isSelf &&
+          other.settledAmount == this.settledAmount &&
+          other.sortOrder == this.sortOrder &&
+          other.createdAt == this.createdAt);
+}
+
+class DbSplitParticipantsCompanion extends UpdateCompanion<DbSplitParticipant> {
+  final Value<int> id;
+  final Value<int> splitRecordId;
+  final Value<String> participantName;
+  final Value<double> amount;
+  final Value<double> percentage;
+  final Value<bool> isSelf;
+  final Value<double> settledAmount;
+  final Value<int> sortOrder;
+  final Value<DateTime> createdAt;
+  const DbSplitParticipantsCompanion({
+    this.id = const Value.absent(),
+    this.splitRecordId = const Value.absent(),
+    this.participantName = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.percentage = const Value.absent(),
+    this.isSelf = const Value.absent(),
+    this.settledAmount = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  DbSplitParticipantsCompanion.insert({
+    this.id = const Value.absent(),
+    required int splitRecordId,
+    required String participantName,
+    required double amount,
+    required double percentage,
+    this.isSelf = const Value.absent(),
+    this.settledAmount = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : splitRecordId = Value(splitRecordId),
+       participantName = Value(participantName),
+       amount = Value(amount),
+       percentage = Value(percentage);
+  static Insertable<DbSplitParticipant> custom({
+    Expression<int>? id,
+    Expression<int>? splitRecordId,
+    Expression<String>? participantName,
+    Expression<double>? amount,
+    Expression<double>? percentage,
+    Expression<bool>? isSelf,
+    Expression<double>? settledAmount,
+    Expression<int>? sortOrder,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (splitRecordId != null) 'split_record_id': splitRecordId,
+      if (participantName != null) 'participant_name': participantName,
+      if (amount != null) 'amount': amount,
+      if (percentage != null) 'percentage': percentage,
+      if (isSelf != null) 'is_self': isSelf,
+      if (settledAmount != null) 'settled_amount': settledAmount,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  DbSplitParticipantsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? splitRecordId,
+    Value<String>? participantName,
+    Value<double>? amount,
+    Value<double>? percentage,
+    Value<bool>? isSelf,
+    Value<double>? settledAmount,
+    Value<int>? sortOrder,
+    Value<DateTime>? createdAt,
+  }) {
+    return DbSplitParticipantsCompanion(
+      id: id ?? this.id,
+      splitRecordId: splitRecordId ?? this.splitRecordId,
+      participantName: participantName ?? this.participantName,
+      amount: amount ?? this.amount,
+      percentage: percentage ?? this.percentage,
+      isSelf: isSelf ?? this.isSelf,
+      settledAmount: settledAmount ?? this.settledAmount,
+      sortOrder: sortOrder ?? this.sortOrder,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (splitRecordId.present) {
+      map['split_record_id'] = Variable<int>(splitRecordId.value);
+    }
+    if (participantName.present) {
+      map['participant_name'] = Variable<String>(participantName.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (percentage.present) {
+      map['percentage'] = Variable<double>(percentage.value);
+    }
+    if (isSelf.present) {
+      map['is_self'] = Variable<bool>(isSelf.value);
+    }
+    if (settledAmount.present) {
+      map['settled_amount'] = Variable<double>(settledAmount.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbSplitParticipantsCompanion(')
+          ..write('id: $id, ')
+          ..write('splitRecordId: $splitRecordId, ')
+          ..write('participantName: $participantName, ')
+          ..write('amount: $amount, ')
+          ..write('percentage: $percentage, ')
+          ..write('isSelf: $isSelf, ')
+          ..write('settledAmount: $settledAmount, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DbLentSettlementsTable extends DbLentSettlements
+    with TableInfo<$DbLentSettlementsTable, DbLentSettlement> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DbLentSettlementsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _splitRecordIdMeta = const VerificationMeta(
+    'splitRecordId',
+  );
+  @override
+  late final GeneratedColumn<int> splitRecordId = GeneratedColumn<int>(
+    'split_record_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES db_split_records (id)',
+    ),
+  );
+  static const VerificationMeta _splitParticipantIdMeta =
+      const VerificationMeta('splitParticipantId');
+  @override
+  late final GeneratedColumn<int> splitParticipantId = GeneratedColumn<int>(
+    'split_participant_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES db_split_participants (id)',
+    ),
+  );
+  static const VerificationMeta _incomeEntryIdMeta = const VerificationMeta(
+    'incomeEntryId',
+  );
+  @override
+  late final GeneratedColumn<int> incomeEntryId = GeneratedColumn<int>(
+    'income_entry_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES db_finance_entries (id)',
+    ),
+  );
+  static const VerificationMeta _settledAmountMeta = const VerificationMeta(
+    'settledAmount',
+  );
+  @override
+  late final GeneratedColumn<double> settledAmount = GeneratedColumn<double>(
+    'settled_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    splitRecordId,
+    splitParticipantId,
+    incomeEntryId,
+    settledAmount,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'db_lent_settlements';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DbLentSettlement> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('split_record_id')) {
+      context.handle(
+        _splitRecordIdMeta,
+        splitRecordId.isAcceptableOrUnknown(
+          data['split_record_id']!,
+          _splitRecordIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_splitRecordIdMeta);
+    }
+    if (data.containsKey('split_participant_id')) {
+      context.handle(
+        _splitParticipantIdMeta,
+        splitParticipantId.isAcceptableOrUnknown(
+          data['split_participant_id']!,
+          _splitParticipantIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_splitParticipantIdMeta);
+    }
+    if (data.containsKey('income_entry_id')) {
+      context.handle(
+        _incomeEntryIdMeta,
+        incomeEntryId.isAcceptableOrUnknown(
+          data['income_entry_id']!,
+          _incomeEntryIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_incomeEntryIdMeta);
+    }
+    if (data.containsKey('settled_amount')) {
+      context.handle(
+        _settledAmountMeta,
+        settledAmount.isAcceptableOrUnknown(
+          data['settled_amount']!,
+          _settledAmountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_settledAmountMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DbLentSettlement map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DbLentSettlement(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      splitRecordId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}split_record_id'],
+      )!,
+      splitParticipantId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}split_participant_id'],
+      )!,
+      incomeEntryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}income_entry_id'],
+      )!,
+      settledAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}settled_amount'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DbLentSettlementsTable createAlias(String alias) {
+    return $DbLentSettlementsTable(attachedDatabase, alias);
+  }
+}
+
+class DbLentSettlement extends DataClass
+    implements Insertable<DbLentSettlement> {
+  final int id;
+  final int splitRecordId;
+  final int splitParticipantId;
+  final int incomeEntryId;
+  final double settledAmount;
+  final DateTime createdAt;
+  const DbLentSettlement({
+    required this.id,
+    required this.splitRecordId,
+    required this.splitParticipantId,
+    required this.incomeEntryId,
+    required this.settledAmount,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['split_record_id'] = Variable<int>(splitRecordId);
+    map['split_participant_id'] = Variable<int>(splitParticipantId);
+    map['income_entry_id'] = Variable<int>(incomeEntryId);
+    map['settled_amount'] = Variable<double>(settledAmount);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DbLentSettlementsCompanion toCompanion(bool nullToAbsent) {
+    return DbLentSettlementsCompanion(
+      id: Value(id),
+      splitRecordId: Value(splitRecordId),
+      splitParticipantId: Value(splitParticipantId),
+      incomeEntryId: Value(incomeEntryId),
+      settledAmount: Value(settledAmount),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DbLentSettlement.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DbLentSettlement(
+      id: serializer.fromJson<int>(json['id']),
+      splitRecordId: serializer.fromJson<int>(json['splitRecordId']),
+      splitParticipantId: serializer.fromJson<int>(json['splitParticipantId']),
+      incomeEntryId: serializer.fromJson<int>(json['incomeEntryId']),
+      settledAmount: serializer.fromJson<double>(json['settledAmount']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'splitRecordId': serializer.toJson<int>(splitRecordId),
+      'splitParticipantId': serializer.toJson<int>(splitParticipantId),
+      'incomeEntryId': serializer.toJson<int>(incomeEntryId),
+      'settledAmount': serializer.toJson<double>(settledAmount),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DbLentSettlement copyWith({
+    int? id,
+    int? splitRecordId,
+    int? splitParticipantId,
+    int? incomeEntryId,
+    double? settledAmount,
+    DateTime? createdAt,
+  }) => DbLentSettlement(
+    id: id ?? this.id,
+    splitRecordId: splitRecordId ?? this.splitRecordId,
+    splitParticipantId: splitParticipantId ?? this.splitParticipantId,
+    incomeEntryId: incomeEntryId ?? this.incomeEntryId,
+    settledAmount: settledAmount ?? this.settledAmount,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DbLentSettlement copyWithCompanion(DbLentSettlementsCompanion data) {
+    return DbLentSettlement(
+      id: data.id.present ? data.id.value : this.id,
+      splitRecordId: data.splitRecordId.present
+          ? data.splitRecordId.value
+          : this.splitRecordId,
+      splitParticipantId: data.splitParticipantId.present
+          ? data.splitParticipantId.value
+          : this.splitParticipantId,
+      incomeEntryId: data.incomeEntryId.present
+          ? data.incomeEntryId.value
+          : this.incomeEntryId,
+      settledAmount: data.settledAmount.present
+          ? data.settledAmount.value
+          : this.settledAmount,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbLentSettlement(')
+          ..write('id: $id, ')
+          ..write('splitRecordId: $splitRecordId, ')
+          ..write('splitParticipantId: $splitParticipantId, ')
+          ..write('incomeEntryId: $incomeEntryId, ')
+          ..write('settledAmount: $settledAmount, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    splitRecordId,
+    splitParticipantId,
+    incomeEntryId,
+    settledAmount,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DbLentSettlement &&
+          other.id == this.id &&
+          other.splitRecordId == this.splitRecordId &&
+          other.splitParticipantId == this.splitParticipantId &&
+          other.incomeEntryId == this.incomeEntryId &&
+          other.settledAmount == this.settledAmount &&
+          other.createdAt == this.createdAt);
+}
+
+class DbLentSettlementsCompanion extends UpdateCompanion<DbLentSettlement> {
+  final Value<int> id;
+  final Value<int> splitRecordId;
+  final Value<int> splitParticipantId;
+  final Value<int> incomeEntryId;
+  final Value<double> settledAmount;
+  final Value<DateTime> createdAt;
+  const DbLentSettlementsCompanion({
+    this.id = const Value.absent(),
+    this.splitRecordId = const Value.absent(),
+    this.splitParticipantId = const Value.absent(),
+    this.incomeEntryId = const Value.absent(),
+    this.settledAmount = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  DbLentSettlementsCompanion.insert({
+    this.id = const Value.absent(),
+    required int splitRecordId,
+    required int splitParticipantId,
+    required int incomeEntryId,
+    required double settledAmount,
+    this.createdAt = const Value.absent(),
+  }) : splitRecordId = Value(splitRecordId),
+       splitParticipantId = Value(splitParticipantId),
+       incomeEntryId = Value(incomeEntryId),
+       settledAmount = Value(settledAmount);
+  static Insertable<DbLentSettlement> custom({
+    Expression<int>? id,
+    Expression<int>? splitRecordId,
+    Expression<int>? splitParticipantId,
+    Expression<int>? incomeEntryId,
+    Expression<double>? settledAmount,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (splitRecordId != null) 'split_record_id': splitRecordId,
+      if (splitParticipantId != null)
+        'split_participant_id': splitParticipantId,
+      if (incomeEntryId != null) 'income_entry_id': incomeEntryId,
+      if (settledAmount != null) 'settled_amount': settledAmount,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  DbLentSettlementsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? splitRecordId,
+    Value<int>? splitParticipantId,
+    Value<int>? incomeEntryId,
+    Value<double>? settledAmount,
+    Value<DateTime>? createdAt,
+  }) {
+    return DbLentSettlementsCompanion(
+      id: id ?? this.id,
+      splitRecordId: splitRecordId ?? this.splitRecordId,
+      splitParticipantId: splitParticipantId ?? this.splitParticipantId,
+      incomeEntryId: incomeEntryId ?? this.incomeEntryId,
+      settledAmount: settledAmount ?? this.settledAmount,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (splitRecordId.present) {
+      map['split_record_id'] = Variable<int>(splitRecordId.value);
+    }
+    if (splitParticipantId.present) {
+      map['split_participant_id'] = Variable<int>(splitParticipantId.value);
+    }
+    if (incomeEntryId.present) {
+      map['income_entry_id'] = Variable<int>(incomeEntryId.value);
+    }
+    if (settledAmount.present) {
+      map['settled_amount'] = Variable<double>(settledAmount.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbLentSettlementsCompanion(')
+          ..write('id: $id, ')
+          ..write('splitRecordId: $splitRecordId, ')
+          ..write('splitParticipantId: $splitParticipantId, ')
+          ..write('incomeEntryId: $incomeEntryId, ')
+          ..write('settledAmount: $settledAmount, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $DbTasksTable extends DbTasks with TableInfo<$DbTasksTable, DbTask> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -2329,6 +3701,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DbFinanceEntriesTable dbFinanceEntries = $DbFinanceEntriesTable(
     this,
   );
+  late final $DbSplitRecordsTable dbSplitRecords = $DbSplitRecordsTable(this);
+  late final $DbSplitParticipantsTable dbSplitParticipants =
+      $DbSplitParticipantsTable(this);
+  late final $DbLentSettlementsTable dbLentSettlements =
+      $DbLentSettlementsTable(this);
   late final $DbTasksTable dbTasks = $DbTasksTable(this);
   late final $DbCredentialsTable dbCredentials = $DbCredentialsTable(this);
   @override
@@ -2339,6 +3716,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     dbCategories,
     dbBanks,
     dbFinanceEntries,
+    dbSplitRecords,
+    dbSplitParticipants,
+    dbLentSettlements,
     dbTasks,
     dbCredentials,
   ];
@@ -2983,6 +4363,74 @@ final class $$DbFinanceEntriesTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static MultiTypedResultKey<$DbSplitRecordsTable, List<DbSplitRecord>>
+  _expenseSplitRecordsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.dbSplitRecords,
+    aliasName: $_aliasNameGenerator(
+      db.dbFinanceEntries.id,
+      db.dbSplitRecords.expenseEntryId,
+    ),
+  );
+
+  $$DbSplitRecordsTableProcessedTableManager get expenseSplitRecords {
+    final manager = $$DbSplitRecordsTableTableManager(
+      $_db,
+      $_db.dbSplitRecords,
+    ).filter((f) => f.expenseEntryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _expenseSplitRecordsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$DbSplitRecordsTable, List<DbSplitRecord>>
+  _lentSplitRecordsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.dbSplitRecords,
+    aliasName: $_aliasNameGenerator(
+      db.dbFinanceEntries.id,
+      db.dbSplitRecords.lentEntryId,
+    ),
+  );
+
+  $$DbSplitRecordsTableProcessedTableManager get lentSplitRecords {
+    final manager = $$DbSplitRecordsTableTableManager(
+      $_db,
+      $_db.dbSplitRecords,
+    ).filter((f) => f.lentEntryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_lentSplitRecordsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$DbLentSettlementsTable, List<DbLentSettlement>>
+  _dbLentSettlementsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.dbLentSettlements,
+        aliasName: $_aliasNameGenerator(
+          db.dbFinanceEntries.id,
+          db.dbLentSettlements.incomeEntryId,
+        ),
+      );
+
+  $$DbLentSettlementsTableProcessedTableManager get dbLentSettlementsRefs {
+    final manager = $$DbLentSettlementsTableTableManager(
+      $_db,
+      $_db.dbLentSettlements,
+    ).filter((f) => f.incomeEntryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _dbLentSettlementsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$DbFinanceEntriesTableFilterComposer
@@ -3083,6 +4531,81 @@ class $$DbFinanceEntriesTableFilterComposer
           ),
     );
     return composer;
+  }
+
+  Expression<bool> expenseSplitRecords(
+    Expression<bool> Function($$DbSplitRecordsTableFilterComposer f) f,
+  ) {
+    final $$DbSplitRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dbSplitRecords,
+      getReferencedColumn: (t) => t.expenseEntryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSplitRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.dbSplitRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> lentSplitRecords(
+    Expression<bool> Function($$DbSplitRecordsTableFilterComposer f) f,
+  ) {
+    final $$DbSplitRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dbSplitRecords,
+      getReferencedColumn: (t) => t.lentEntryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSplitRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.dbSplitRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> dbLentSettlementsRefs(
+    Expression<bool> Function($$DbLentSettlementsTableFilterComposer f) f,
+  ) {
+    final $$DbLentSettlementsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dbLentSettlements,
+      getReferencedColumn: (t) => t.incomeEntryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbLentSettlementsTableFilterComposer(
+            $db: $db,
+            $table: $db.dbLentSettlements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 }
 
@@ -3272,6 +4795,82 @@ class $$DbFinanceEntriesTableAnnotationComposer
     );
     return composer;
   }
+
+  Expression<T> expenseSplitRecords<T extends Object>(
+    Expression<T> Function($$DbSplitRecordsTableAnnotationComposer a) f,
+  ) {
+    final $$DbSplitRecordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dbSplitRecords,
+      getReferencedColumn: (t) => t.expenseEntryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSplitRecordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dbSplitRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> lentSplitRecords<T extends Object>(
+    Expression<T> Function($$DbSplitRecordsTableAnnotationComposer a) f,
+  ) {
+    final $$DbSplitRecordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dbSplitRecords,
+      getReferencedColumn: (t) => t.lentEntryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSplitRecordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dbSplitRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> dbLentSettlementsRefs<T extends Object>(
+    Expression<T> Function($$DbLentSettlementsTableAnnotationComposer a) f,
+  ) {
+    final $$DbLentSettlementsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.dbLentSettlements,
+          getReferencedColumn: (t) => t.incomeEntryId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbLentSettlementsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.dbLentSettlements,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$DbFinanceEntriesTableTableManager
@@ -3287,7 +4886,13 @@ class $$DbFinanceEntriesTableTableManager
           $$DbFinanceEntriesTableUpdateCompanionBuilder,
           (DbFinanceEntry, $$DbFinanceEntriesTableReferences),
           DbFinanceEntry,
-          PrefetchHooks Function({bool categoryId, bool bankId})
+          PrefetchHooks Function({
+            bool categoryId,
+            bool bankId,
+            bool expenseSplitRecords,
+            bool lentSplitRecords,
+            bool dbLentSettlementsRefs,
+          })
         > {
   $$DbFinanceEntriesTableTableManager(
     _$AppDatabase db,
@@ -3362,64 +4967,139 @@ class $$DbFinanceEntriesTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({categoryId = false, bankId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (categoryId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.categoryId,
-                                referencedTable:
-                                    $$DbFinanceEntriesTableReferences
-                                        ._categoryIdTable(db),
-                                referencedColumn:
-                                    $$DbFinanceEntriesTableReferences
-                                        ._categoryIdTable(db)
-                                        .id,
-                              )
-                              as T;
-                    }
-                    if (bankId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.bankId,
-                                referencedTable:
-                                    $$DbFinanceEntriesTableReferences
-                                        ._bankIdTable(db),
-                                referencedColumn:
-                                    $$DbFinanceEntriesTableReferences
-                                        ._bankIdTable(db)
-                                        .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({
+                categoryId = false,
+                bankId = false,
+                expenseSplitRecords = false,
+                lentSplitRecords = false,
+                dbLentSettlementsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (expenseSplitRecords) db.dbSplitRecords,
+                    if (lentSplitRecords) db.dbSplitRecords,
+                    if (dbLentSettlementsRefs) db.dbLentSettlements,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (categoryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.categoryId,
+                                    referencedTable:
+                                        $$DbFinanceEntriesTableReferences
+                                            ._categoryIdTable(db),
+                                    referencedColumn:
+                                        $$DbFinanceEntriesTableReferences
+                                            ._categoryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (bankId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.bankId,
+                                    referencedTable:
+                                        $$DbFinanceEntriesTableReferences
+                                            ._bankIdTable(db),
+                                    referencedColumn:
+                                        $$DbFinanceEntriesTableReferences
+                                            ._bankIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (expenseSplitRecords)
+                        await $_getPrefetchedData<
+                          DbFinanceEntry,
+                          $DbFinanceEntriesTable,
+                          DbSplitRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$DbFinanceEntriesTableReferences
+                              ._expenseSplitRecordsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$DbFinanceEntriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).expenseSplitRecords,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.expenseEntryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (lentSplitRecords)
+                        await $_getPrefetchedData<
+                          DbFinanceEntry,
+                          $DbFinanceEntriesTable,
+                          DbSplitRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$DbFinanceEntriesTableReferences
+                              ._lentSplitRecordsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$DbFinanceEntriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).lentSplitRecords,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.lentEntryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (dbLentSettlementsRefs)
+                        await $_getPrefetchedData<
+                          DbFinanceEntry,
+                          $DbFinanceEntriesTable,
+                          DbLentSettlement
+                        >(
+                          currentTable: table,
+                          referencedTable: $$DbFinanceEntriesTableReferences
+                              ._dbLentSettlementsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$DbFinanceEntriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).dbLentSettlementsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.incomeEntryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -3436,7 +5116,1724 @@ typedef $$DbFinanceEntriesTableProcessedTableManager =
       $$DbFinanceEntriesTableUpdateCompanionBuilder,
       (DbFinanceEntry, $$DbFinanceEntriesTableReferences),
       DbFinanceEntry,
-      PrefetchHooks Function({bool categoryId, bool bankId})
+      PrefetchHooks Function({
+        bool categoryId,
+        bool bankId,
+        bool expenseSplitRecords,
+        bool lentSplitRecords,
+        bool dbLentSettlementsRefs,
+      })
+    >;
+typedef $$DbSplitRecordsTableCreateCompanionBuilder =
+    DbSplitRecordsCompanion Function({
+      Value<int> id,
+      Value<int?> expenseEntryId,
+      Value<int?> lentEntryId,
+      required double totalAmount,
+      Value<DateTime> createdAt,
+    });
+typedef $$DbSplitRecordsTableUpdateCompanionBuilder =
+    DbSplitRecordsCompanion Function({
+      Value<int> id,
+      Value<int?> expenseEntryId,
+      Value<int?> lentEntryId,
+      Value<double> totalAmount,
+      Value<DateTime> createdAt,
+    });
+
+final class $$DbSplitRecordsTableReferences
+    extends BaseReferences<_$AppDatabase, $DbSplitRecordsTable, DbSplitRecord> {
+  $$DbSplitRecordsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $DbFinanceEntriesTable _expenseEntryIdTable(_$AppDatabase db) =>
+      db.dbFinanceEntries.createAlias(
+        $_aliasNameGenerator(
+          db.dbSplitRecords.expenseEntryId,
+          db.dbFinanceEntries.id,
+        ),
+      );
+
+  $$DbFinanceEntriesTableProcessedTableManager? get expenseEntryId {
+    final $_column = $_itemColumn<int>('expense_entry_id');
+    if ($_column == null) return null;
+    final manager = $$DbFinanceEntriesTableTableManager(
+      $_db,
+      $_db.dbFinanceEntries,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_expenseEntryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $DbFinanceEntriesTable _lentEntryIdTable(_$AppDatabase db) =>
+      db.dbFinanceEntries.createAlias(
+        $_aliasNameGenerator(
+          db.dbSplitRecords.lentEntryId,
+          db.dbFinanceEntries.id,
+        ),
+      );
+
+  $$DbFinanceEntriesTableProcessedTableManager? get lentEntryId {
+    final $_column = $_itemColumn<int>('lent_entry_id');
+    if ($_column == null) return null;
+    final manager = $$DbFinanceEntriesTableTableManager(
+      $_db,
+      $_db.dbFinanceEntries,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_lentEntryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $DbSplitParticipantsTable,
+    List<DbSplitParticipant>
+  >
+  _dbSplitParticipantsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.dbSplitParticipants,
+        aliasName: $_aliasNameGenerator(
+          db.dbSplitRecords.id,
+          db.dbSplitParticipants.splitRecordId,
+        ),
+      );
+
+  $$DbSplitParticipantsTableProcessedTableManager get dbSplitParticipantsRefs {
+    final manager = $$DbSplitParticipantsTableTableManager(
+      $_db,
+      $_db.dbSplitParticipants,
+    ).filter((f) => f.splitRecordId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _dbSplitParticipantsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$DbLentSettlementsTable, List<DbLentSettlement>>
+  _dbLentSettlementsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.dbLentSettlements,
+        aliasName: $_aliasNameGenerator(
+          db.dbSplitRecords.id,
+          db.dbLentSettlements.splitRecordId,
+        ),
+      );
+
+  $$DbLentSettlementsTableProcessedTableManager get dbLentSettlementsRefs {
+    final manager = $$DbLentSettlementsTableTableManager(
+      $_db,
+      $_db.dbLentSettlements,
+    ).filter((f) => f.splitRecordId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _dbLentSettlementsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$DbSplitRecordsTableFilterComposer
+    extends Composer<_$AppDatabase, $DbSplitRecordsTable> {
+  $$DbSplitRecordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get totalAmount => $composableBuilder(
+    column: $table.totalAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$DbFinanceEntriesTableFilterComposer get expenseEntryId {
+    final $$DbFinanceEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.expenseEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$DbFinanceEntriesTableFilterComposer get lentEntryId {
+    final $$DbFinanceEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.lentEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> dbSplitParticipantsRefs(
+    Expression<bool> Function($$DbSplitParticipantsTableFilterComposer f) f,
+  ) {
+    final $$DbSplitParticipantsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dbSplitParticipants,
+      getReferencedColumn: (t) => t.splitRecordId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSplitParticipantsTableFilterComposer(
+            $db: $db,
+            $table: $db.dbSplitParticipants,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> dbLentSettlementsRefs(
+    Expression<bool> Function($$DbLentSettlementsTableFilterComposer f) f,
+  ) {
+    final $$DbLentSettlementsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dbLentSettlements,
+      getReferencedColumn: (t) => t.splitRecordId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbLentSettlementsTableFilterComposer(
+            $db: $db,
+            $table: $db.dbLentSettlements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DbSplitRecordsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DbSplitRecordsTable> {
+  $$DbSplitRecordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get totalAmount => $composableBuilder(
+    column: $table.totalAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$DbFinanceEntriesTableOrderingComposer get expenseEntryId {
+    final $$DbFinanceEntriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.expenseEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$DbFinanceEntriesTableOrderingComposer get lentEntryId {
+    final $$DbFinanceEntriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.lentEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DbSplitRecordsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DbSplitRecordsTable> {
+  $$DbSplitRecordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get totalAmount => $composableBuilder(
+    column: $table.totalAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$DbFinanceEntriesTableAnnotationComposer get expenseEntryId {
+    final $$DbFinanceEntriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.expenseEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$DbFinanceEntriesTableAnnotationComposer get lentEntryId {
+    final $$DbFinanceEntriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.lentEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> dbSplitParticipantsRefs<T extends Object>(
+    Expression<T> Function($$DbSplitParticipantsTableAnnotationComposer a) f,
+  ) {
+    final $$DbSplitParticipantsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.dbSplitParticipants,
+          getReferencedColumn: (t) => t.splitRecordId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbSplitParticipantsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.dbSplitParticipants,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> dbLentSettlementsRefs<T extends Object>(
+    Expression<T> Function($$DbLentSettlementsTableAnnotationComposer a) f,
+  ) {
+    final $$DbLentSettlementsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.dbLentSettlements,
+          getReferencedColumn: (t) => t.splitRecordId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbLentSettlementsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.dbLentSettlements,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$DbSplitRecordsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DbSplitRecordsTable,
+          DbSplitRecord,
+          $$DbSplitRecordsTableFilterComposer,
+          $$DbSplitRecordsTableOrderingComposer,
+          $$DbSplitRecordsTableAnnotationComposer,
+          $$DbSplitRecordsTableCreateCompanionBuilder,
+          $$DbSplitRecordsTableUpdateCompanionBuilder,
+          (DbSplitRecord, $$DbSplitRecordsTableReferences),
+          DbSplitRecord,
+          PrefetchHooks Function({
+            bool expenseEntryId,
+            bool lentEntryId,
+            bool dbSplitParticipantsRefs,
+            bool dbLentSettlementsRefs,
+          })
+        > {
+  $$DbSplitRecordsTableTableManager(
+    _$AppDatabase db,
+    $DbSplitRecordsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DbSplitRecordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DbSplitRecordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DbSplitRecordsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> expenseEntryId = const Value.absent(),
+                Value<int?> lentEntryId = const Value.absent(),
+                Value<double> totalAmount = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DbSplitRecordsCompanion(
+                id: id,
+                expenseEntryId: expenseEntryId,
+                lentEntryId: lentEntryId,
+                totalAmount: totalAmount,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> expenseEntryId = const Value.absent(),
+                Value<int?> lentEntryId = const Value.absent(),
+                required double totalAmount,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DbSplitRecordsCompanion.insert(
+                id: id,
+                expenseEntryId: expenseEntryId,
+                lentEntryId: lentEntryId,
+                totalAmount: totalAmount,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DbSplitRecordsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                expenseEntryId = false,
+                lentEntryId = false,
+                dbSplitParticipantsRefs = false,
+                dbLentSettlementsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (dbSplitParticipantsRefs) db.dbSplitParticipants,
+                    if (dbLentSettlementsRefs) db.dbLentSettlements,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (expenseEntryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.expenseEntryId,
+                                    referencedTable:
+                                        $$DbSplitRecordsTableReferences
+                                            ._expenseEntryIdTable(db),
+                                    referencedColumn:
+                                        $$DbSplitRecordsTableReferences
+                                            ._expenseEntryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (lentEntryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.lentEntryId,
+                                    referencedTable:
+                                        $$DbSplitRecordsTableReferences
+                                            ._lentEntryIdTable(db),
+                                    referencedColumn:
+                                        $$DbSplitRecordsTableReferences
+                                            ._lentEntryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (dbSplitParticipantsRefs)
+                        await $_getPrefetchedData<
+                          DbSplitRecord,
+                          $DbSplitRecordsTable,
+                          DbSplitParticipant
+                        >(
+                          currentTable: table,
+                          referencedTable: $$DbSplitRecordsTableReferences
+                              ._dbSplitParticipantsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$DbSplitRecordsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).dbSplitParticipantsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.splitRecordId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (dbLentSettlementsRefs)
+                        await $_getPrefetchedData<
+                          DbSplitRecord,
+                          $DbSplitRecordsTable,
+                          DbLentSettlement
+                        >(
+                          currentTable: table,
+                          referencedTable: $$DbSplitRecordsTableReferences
+                              ._dbLentSettlementsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$DbSplitRecordsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).dbLentSettlementsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.splitRecordId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$DbSplitRecordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DbSplitRecordsTable,
+      DbSplitRecord,
+      $$DbSplitRecordsTableFilterComposer,
+      $$DbSplitRecordsTableOrderingComposer,
+      $$DbSplitRecordsTableAnnotationComposer,
+      $$DbSplitRecordsTableCreateCompanionBuilder,
+      $$DbSplitRecordsTableUpdateCompanionBuilder,
+      (DbSplitRecord, $$DbSplitRecordsTableReferences),
+      DbSplitRecord,
+      PrefetchHooks Function({
+        bool expenseEntryId,
+        bool lentEntryId,
+        bool dbSplitParticipantsRefs,
+        bool dbLentSettlementsRefs,
+      })
+    >;
+typedef $$DbSplitParticipantsTableCreateCompanionBuilder =
+    DbSplitParticipantsCompanion Function({
+      Value<int> id,
+      required int splitRecordId,
+      required String participantName,
+      required double amount,
+      required double percentage,
+      Value<bool> isSelf,
+      Value<double> settledAmount,
+      Value<int> sortOrder,
+      Value<DateTime> createdAt,
+    });
+typedef $$DbSplitParticipantsTableUpdateCompanionBuilder =
+    DbSplitParticipantsCompanion Function({
+      Value<int> id,
+      Value<int> splitRecordId,
+      Value<String> participantName,
+      Value<double> amount,
+      Value<double> percentage,
+      Value<bool> isSelf,
+      Value<double> settledAmount,
+      Value<int> sortOrder,
+      Value<DateTime> createdAt,
+    });
+
+final class $$DbSplitParticipantsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $DbSplitParticipantsTable,
+          DbSplitParticipant
+        > {
+  $$DbSplitParticipantsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $DbSplitRecordsTable _splitRecordIdTable(_$AppDatabase db) =>
+      db.dbSplitRecords.createAlias(
+        $_aliasNameGenerator(
+          db.dbSplitParticipants.splitRecordId,
+          db.dbSplitRecords.id,
+        ),
+      );
+
+  $$DbSplitRecordsTableProcessedTableManager get splitRecordId {
+    final $_column = $_itemColumn<int>('split_record_id')!;
+
+    final manager = $$DbSplitRecordsTableTableManager(
+      $_db,
+      $_db.dbSplitRecords,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_splitRecordIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$DbLentSettlementsTable, List<DbLentSettlement>>
+  _dbLentSettlementsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.dbLentSettlements,
+        aliasName: $_aliasNameGenerator(
+          db.dbSplitParticipants.id,
+          db.dbLentSettlements.splitParticipantId,
+        ),
+      );
+
+  $$DbLentSettlementsTableProcessedTableManager get dbLentSettlementsRefs {
+    final manager =
+        $$DbLentSettlementsTableTableManager(
+          $_db,
+          $_db.dbLentSettlements,
+        ).filter(
+          (f) => f.splitParticipantId.id.sqlEquals($_itemColumn<int>('id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _dbLentSettlementsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$DbSplitParticipantsTableFilterComposer
+    extends Composer<_$AppDatabase, $DbSplitParticipantsTable> {
+  $$DbSplitParticipantsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get participantName => $composableBuilder(
+    column: $table.participantName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get percentage => $composableBuilder(
+    column: $table.percentage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSelf => $composableBuilder(
+    column: $table.isSelf,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get settledAmount => $composableBuilder(
+    column: $table.settledAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$DbSplitRecordsTableFilterComposer get splitRecordId {
+    final $$DbSplitRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.splitRecordId,
+      referencedTable: $db.dbSplitRecords,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSplitRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.dbSplitRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> dbLentSettlementsRefs(
+    Expression<bool> Function($$DbLentSettlementsTableFilterComposer f) f,
+  ) {
+    final $$DbLentSettlementsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dbLentSettlements,
+      getReferencedColumn: (t) => t.splitParticipantId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbLentSettlementsTableFilterComposer(
+            $db: $db,
+            $table: $db.dbLentSettlements,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DbSplitParticipantsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DbSplitParticipantsTable> {
+  $$DbSplitParticipantsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get participantName => $composableBuilder(
+    column: $table.participantName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get percentage => $composableBuilder(
+    column: $table.percentage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSelf => $composableBuilder(
+    column: $table.isSelf,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get settledAmount => $composableBuilder(
+    column: $table.settledAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$DbSplitRecordsTableOrderingComposer get splitRecordId {
+    final $$DbSplitRecordsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.splitRecordId,
+      referencedTable: $db.dbSplitRecords,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSplitRecordsTableOrderingComposer(
+            $db: $db,
+            $table: $db.dbSplitRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DbSplitParticipantsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DbSplitParticipantsTable> {
+  $$DbSplitParticipantsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get participantName => $composableBuilder(
+    column: $table.participantName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<double> get percentage => $composableBuilder(
+    column: $table.percentage,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isSelf =>
+      $composableBuilder(column: $table.isSelf, builder: (column) => column);
+
+  GeneratedColumn<double> get settledAmount => $composableBuilder(
+    column: $table.settledAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$DbSplitRecordsTableAnnotationComposer get splitRecordId {
+    final $$DbSplitRecordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.splitRecordId,
+      referencedTable: $db.dbSplitRecords,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSplitRecordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dbSplitRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> dbLentSettlementsRefs<T extends Object>(
+    Expression<T> Function($$DbLentSettlementsTableAnnotationComposer a) f,
+  ) {
+    final $$DbLentSettlementsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.dbLentSettlements,
+          getReferencedColumn: (t) => t.splitParticipantId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbLentSettlementsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.dbLentSettlements,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$DbSplitParticipantsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DbSplitParticipantsTable,
+          DbSplitParticipant,
+          $$DbSplitParticipantsTableFilterComposer,
+          $$DbSplitParticipantsTableOrderingComposer,
+          $$DbSplitParticipantsTableAnnotationComposer,
+          $$DbSplitParticipantsTableCreateCompanionBuilder,
+          $$DbSplitParticipantsTableUpdateCompanionBuilder,
+          (DbSplitParticipant, $$DbSplitParticipantsTableReferences),
+          DbSplitParticipant,
+          PrefetchHooks Function({
+            bool splitRecordId,
+            bool dbLentSettlementsRefs,
+          })
+        > {
+  $$DbSplitParticipantsTableTableManager(
+    _$AppDatabase db,
+    $DbSplitParticipantsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DbSplitParticipantsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DbSplitParticipantsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DbSplitParticipantsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> splitRecordId = const Value.absent(),
+                Value<String> participantName = const Value.absent(),
+                Value<double> amount = const Value.absent(),
+                Value<double> percentage = const Value.absent(),
+                Value<bool> isSelf = const Value.absent(),
+                Value<double> settledAmount = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DbSplitParticipantsCompanion(
+                id: id,
+                splitRecordId: splitRecordId,
+                participantName: participantName,
+                amount: amount,
+                percentage: percentage,
+                isSelf: isSelf,
+                settledAmount: settledAmount,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int splitRecordId,
+                required String participantName,
+                required double amount,
+                required double percentage,
+                Value<bool> isSelf = const Value.absent(),
+                Value<double> settledAmount = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DbSplitParticipantsCompanion.insert(
+                id: id,
+                splitRecordId: splitRecordId,
+                participantName: participantName,
+                amount: amount,
+                percentage: percentage,
+                isSelf: isSelf,
+                settledAmount: settledAmount,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DbSplitParticipantsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({splitRecordId = false, dbLentSettlementsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (dbLentSettlementsRefs) db.dbLentSettlements,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (splitRecordId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.splitRecordId,
+                                    referencedTable:
+                                        $$DbSplitParticipantsTableReferences
+                                            ._splitRecordIdTable(db),
+                                    referencedColumn:
+                                        $$DbSplitParticipantsTableReferences
+                                            ._splitRecordIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (dbLentSettlementsRefs)
+                        await $_getPrefetchedData<
+                          DbSplitParticipant,
+                          $DbSplitParticipantsTable,
+                          DbLentSettlement
+                        >(
+                          currentTable: table,
+                          referencedTable: $$DbSplitParticipantsTableReferences
+                              ._dbLentSettlementsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$DbSplitParticipantsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).dbLentSettlementsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.splitParticipantId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$DbSplitParticipantsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DbSplitParticipantsTable,
+      DbSplitParticipant,
+      $$DbSplitParticipantsTableFilterComposer,
+      $$DbSplitParticipantsTableOrderingComposer,
+      $$DbSplitParticipantsTableAnnotationComposer,
+      $$DbSplitParticipantsTableCreateCompanionBuilder,
+      $$DbSplitParticipantsTableUpdateCompanionBuilder,
+      (DbSplitParticipant, $$DbSplitParticipantsTableReferences),
+      DbSplitParticipant,
+      PrefetchHooks Function({bool splitRecordId, bool dbLentSettlementsRefs})
+    >;
+typedef $$DbLentSettlementsTableCreateCompanionBuilder =
+    DbLentSettlementsCompanion Function({
+      Value<int> id,
+      required int splitRecordId,
+      required int splitParticipantId,
+      required int incomeEntryId,
+      required double settledAmount,
+      Value<DateTime> createdAt,
+    });
+typedef $$DbLentSettlementsTableUpdateCompanionBuilder =
+    DbLentSettlementsCompanion Function({
+      Value<int> id,
+      Value<int> splitRecordId,
+      Value<int> splitParticipantId,
+      Value<int> incomeEntryId,
+      Value<double> settledAmount,
+      Value<DateTime> createdAt,
+    });
+
+final class $$DbLentSettlementsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $DbLentSettlementsTable,
+          DbLentSettlement
+        > {
+  $$DbLentSettlementsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $DbSplitRecordsTable _splitRecordIdTable(_$AppDatabase db) =>
+      db.dbSplitRecords.createAlias(
+        $_aliasNameGenerator(
+          db.dbLentSettlements.splitRecordId,
+          db.dbSplitRecords.id,
+        ),
+      );
+
+  $$DbSplitRecordsTableProcessedTableManager get splitRecordId {
+    final $_column = $_itemColumn<int>('split_record_id')!;
+
+    final manager = $$DbSplitRecordsTableTableManager(
+      $_db,
+      $_db.dbSplitRecords,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_splitRecordIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $DbSplitParticipantsTable _splitParticipantIdTable(_$AppDatabase db) =>
+      db.dbSplitParticipants.createAlias(
+        $_aliasNameGenerator(
+          db.dbLentSettlements.splitParticipantId,
+          db.dbSplitParticipants.id,
+        ),
+      );
+
+  $$DbSplitParticipantsTableProcessedTableManager get splitParticipantId {
+    final $_column = $_itemColumn<int>('split_participant_id')!;
+
+    final manager = $$DbSplitParticipantsTableTableManager(
+      $_db,
+      $_db.dbSplitParticipants,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_splitParticipantIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $DbFinanceEntriesTable _incomeEntryIdTable(_$AppDatabase db) =>
+      db.dbFinanceEntries.createAlias(
+        $_aliasNameGenerator(
+          db.dbLentSettlements.incomeEntryId,
+          db.dbFinanceEntries.id,
+        ),
+      );
+
+  $$DbFinanceEntriesTableProcessedTableManager get incomeEntryId {
+    final $_column = $_itemColumn<int>('income_entry_id')!;
+
+    final manager = $$DbFinanceEntriesTableTableManager(
+      $_db,
+      $_db.dbFinanceEntries,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_incomeEntryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DbLentSettlementsTableFilterComposer
+    extends Composer<_$AppDatabase, $DbLentSettlementsTable> {
+  $$DbLentSettlementsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get settledAmount => $composableBuilder(
+    column: $table.settledAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$DbSplitRecordsTableFilterComposer get splitRecordId {
+    final $$DbSplitRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.splitRecordId,
+      referencedTable: $db.dbSplitRecords,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSplitRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.dbSplitRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$DbSplitParticipantsTableFilterComposer get splitParticipantId {
+    final $$DbSplitParticipantsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.splitParticipantId,
+      referencedTable: $db.dbSplitParticipants,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSplitParticipantsTableFilterComposer(
+            $db: $db,
+            $table: $db.dbSplitParticipants,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$DbFinanceEntriesTableFilterComposer get incomeEntryId {
+    final $$DbFinanceEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.incomeEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DbLentSettlementsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DbLentSettlementsTable> {
+  $$DbLentSettlementsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get settledAmount => $composableBuilder(
+    column: $table.settledAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$DbSplitRecordsTableOrderingComposer get splitRecordId {
+    final $$DbSplitRecordsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.splitRecordId,
+      referencedTable: $db.dbSplitRecords,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSplitRecordsTableOrderingComposer(
+            $db: $db,
+            $table: $db.dbSplitRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$DbSplitParticipantsTableOrderingComposer get splitParticipantId {
+    final $$DbSplitParticipantsTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.splitParticipantId,
+          referencedTable: $db.dbSplitParticipants,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbSplitParticipantsTableOrderingComposer(
+                $db: $db,
+                $table: $db.dbSplitParticipants,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$DbFinanceEntriesTableOrderingComposer get incomeEntryId {
+    final $$DbFinanceEntriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.incomeEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DbLentSettlementsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DbLentSettlementsTable> {
+  $$DbLentSettlementsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get settledAmount => $composableBuilder(
+    column: $table.settledAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$DbSplitRecordsTableAnnotationComposer get splitRecordId {
+    final $$DbSplitRecordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.splitRecordId,
+      referencedTable: $db.dbSplitRecords,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSplitRecordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dbSplitRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$DbSplitParticipantsTableAnnotationComposer get splitParticipantId {
+    final $$DbSplitParticipantsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.splitParticipantId,
+          referencedTable: $db.dbSplitParticipants,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbSplitParticipantsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.dbSplitParticipants,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$DbFinanceEntriesTableAnnotationComposer get incomeEntryId {
+    final $$DbFinanceEntriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.incomeEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DbLentSettlementsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DbLentSettlementsTable,
+          DbLentSettlement,
+          $$DbLentSettlementsTableFilterComposer,
+          $$DbLentSettlementsTableOrderingComposer,
+          $$DbLentSettlementsTableAnnotationComposer,
+          $$DbLentSettlementsTableCreateCompanionBuilder,
+          $$DbLentSettlementsTableUpdateCompanionBuilder,
+          (DbLentSettlement, $$DbLentSettlementsTableReferences),
+          DbLentSettlement,
+          PrefetchHooks Function({
+            bool splitRecordId,
+            bool splitParticipantId,
+            bool incomeEntryId,
+          })
+        > {
+  $$DbLentSettlementsTableTableManager(
+    _$AppDatabase db,
+    $DbLentSettlementsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DbLentSettlementsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DbLentSettlementsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DbLentSettlementsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> splitRecordId = const Value.absent(),
+                Value<int> splitParticipantId = const Value.absent(),
+                Value<int> incomeEntryId = const Value.absent(),
+                Value<double> settledAmount = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DbLentSettlementsCompanion(
+                id: id,
+                splitRecordId: splitRecordId,
+                splitParticipantId: splitParticipantId,
+                incomeEntryId: incomeEntryId,
+                settledAmount: settledAmount,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int splitRecordId,
+                required int splitParticipantId,
+                required int incomeEntryId,
+                required double settledAmount,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DbLentSettlementsCompanion.insert(
+                id: id,
+                splitRecordId: splitRecordId,
+                splitParticipantId: splitParticipantId,
+                incomeEntryId: incomeEntryId,
+                settledAmount: settledAmount,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DbLentSettlementsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                splitRecordId = false,
+                splitParticipantId = false,
+                incomeEntryId = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (splitRecordId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.splitRecordId,
+                                    referencedTable:
+                                        $$DbLentSettlementsTableReferences
+                                            ._splitRecordIdTable(db),
+                                    referencedColumn:
+                                        $$DbLentSettlementsTableReferences
+                                            ._splitRecordIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (splitParticipantId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.splitParticipantId,
+                                    referencedTable:
+                                        $$DbLentSettlementsTableReferences
+                                            ._splitParticipantIdTable(db),
+                                    referencedColumn:
+                                        $$DbLentSettlementsTableReferences
+                                            ._splitParticipantIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (incomeEntryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.incomeEntryId,
+                                    referencedTable:
+                                        $$DbLentSettlementsTableReferences
+                                            ._incomeEntryIdTable(db),
+                                    referencedColumn:
+                                        $$DbLentSettlementsTableReferences
+                                            ._incomeEntryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$DbLentSettlementsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DbLentSettlementsTable,
+      DbLentSettlement,
+      $$DbLentSettlementsTableFilterComposer,
+      $$DbLentSettlementsTableOrderingComposer,
+      $$DbLentSettlementsTableAnnotationComposer,
+      $$DbLentSettlementsTableCreateCompanionBuilder,
+      $$DbLentSettlementsTableUpdateCompanionBuilder,
+      (DbLentSettlement, $$DbLentSettlementsTableReferences),
+      DbLentSettlement,
+      PrefetchHooks Function({
+        bool splitRecordId,
+        bool splitParticipantId,
+        bool incomeEntryId,
+      })
     >;
 typedef $$DbTasksTableCreateCompanionBuilder =
     DbTasksCompanion Function({
@@ -3975,6 +7372,12 @@ class $AppDatabaseManager {
       $$DbBanksTableTableManager(_db, _db.dbBanks);
   $$DbFinanceEntriesTableTableManager get dbFinanceEntries =>
       $$DbFinanceEntriesTableTableManager(_db, _db.dbFinanceEntries);
+  $$DbSplitRecordsTableTableManager get dbSplitRecords =>
+      $$DbSplitRecordsTableTableManager(_db, _db.dbSplitRecords);
+  $$DbSplitParticipantsTableTableManager get dbSplitParticipants =>
+      $$DbSplitParticipantsTableTableManager(_db, _db.dbSplitParticipants);
+  $$DbLentSettlementsTableTableManager get dbLentSettlements =>
+      $$DbLentSettlementsTableTableManager(_db, _db.dbLentSettlements);
   $$DbTasksTableTableManager get dbTasks =>
       $$DbTasksTableTableManager(_db, _db.dbTasks);
   $$DbCredentialsTableTableManager get dbCredentials =>

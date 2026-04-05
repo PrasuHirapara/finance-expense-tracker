@@ -21,6 +21,7 @@ class AppSelectField<T> extends StatelessWidget {
     required this.onChanged,
     this.errorText,
     this.hintText,
+    this.enabled = true,
   });
 
   final String label;
@@ -29,6 +30,7 @@ class AppSelectField<T> extends StatelessWidget {
   final ValueChanged<T> onChanged;
   final String? errorText;
   final String? hintText;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -38,10 +40,11 @@ class AppSelectField<T> extends StatelessWidget {
     );
 
     return GestureDetector(
-      onTap: () => _openMenu(context),
+      onTap: enabled ? () => _openMenu(context) : null,
       child: InputDecorator(
         isEmpty: selectedOption == null,
         decoration: InputDecoration(
+          enabled: enabled,
           labelText: label,
           errorText: errorText,
           suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded),

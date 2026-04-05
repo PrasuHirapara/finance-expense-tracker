@@ -10,11 +10,12 @@ import '../../../../core/blocs/theme_cubit.dart';
 import '../../../../core/models/app_preferences.dart';
 import '../../../../core/services/app_data_reset_service.dart';
 import '../../../../core/services/app_settings_repository.dart';
+import '../../../../core/services/cancellable_task.dart';
 import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
 import '../../../../core/services/firebase_runtime_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
-import '../../../../shared/widgets/blocking_loading_overlay.dart';
+import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
 import '../../../auth/presentation/pages/auth_page.dart';
 import '../widgets/cloud_sync_settings_section.dart';
 
@@ -170,17 +171,26 @@ class _UserSettingsInfoPageState extends State<UserSettingsInfoPage> {
       _isSigningOut = true;
     });
     try {
-      await runWithBlockingLoadingOverlay<void>(
+      await runWithCancellableBlockingOverlay<void>(
         context: context,
         title: 'Signing out',
         statusText: 'Signing out of your Firebase account...',
-        task: context.read<FirebaseCloudSyncAuthService>().signOut,
+        task: (token) => context.read<FirebaseCloudSyncAuthService>().signOut(
+          cancellationToken: token,
+        ),
       );
       if (!context.mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Firebase account signed out.')),
+      );
+    } on AppTaskCancelledException {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign out canceled.')),
       );
     } catch (error) {
       if (!context.mounted) {

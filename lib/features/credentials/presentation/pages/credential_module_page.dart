@@ -1,12 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/blocs/module_navigation_bloc.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/app_preferences.dart';
+import '../../../../core/services/cancellable_task.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_panel.dart';
-import '../../../../shared/widgets/blocking_loading_overlay.dart';
+import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
 import '../../data/services/credential_service.dart';
 import '../../domain/models/credential_models.dart';
 import '../widgets/credential_auth_dialog.dart';
@@ -258,15 +261,13 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
         return;
       }
 
-      final report =
-          await runWithBlockingLoadingOverlay<CredentialSecurityReport>(
-            context: context,
-            title: 'Security & Expiry Check',
-            statusText: 'Reviewing your encrypted credentials...',
-            task: () => context.read<CredentialService>().buildSecurityReport(
-              encryptionKey: encryptionKey,
-            ),
-          );
+      final report = await _runBlockingInsightOperation<CredentialSecurityReport>(
+        statusText: 'Reviewing your encrypted credentials...',
+        task: (token) => context.read<CredentialService>().buildSecurityReport(
+          encryptionKey: encryptionKey,
+          cancellationToken: token,
+        ),
+      );
       if (!mounted) {
         return;
       }
@@ -274,6 +275,13 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
         _securityReport = report;
         _selectedInsightFilter = _defaultInsightFilter(report);
       });
+    } on AppTaskCancelledException {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Security check canceled.')),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -306,6 +314,29 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
       return _CredentialInsightFilter.expired;
     }
     return _CredentialInsightFilter.dueSoon;
+  }
+
+  Future<T> _runBlockingInsightOperation<T>({
+    required String statusText,
+    required Future<T> Function(AppCancellationToken token) task,
+  }) async {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final token = AppCancellationToken();
+    final route = createCancellableBlockingOverlayRoute<void>(
+      title: 'Security & Expiry Check',
+      statusText: statusText,
+      onCancel: token.cancel,
+    );
+    unawaited(navigator.push<void>(route));
+    await Future<void>.delayed(Duration.zero);
+
+    try {
+      return await task(token);
+    } finally {
+      if (route.isActive) {
+        navigator.removeRoute(route);
+      }
+    }
   }
 }
 

@@ -110,7 +110,10 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _firebaseCloudSyncAuthService = FirebaseCloudSyncAuthService();
     _firestoreCloudSyncStoreService = FirestoreCloudSyncStoreService();
     _fileLauncherService = FileLauncherService();
-    _moduleDataExportService = ModuleDataExportService(_appSettingsRepository);
+    _moduleDataExportService = ModuleDataExportService(
+      _appSettingsRepository,
+      _database,
+    );
     _moduleDataImportService = ModuleDataImportService(
       database: _database,
       appSettingsRepository: _appSettingsRepository,

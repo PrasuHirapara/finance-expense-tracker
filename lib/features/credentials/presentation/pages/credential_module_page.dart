@@ -6,6 +6,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/app_preferences.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/blocking_loading_overlay.dart';
 import '../../data/services/credential_service.dart';
 import '../../domain/models/credential_models.dart';
 import '../widgets/credential_auth_dialog.dart';
@@ -217,14 +218,14 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
       return;
     }
 
-      setState(() {
-        _isConfigured = configured;
-        _checkingConfiguration = false;
-        if (!configured) {
-          _securityReport = null;
-          _selectedInsightFilter = null;
-        }
-      });
+    setState(() {
+      _isConfigured = configured;
+      _checkingConfiguration = false;
+      if (!configured) {
+        _securityReport = null;
+        _selectedInsightFilter = null;
+      }
+    });
 
     if (promptIfNeeded && !configured && mounted) {
       await _promptForFirstTimeSetup();
@@ -257,9 +258,15 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
         return;
       }
 
-      final report = await context.read<CredentialService>().buildSecurityReport(
-        encryptionKey: encryptionKey,
-      );
+      final report =
+          await runWithBlockingLoadingOverlay<CredentialSecurityReport>(
+            context: context,
+            title: 'Security & Expiry Check',
+            statusText: 'Reviewing your encrypted credentials...',
+            task: () => context.read<CredentialService>().buildSecurityReport(
+              encryptionKey: encryptionKey,
+            ),
+          );
       if (!mounted) {
         return;
       }
@@ -429,19 +436,24 @@ class _CredentialInsightsPanel extends StatelessWidget {
                   label: 'Reused',
                   value: report!.reusedPasswords.length.toString(),
                   isSelected: selectedFilter == _CredentialInsightFilter.reused,
-                  onTap: () => onFilterSelected(_CredentialInsightFilter.reused),
+                  onTap: () =>
+                      onFilterSelected(_CredentialInsightFilter.reused),
                 ),
                 _InsightChip(
                   label: 'Expired',
                   value: report!.expiredItems.length.toString(),
-                  isSelected: selectedFilter == _CredentialInsightFilter.expired,
-                  onTap: () => onFilterSelected(_CredentialInsightFilter.expired),
+                  isSelected:
+                      selectedFilter == _CredentialInsightFilter.expired,
+                  onTap: () =>
+                      onFilterSelected(_CredentialInsightFilter.expired),
                 ),
                 _InsightChip(
                   label: 'Due Soon',
                   value: report!.expiringSoonItems.length.toString(),
-                  isSelected: selectedFilter == _CredentialInsightFilter.dueSoon,
-                  onTap: () => onFilterSelected(_CredentialInsightFilter.dueSoon),
+                  isSelected:
+                      selectedFilter == _CredentialInsightFilter.dueSoon,
+                  onTap: () =>
+                      onFilterSelected(_CredentialInsightFilter.dueSoon),
                 ),
               ],
             ),
@@ -472,21 +484,24 @@ class _CredentialInsightsPanel extends StatelessWidget {
     _CredentialInsightFilter? filter,
   ) {
     return switch (filter) {
-      _CredentialInsightFilter.reused => report.reusedPasswords
-          .map((item) => '${item.credentialTitle} - ${item.fieldLabel}')
-          .toList(growable: false),
-      _CredentialInsightFilter.expired => report.expiredItems
-          .map(
-            (item) =>
-                '${item.credentialTitle} - expired ${AppConstants.shortDateFormat.format(item.expiryDate)}',
-          )
-          .toList(growable: false),
-      _CredentialInsightFilter.dueSoon => report.expiringSoonItems
-          .map(
-            (item) =>
-                '${item.credentialTitle} - due ${AppConstants.shortDateFormat.format(item.expiryDate)}',
-          )
-          .toList(growable: false),
+      _CredentialInsightFilter.reused =>
+        report.reusedPasswords
+            .map((item) => '${item.credentialTitle} - ${item.fieldLabel}')
+            .toList(growable: false),
+      _CredentialInsightFilter.expired =>
+        report.expiredItems
+            .map(
+              (item) =>
+                  '${item.credentialTitle} - expired ${AppConstants.shortDateFormat.format(item.expiryDate)}',
+            )
+            .toList(growable: false),
+      _CredentialInsightFilter.dueSoon =>
+        report.expiringSoonItems
+            .map(
+              (item) =>
+                  '${item.credentialTitle} - due ${AppConstants.shortDateFormat.format(item.expiryDate)}',
+            )
+            .toList(growable: false),
       null => const <String>[],
     };
   }
@@ -570,9 +585,7 @@ class _InsightChip extends StatelessWidget {
             Text(value, style: theme.textTheme.titleMedium),
             Text(
               label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: textColor,
-              ),
+              style: theme.textTheme.bodySmall?.copyWith(color: textColor),
             ),
           ],
         ),

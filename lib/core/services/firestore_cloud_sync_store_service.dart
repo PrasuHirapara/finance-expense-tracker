@@ -16,38 +16,121 @@ class FirestoreCloudSyncStoreService {
 
   final FirebaseFirestore _firestore;
 
-  Future<void> uploadBundle({
+  Future<CloudUploadResult> uploadBundle({
     required String userId,
     required CloudBackupBundle bundle,
     AppCancellationToken? cancellationToken,
   }) async {
     cancellationToken?.throwIfCancelled();
     final collection = _collection(userId);
+    final snapshots =
+        await Future.wait<DocumentSnapshot<Map<String, dynamic>>>([
+          collection.doc(_manifestDocId).get(),
+          collection.doc(_credentialDocId).get(),
+          collection.doc(_expenseDocId).get(),
+          collection.doc(_taskDocId).get(),
+        ]);
+    cancellationToken?.throwIfCancelled();
+
+    final manifestSnapshot = snapshots[0];
+    final credentialSnapshot = snapshots[1];
+    final expenseSnapshot = snapshots[2];
+    final taskSnapshot = snapshots[3];
+    final manifestData = manifestSnapshot.data();
+    final currentManifest = manifestSnapshot.exists && manifestData != null
+        ? CloudSyncManifest.fromJson(_normalizeMap(manifestData))
+        : null;
+
+    final shouldUpdateCredential = _shouldUpdateDomain(
+      currentManifest: currentManifest,
+      domain: CloudSyncDomain.credential,
+      remoteDocExists: credentialSnapshot.exists,
+      shouldExistRemotely: bundle.containsCredentialPayload,
+      nextHash: bundle.manifest.domainHashFor(
+        CloudSyncDomain.credential.folderName,
+      ),
+    );
+    final shouldUpdateExpense = _shouldUpdateDomain(
+      currentManifest: currentManifest,
+      domain: CloudSyncDomain.expense,
+      remoteDocExists: expenseSnapshot.exists,
+      shouldExistRemotely: true,
+      nextHash: bundle.manifest.domainHashFor(
+        CloudSyncDomain.expense.folderName,
+      ),
+    );
+    final shouldUpdateTask = _shouldUpdateDomain(
+      currentManifest: currentManifest,
+      domain: CloudSyncDomain.task,
+      remoteDocExists: taskSnapshot.exists,
+      shouldExistRemotely: true,
+      nextHash: bundle.manifest.domainHashFor(CloudSyncDomain.task.folderName),
+    );
+
+    final shouldUpdateManifest =
+        currentManifest == null ||
+        shouldUpdateCredential ||
+        shouldUpdateExpense ||
+        shouldUpdateTask ||
+        !_matchesStoredManifest(currentManifest, bundle.manifest);
+
+    if (!shouldUpdateManifest &&
+        !shouldUpdateCredential &&
+        !shouldUpdateExpense &&
+        !shouldUpdateTask) {
+      return CloudUploadResult(
+        manifest: currentManifest,
+        didWriteRemoteData: false,
+      );
+    }
+
     final batch = _firestore.batch();
     final timestamp = Timestamp.fromDate(bundle.manifest.exportedAt);
+    final updatedDomains = <String>[];
 
-    batch.set(collection.doc(_manifestDocId), <String, dynamic>{
-      ...bundle.manifest.toJson(),
-      'updatedAt': timestamp,
-    });
-    if (bundle.containsCredentialPayload) {
-      batch.set(collection.doc(_credentialDocId), <String, dynamic>{
-        'payload': bundle.credentialPayload,
+    if (shouldUpdateManifest) {
+      batch.set(collection.doc(_manifestDocId), <String, dynamic>{
+        ...bundle.manifest.toJson(),
         'updatedAt': timestamp,
       });
-    } else {
-      batch.delete(collection.doc(_credentialDocId));
     }
-    batch.set(collection.doc(_expenseDocId), <String, dynamic>{
-      'payload': bundle.expensePayload,
-      'updatedAt': timestamp,
-    });
-    batch.set(collection.doc(_taskDocId), <String, dynamic>{
-      'payload': bundle.taskPayload,
-      'updatedAt': timestamp,
-    });
+
+    if (shouldUpdateCredential) {
+      if (bundle.containsCredentialPayload) {
+        batch.set(collection.doc(_credentialDocId), <String, dynamic>{
+          'payload': bundle.credentialPayload,
+          'updatedAt': timestamp,
+        });
+      } else {
+        batch.delete(collection.doc(_credentialDocId));
+      }
+      updatedDomains.add(CloudSyncDomain.credential.folderName);
+    }
+
+    if (shouldUpdateExpense) {
+      batch.set(collection.doc(_expenseDocId), <String, dynamic>{
+        'payload': bundle.expensePayload,
+        'updatedAt': timestamp,
+      });
+      updatedDomains.add(CloudSyncDomain.expense.folderName);
+    }
+
+    if (shouldUpdateTask) {
+      batch.set(collection.doc(_taskDocId), <String, dynamic>{
+        'payload': bundle.taskPayload,
+        'updatedAt': timestamp,
+      });
+      updatedDomains.add(CloudSyncDomain.task.folderName);
+    }
+
     await batch.commit();
     cancellationToken?.throwIfCancelled();
+    updatedDomains.sort();
+    return CloudUploadResult(
+      manifest: bundle.manifest,
+      didWriteRemoteData: true,
+      updatedDomains: updatedDomains,
+    );
   }
 
   Future<CloudSyncManifest?> getManifest(
@@ -146,13 +229,16 @@ class FirestoreCloudSyncStoreService {
     final manifest = await getManifest(userId);
     if (manifest != null) {
       final updatedCounts = Map<String, int>.from(manifest.domainCounts);
+      final updatedHashes = Map<String, String>.from(manifest.domainHashes);
       updatedCounts[folderName] = 0;
+      updatedHashes[folderName] = '';
       batch.set(collection.doc(_manifestDocId), <String, dynamic>{
         ...manifest
             .copyWith(
               exportedAt: DateTime.now(),
               localLatestAt: DateTime.now(),
               domainCounts: updatedCounts,
+              domainHashes: updatedHashes,
             )
             .toJson(),
         'updatedAt': Timestamp.now(),
@@ -194,5 +280,61 @@ class FirestoreCloudSyncStoreService {
 
   String _emptyCredentialPayload() {
     return '{"schemaVersion":0,"exportedAt":"","records":[]}';
+  }
+
+  bool _shouldUpdateDomain({
+    required CloudSyncManifest? currentManifest,
+    required CloudSyncDomain domain,
+    required bool remoteDocExists,
+    required bool shouldExistRemotely,
+    required String nextHash,
+  }) {
+    final folderName = domain.folderName;
+    final currentHash = currentManifest?.domainHashFor(folderName) ?? '';
+    final hashChanged = currentHash != nextHash;
+    final presenceChanged = shouldExistRemotely
+        ? !remoteDocExists
+        : remoteDocExists;
+    final currentCount = currentManifest?.domainCounts[folderName] ?? -1;
+    final expectsEmptyCount = !shouldExistRemotely && currentCount != 0;
+    return currentManifest == null ||
+        hashChanged ||
+        presenceChanged ||
+        expectsEmptyCount;
+  }
+
+  bool _matchesStoredManifest(
+    CloudSyncManifest current,
+    CloudSyncManifest next,
+  ) {
+    return current.schemaVersion == next.schemaVersion &&
+        current.localLatestAt == next.localLatestAt &&
+        current.accountEmail == next.accountEmail &&
+        _intMapEquals(current.domainCounts, next.domainCounts) &&
+        _stringMapEquals(current.domainHashes, next.domainHashes);
+  }
+
+  bool _intMapEquals(Map<String, int> left, Map<String, int> right) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (final entry in left.entries) {
+      if (right[entry.key] != entry.value) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _stringMapEquals(Map<String, String> left, Map<String, String> right) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (final entry in left.entries) {
+      if (right[entry.key] != entry.value) {
+        return false;
+      }
+    }
+    return true;
   }
 }

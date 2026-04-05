@@ -35,6 +35,7 @@ class CloudSyncManifest extends Equatable {
     required this.localLatestAt,
     required this.accountEmail,
     required this.domainCounts,
+    required this.domainHashes,
   });
 
   final int schemaVersion;
@@ -42,6 +43,7 @@ class CloudSyncManifest extends Equatable {
   final DateTime localLatestAt;
   final String? accountEmail;
   final Map<String, int> domainCounts;
+  final Map<String, String> domainHashes;
 
   CloudSyncManifest copyWith({
     int? schemaVersion,
@@ -49,6 +51,7 @@ class CloudSyncManifest extends Equatable {
     DateTime? localLatestAt,
     Object? accountEmail = _cloudSyncUnset,
     Map<String, int>? domainCounts,
+    Map<String, String>? domainHashes,
   }) {
     return CloudSyncManifest(
       schemaVersion: schemaVersion ?? this.schemaVersion,
@@ -58,6 +61,7 @@ class CloudSyncManifest extends Equatable {
           ? this.accountEmail
           : accountEmail as String?,
       domainCounts: domainCounts ?? this.domainCounts,
+      domainHashes: domainHashes ?? this.domainHashes,
     );
   }
 
@@ -67,10 +71,12 @@ class CloudSyncManifest extends Equatable {
     'localLatestAt': localLatestAt.toIso8601String(),
     'accountEmail': accountEmail,
     'domainCounts': domainCounts,
+    'domainHashes': domainHashes,
   };
 
   factory CloudSyncManifest.fromJson(Map<String, dynamic> json) {
     final counts = json['domainCounts'];
+    final hashes = json['domainHashes'];
     return CloudSyncManifest(
       schemaVersion: json['schemaVersion'] is int
           ? json['schemaVersion'] as int
@@ -88,6 +94,11 @@ class CloudSyncManifest extends Equatable {
                   MapEntry(key.toString(), value is int ? value : 0),
             )
           : const <String, int>{},
+      domainHashes: hashes is Map
+          ? hashes.map(
+              (key, value) => MapEntry(key.toString(), value?.toString() ?? ''),
+            )
+          : const <String, String>{},
     );
   }
 
@@ -99,6 +110,8 @@ class CloudSyncManifest extends Equatable {
 
   String encode() => jsonEncode(toJson());
 
+  String domainHashFor(String folderName) => domainHashes[folderName] ?? '';
+
   @override
   List<Object?> get props => <Object?>[
     schemaVersion,
@@ -106,6 +119,7 @@ class CloudSyncManifest extends Equatable {
     localLatestAt,
     accountEmail,
     domainCounts,
+    domainHashes,
   ];
 }
 
@@ -191,6 +205,25 @@ class CloudBackupBundle extends Equatable {
     containsCredentialPayload,
     expensePayload,
     taskPayload,
+  ];
+}
+
+class CloudUploadResult extends Equatable {
+  const CloudUploadResult({
+    required this.manifest,
+    required this.didWriteRemoteData,
+    this.updatedDomains = const <String>[],
+  });
+
+  final CloudSyncManifest manifest;
+  final bool didWriteRemoteData;
+  final List<String> updatedDomains;
+
+  @override
+  List<Object?> get props => <Object?>[
+    manifest,
+    didWriteRemoteData,
+    updatedDomains,
   ];
 }
 

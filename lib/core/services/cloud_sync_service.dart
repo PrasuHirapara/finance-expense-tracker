@@ -137,18 +137,19 @@ class CloudSyncService {
       cancellationToken: cancellationToken,
     );
     cancellationToken?.throwIfCancelled();
-    await _remoteStoreService.uploadBundle(
+    final uploadResult = await _remoteStoreService.uploadBundle(
       userId: account.uid,
       bundle: bundle,
       cancellationToken: cancellationToken,
     );
+    final syncCompletedAt = DateTime.now();
 
     final nextCloudSync = settings.cloudSync.copyWith(
-      lastSuccessfulSyncAt: bundle.manifest.exportedAt,
-      lastKnownCloudBackupAt: bundle.manifest.exportedAt,
+      lastSuccessfulSyncAt: syncCompletedAt,
+      lastKnownCloudBackupAt: uploadResult.manifest.exportedAt,
       lastSyncedAccountEmail: account.email,
       lastAutoBackupAt: triggeredByScheduler
-          ? bundle.manifest.exportedAt
+          ? syncCompletedAt
           : settings.cloudSync.lastAutoBackupAt,
     );
     await _appSettingsRepository.updateCloudSyncPreferences(nextCloudSync);

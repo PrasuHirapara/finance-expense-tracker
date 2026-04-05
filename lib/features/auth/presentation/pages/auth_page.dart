@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
 import '../../../../core/services/firebase_runtime_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/blocking_loading_overlay.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key, this.closeOnSuccess = false});
@@ -305,7 +306,8 @@ class _AuthPageState extends State<AuthPage> {
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton.icon(
-                                onPressed: _isSubmitting || !googleSignInAvailable
+                                onPressed:
+                                    _isSubmitting || !googleSignInAvailable
                                     ? null
                                     : _continueWithGoogle,
                                 icon: const Icon(Icons.g_mobiledata_rounded),
@@ -347,18 +349,28 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      if (_isLoginMode) {
-        await authService.signInWithEmailPassword(
-          email: _emailController.text,
-          password: _passwordController.text,
-        );
-      } else {
-        await authService.registerWithEmailPassword(
-          email: _emailController.text,
-          password: _passwordController.text,
-          displayName: _displayNameController.text,
-        );
-      }
+      await runWithBlockingLoadingOverlay<void>(
+        context: context,
+        title: _isLoginMode ? 'Logging in' : 'Creating account',
+        statusText: _isLoginMode
+            ? 'Signing in to your Firebase account...'
+            : 'Creating your Firebase account...',
+        task: () async {
+          if (_isLoginMode) {
+            await authService.signInWithEmailPassword(
+              email: _emailController.text,
+              password: _passwordController.text,
+            );
+            return;
+          }
+
+          await authService.registerWithEmailPassword(
+            email: _emailController.text,
+            password: _passwordController.text,
+            displayName: _displayNameController.text,
+          );
+        },
+      );
       await _handleAuthSuccess();
     } on FirebaseAuthException catch (error) {
       _showMessage(_friendlyFirebaseAuthMessage(error));
@@ -389,7 +401,12 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      await authService.signInWithGoogle();
+      await runWithBlockingLoadingOverlay<void>(
+        context: context,
+        title: 'Signing in',
+        statusText: 'Connecting to your Google account...',
+        task: authService.signInWithGoogle,
+      );
       await _handleAuthSuccess();
     } on FirebaseAuthException catch (error) {
       _showMessage(_friendlyFirebaseAuthMessage(error));

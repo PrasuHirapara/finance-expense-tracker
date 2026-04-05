@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cryptography/cryptography.dart';
 import 'package:drift/drift.dart';
 
 import '../../data/database/app_database.dart';
@@ -25,6 +26,7 @@ class CloudSyncPayloadService {
   final TaskRepository _taskRepository;
   final TaskCategoryRepository _taskCategoryRepository;
   final CredentialCryptoService _credentialCryptoService;
+  final HashAlgorithm _hashAlgorithm = Sha256();
 
   Future<CloudBackupBundle> buildBackupBundle({
     DateTime? exportedAt,
@@ -65,6 +67,91 @@ class CloudSyncPayloadService {
     final credentials = loadedData[4] as List<DbCredential>;
     final taskCategories = loadedData[5] as List<String>;
     final taskCategoryUpdatedAt = loadedData[6] as DateTime?;
+    final credentialHashSource = <String, dynamic>{
+      'syncEnabled': includeCredentialsInBundle,
+      'records': includeCredentialsInBundle
+          ? credentials
+                .map(
+                  (item) => <String, dynamic>{
+                    'id': item.id,
+                    'title': item.title,
+                    'encryptedPayload': item.encryptedPayload,
+                    'saltBase64': item.saltBase64,
+                    'nonceBase64': item.nonceBase64,
+                    'createdAt': item.createdAt.toIso8601String(),
+                    'updatedAt': item.updatedAt.toIso8601String(),
+                  },
+                )
+                .toList(growable: false)
+          : const <Map<String, dynamic>>[],
+    };
+    final expenseHashSource = <String, dynamic>{
+      'categories': categories
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'name': item.name,
+              'iconCodePoint': item.iconCodePoint,
+              'colorValue': item.colorValue,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+      'banks': banks
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'name': item.name,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+      'entries': entries
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'title': item.title,
+              'amount': item.amount,
+              'type': item.type,
+              'categoryId': item.categoryId,
+              'bankId': item.bankId,
+              'entryDate': item.entryDate.toIso8601String(),
+              'paymentMode': item.paymentMode,
+              'notes': item.notes,
+              'counterparty': item.counterparty,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+    };
+    final taskHashSource = <String, dynamic>{
+      'categories': taskCategories,
+      'tasks': tasks
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'sourceTaskId': item.sourceTaskId,
+              'title': item.title,
+              'description': item.description,
+              'category': item.category,
+              'taskDate': item.taskDate.toIso8601String(),
+              'priority': item.priority,
+              'isDaily': item.isDaily,
+              'isCompleted': item.isCompleted,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
+    };
+    final domainHashes = <String, String>{
+      CloudSyncDomain.credential.folderName: await _hashJsonContent(
+        credentialHashSource,
+      ),
+      CloudSyncDomain.expense.folderName: await _hashJsonContent(
+        expenseHashSource,
+      ),
+      CloudSyncDomain.task.folderName: await _hashJsonContent(taskHashSource),
+    };
 
     if (includeCredentialsInBundle &&
         encryptCredentialTitlesForCloud &&
@@ -251,6 +338,7 @@ class CloudSyncPayloadService {
           CloudSyncDomain.expense.folderName: entries.length,
           CloudSyncDomain.task.folderName: tasks.length,
         },
+        domainHashes: domainHashes,
       ),
       credentialPayload: credentialJson,
       containsCredentialPayload: includeCredentialsInBundle,
@@ -666,5 +754,10 @@ class CloudSyncPayloadService {
       return null;
     }
     return DateTime.tryParse(plainExpiry);
+  }
+
+  Future<String> _hashJsonContent(Map<String, dynamic> content) async {
+    final digest = await _hashAlgorithm.hash(utf8.encode(jsonEncode(content)));
+    return base64UrlEncode(digest.bytes);
   }
 }

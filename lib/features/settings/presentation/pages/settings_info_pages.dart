@@ -14,6 +14,7 @@ import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
 import '../../../../core/services/firebase_runtime_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/blocking_loading_overlay.dart';
 import '../../../auth/presentation/pages/auth_page.dart';
 import '../widgets/cloud_sync_settings_section.dart';
 
@@ -169,7 +170,12 @@ class _UserSettingsInfoPageState extends State<UserSettingsInfoPage> {
       _isSigningOut = true;
     });
     try {
-      await context.read<FirebaseCloudSyncAuthService>().signOut();
+      await runWithBlockingLoadingOverlay<void>(
+        context: context,
+        title: 'Signing out',
+        statusText: 'Signing out of your Firebase account...',
+        task: context.read<FirebaseCloudSyncAuthService>().signOut,
+      );
       if (!context.mounted) {
         return;
       }

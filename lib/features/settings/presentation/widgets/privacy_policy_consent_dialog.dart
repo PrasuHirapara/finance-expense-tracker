@@ -15,13 +15,19 @@ class PrivacyPolicyConsentDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompactScreen = screenWidth < 600;
 
     return PopScope(
       canPop: false,
       child: AlertDialog(
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: isCompactScreen ? screenWidth * 0.05 : 40,
+          vertical: 24,
+        ),
         title: const Text('Privacy Policy'),
         content: SizedBox(
-          width: 520,
+          width: isCompactScreen ? screenWidth * 0.9 : 520,
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

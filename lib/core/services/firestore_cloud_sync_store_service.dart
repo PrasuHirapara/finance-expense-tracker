@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/cloud_sync_models.dart';
@@ -40,6 +42,10 @@ class FirestoreCloudSyncStoreService {
     final taskSnapshot = snapshots[3];
     final settingsSnapshot = snapshots[4];
     final manifestData = manifestSnapshot.data();
+    final credentialData = credentialSnapshot.data();
+    final expenseData = expenseSnapshot.data();
+    final taskData = taskSnapshot.data();
+    final settingsData = settingsSnapshot.data();
     final currentManifest = manifestSnapshot.exists && manifestData != null
         ? CloudSyncManifest.fromJson(_normalizeMap(manifestData))
         : null;
@@ -52,6 +58,12 @@ class FirestoreCloudSyncStoreService {
       nextHash: bundle.manifest.domainHashFor(
         CloudSyncDomain.credential.folderName,
       ),
+      payloadFormatChanged: bundle.containsCredentialPayload
+          ? _hasCredentialPayloadFormatChanged(
+              currentPayload: credentialData?['payload'] as String?,
+              nextPayload: bundle.credentialPayload,
+            )
+          : false,
     );
     final shouldUpdateExpense = _shouldUpdateDomain(
       currentManifest: currentManifest,
@@ -61,6 +73,10 @@ class FirestoreCloudSyncStoreService {
       nextHash: bundle.manifest.domainHashFor(
         CloudSyncDomain.expense.folderName,
       ),
+      payloadFormatChanged: _hasProtectedPayloadFormatChanged(
+        currentPayload: expenseData?['payload'] as String?,
+        nextPayload: bundle.expensePayload,
+      ),
     );
     final shouldUpdateTask = _shouldUpdateDomain(
       currentManifest: currentManifest,
@@ -68,6 +84,10 @@ class FirestoreCloudSyncStoreService {
       remoteDocExists: taskSnapshot.exists,
       shouldExistRemotely: true,
       nextHash: bundle.manifest.domainHashFor(CloudSyncDomain.task.folderName),
+      payloadFormatChanged: _hasProtectedPayloadFormatChanged(
+        currentPayload: taskData?['payload'] as String?,
+        nextPayload: bundle.taskPayload,
+      ),
     );
     final shouldUpdateSettings = _shouldUpdateDomain(
       currentManifest: currentManifest,
@@ -77,6 +97,12 @@ class FirestoreCloudSyncStoreService {
       nextHash: bundle.manifest.domainHashFor(
         CloudSyncDomain.settings.folderName,
       ),
+      payloadFormatChanged: bundle.containsSettingsPayload
+          ? _hasProtectedPayloadFormatChanged(
+              currentPayload: settingsData?['payload'] as String?,
+              nextPayload: bundle.settingsPayload,
+            )
+          : false,
     );
 
     final shouldUpdateManifest =
@@ -199,7 +225,6 @@ class FirestoreCloudSyncStoreService {
     final expenseData = expenseSnapshot.data();
     final taskData = taskSnapshot.data();
     final settingsData = settingsSnapshot.data();
-
     if (!manifestSnapshot.exists ||
         !expenseSnapshot.exists ||
         !taskSnapshot.exists ||
@@ -328,6 +353,7 @@ class FirestoreCloudSyncStoreService {
     required bool remoteDocExists,
     required bool shouldExistRemotely,
     required String nextHash,
+    required bool payloadFormatChanged,
   }) {
     final folderName = domain.folderName;
     final currentHash = currentManifest?.domainHashFor(folderName) ?? '';
@@ -340,7 +366,70 @@ class FirestoreCloudSyncStoreService {
     return currentManifest == null ||
         hashChanged ||
         presenceChanged ||
-        expectsEmptyCount;
+        expectsEmptyCount ||
+        payloadFormatChanged;
+  }
+
+  bool _hasCredentialPayloadFormatChanged({
+    required String? currentPayload,
+    required String nextPayload,
+  }) {
+    if (currentPayload == null || currentPayload.isEmpty) {
+      return true;
+    }
+    return _credentialPayloadSchemaVersion(currentPayload) !=
+        _credentialPayloadSchemaVersion(nextPayload);
+  }
+
+  bool _hasProtectedPayloadFormatChanged({
+    required String? currentPayload,
+    required String nextPayload,
+  }) {
+    if (currentPayload == null || currentPayload.isEmpty) {
+      return true;
+    }
+    return _protectedPayloadFormatSignature(currentPayload) !=
+        _protectedPayloadFormatSignature(nextPayload);
+  }
+
+  int _credentialPayloadSchemaVersion(String payload) {
+    try {
+      final decoded = _decodedPayloadMap(payload);
+      final schemaVersion = decoded['schemaVersion'];
+      return schemaVersion is int ? schemaVersion : -1;
+    } catch (_) {
+      return -1;
+    }
+  }
+
+  String _protectedPayloadFormatSignature(String payload) {
+    try {
+      final decoded = _decodedPayloadMap(payload);
+      if (decoded['encrypted'] == true) {
+        final schemaVersion = decoded['schemaVersion'];
+        return 'encrypted:${schemaVersion is int ? schemaVersion : -1}';
+      }
+      return 'plain';
+    } catch (_) {
+      return 'invalid';
+    }
+  }
+
+  Map<String, dynamic> _decodedPayloadMap(String payload) {
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      if (decoded is Map) {
+        return decoded.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+      }
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+    return <String, dynamic>{};
   }
 
   bool _matchesStoredManifest(

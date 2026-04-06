@@ -6,10 +6,13 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/models/app_preferences.dart';
 import '../../../../core/models/cloud_sync_models.dart';
+import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/cancellable_task.dart';
 import '../../../../core/services/cloud_sync_service.dart';
 import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
 import '../../../../core/services/firebase_runtime_service.dart';
+import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/reminder_settings_repository.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
 import '../../../credentials/data/services/credential_service.dart';
@@ -168,11 +171,6 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
                   ),
                   const SizedBox(height: 8),
                   _InfoRow(
-                    label: 'Last Auto Backup',
-                    value: _formatDateTime(cloudSync.lastAutoBackupAt),
-                  ),
-                  const SizedBox(height: 8),
-                  _InfoRow(
                     label: 'Last Restore',
                     value: _formatDateTime(cloudSync.lastRestoreAt),
                   ),
@@ -234,75 +232,55 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
               ),
             ),
             const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.42,
-                ),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
+            StreamBuilder<ReminderSettings>(
+              stream: context.read<ReminderSettingsRepository>().watchSettings(),
+              builder: (context, reminderSnapshot) {
+                final reminderSettings =
+                    reminderSnapshot.data ?? const ReminderSettings();
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.42),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              'Enable Auto Backup',
-                              style: theme.textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              !hasFirebaseAccount
-                                  ? 'Sign in from the Firebase Account section to enable scheduled Firestore backups.'
-                                  : cloudSync.enabled
-                                  ? 'Runs a daily background upload near the selected time when the device allows background work.'
-                                  : 'Turn on Cloud Sync first to use scheduled backups.',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
+                      Text(
+                        'Manual Sync Reminder',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        cloudSync.enabled
+                            ? 'Get a daily reminder to open Daily Use and manually upload a fresh cloud backup.'
+                            : 'Pick a reminder time now. The reminder will start once Cloud Sync is enabled.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      Switch.adaptive(
-                        value: cloudSync.enabled && cloudSync.autoBackupEnabled,
-                        onChanged:
-                            !cloudSync.enabled ||
-                                _isToggling ||
-                                !authService.isAvailable ||
-                                !hasFirebaseAccount
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: _isToggling || !authService.isAvailable
                             ? null
-                            : (value) => _toggleAutoBackup(context, value),
+                            : () => _pickSyncReminderTime(
+                                context,
+                                initialTime: reminderSettings.syncReminder,
+                              ),
+                        icon: const Icon(Icons.schedule_rounded),
+                        label: Text(
+                          _formatReminderTime(
+                            context,
+                            reminderSettings.syncReminder,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed:
-                        !canUseCloudSync ||
-                            !cloudSync.autoBackupEnabled ||
-                            _isToggling
-                        ? null
-                        : () => _pickTime(context),
-                    icon: const Icon(Icons.schedule_rounded),
-                    label: Text(
-                      _formatBackupTime(
-                        context,
-                        TimeOfDay(
-                          hour: cloudSync.autoBackupHour,
-                          minute: cloudSync.autoBackupMinute,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
             const SizedBox(height: 16),
             Text(
@@ -333,7 +311,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
           content: Text(
             enabled
                 ? 'Cloud Sync enabled.'
-                : 'Cloud Sync disabled and background backup stopped.',
+                : 'Cloud Sync disabled.',
           ),
         ),
       );
@@ -343,79 +321,6 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Unable to update Cloud Sync: $error')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isToggling = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _toggleAutoBackup(BuildContext context, bool enabled) async {
-    setState(() {
-      _isToggling = true;
-    });
-    try {
-      await context.read<CloudSyncService>().setAutoBackupEnabled(enabled);
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            enabled ? 'Auto Backup enabled.' : 'Auto Backup disabled.',
-          ),
-        ),
-      );
-    } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to update Auto Backup: $error')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isToggling = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _pickTime(BuildContext context) async {
-    final current = TimeOfDay(
-      hour: widget.preferences.cloudSync.autoBackupHour,
-      minute: widget.preferences.cloudSync.autoBackupMinute,
-    );
-    final picked = await showTimePicker(context: context, initialTime: current);
-    if (picked == null || !context.mounted) {
-      return;
-    }
-
-    setState(() {
-      _isToggling = true;
-    });
-    try {
-      await context.read<CloudSyncService>().scheduleAutoBackup(picked);
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Auto Backup scheduled for ${_formatBackupTime(context, picked)}.',
-          ),
-        ),
-      );
-    } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to schedule Auto Backup: $error')),
       );
     } finally {
       if (mounted) {
@@ -560,9 +465,13 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     }
   }
 
-  String _formatBackupTime(BuildContext context, TimeOfDay time) {
+  String _formatReminderTime(BuildContext context, ReminderTime reminderTime) {
     final localizations = MaterialLocalizations.of(context);
-    return localizations.formatTimeOfDay(time);
+    return localizations.formatTimeOfDay(
+      reminderTime.toTimeOfDay(),
+      alwaysUse24HourFormat:
+          MediaQuery.maybeOf(context)?.alwaysUse24HourFormat ?? false,
+    );
   }
 
   String _formatDateTime(DateTime? value) {
@@ -575,9 +484,53 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
   String _statusSummary(CloudSyncPreferences preferences) {
     final parts = <String>[
       'Data: ${preferences.syncCredentials ? 'Full backup enabled' : 'App data backup without credentials'}',
-      preferences.autoBackupEnabled ? 'Auto backup on' : 'Auto backup off',
+      'Mode: manual sync only',
     ];
     return parts.join(' | ');
+  }
+
+  Future<void> _pickSyncReminderTime(
+    BuildContext context, {
+    required ReminderTime initialTime,
+  }) async {
+    final reminderSettingsRepository = context
+        .read<ReminderSettingsRepository>();
+    final notificationService = context.read<NotificationService>();
+    final appSettingsRepository = context.read<AppSettingsRepository>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final materialLocalizations = MaterialLocalizations.of(context);
+    final alwaysUse24HourFormat =
+        MediaQuery.maybeOf(context)?.alwaysUse24HourFormat ?? false;
+    final selectedTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime.toTimeOfDay(),
+    );
+
+    if (selectedTime == null) {
+      return;
+    }
+
+    final reminderTime = ReminderTime.fromTimeOfDay(selectedTime);
+    final formattedTime = materialLocalizations.formatTimeOfDay(
+      selectedTime,
+      alwaysUse24HourFormat: alwaysUse24HourFormat,
+    );
+
+    await reminderSettingsRepository.updateSyncReminder(reminderTime);
+    final appSettings = await appSettingsRepository.getSettings();
+    if (appSettings.notificationsEnabled) {
+      await notificationService.scheduleDailyReminders();
+    } else {
+      await notificationService.cancelDailyReminders();
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    scaffoldMessenger.showSnackBar(
+      SnackBar(content: Text('Sync reminder set for $formattedTime.')),
+    );
   }
 
   Future<void> _toggleCredentialSync(BuildContext context, bool enabled) async {

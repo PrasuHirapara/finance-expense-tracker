@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
@@ -8,7 +8,14 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/app_preferences.dart';
 
+typedef SettingsFileResolver = Future<File> Function();
+
 class AppSettingsRepository {
+  AppSettingsRepository({SettingsFileResolver? settingsFileResolver})
+    : _settingsFileResolver =
+          settingsFileResolver ?? _defaultSettingsFileResolver;
+
+  final SettingsFileResolver _settingsFileResolver;
   AppPreferences? _cachedPreferences;
   Future<void> _pendingWrite = Future<void>.value();
   final StreamController<AppPreferences> _controller =
@@ -72,23 +79,6 @@ class AppSettingsRepository {
     await _commit(settings.copyWith(cloudSync: preferences));
   }
 
-  Future<void> updateBackgroundSyncStatus({
-    required DateTime attemptedAt,
-    String? error,
-  }) async {
-    final settings = await getSettings();
-    await _commit(
-      settings.copyWith(
-        cloudSync: settings.cloudSync.copyWith(
-          lastBackgroundSyncAttemptAt: attemptedAt,
-          lastBackgroundSyncError: error?.trim().isEmpty == true
-              ? null
-              : error?.trim(),
-        ),
-      ),
-    );
-  }
-
   Future<void> acceptPrivacyPolicy(String version) async {
     final settings = await getSettings();
     await _commit(
@@ -123,17 +113,21 @@ class AppSettingsRepository {
 
   Future<void> _commit(AppPreferences settings) async {
     _cachedPreferences = settings;
-    _pendingWrite = _pendingWrite.then((_) => _writeSettings(settings));
+    _pendingWrite = _pendingWrite
+        .catchError((Object _, StackTrace __) {})
+        .then((_) => _writeSettings(settings));
     await _pendingWrite;
     _controller.add(settings);
   }
 
   Future<void> _writeSettings(AppPreferences settings) async {
     final file = await _settingsFile();
-    await file.writeAsString(jsonEncode(_toJson(settings)));
+    await file.writeAsString(jsonEncode(_toJson(settings)), flush: true);
   }
 
-  Future<File> _settingsFile() async {
+  Future<File> _settingsFile() => _settingsFileResolver();
+
+  static Future<File> _defaultSettingsFileResolver() async {
     final directory = await getApplicationDocumentsDirectory();
     return File(path.join(directory.path, 'app_settings.json'));
   }
@@ -211,17 +205,13 @@ class AppSettingsRepository {
       exportDirectoryPath: json.containsKey('exportDirectoryPath')
           ? _exportDirectoryPathFromJson(json['exportDirectoryPath'])
           : fallback.exportDirectoryPath,
-      acceptedPrivacyPolicyVersion: json.containsKey(
-            'acceptedPrivacyPolicyVersion',
-          )
+      acceptedPrivacyPolicyVersion:
+          json.containsKey('acceptedPrivacyPolicyVersion')
           ? _stringFromJson(json['acceptedPrivacyPolicyVersion'])
           : fallback.acceptedPrivacyPolicyVersion,
       cloudSync: fallback.cloudSync.copyWith(
         enabled: restoredCloudSync.enabled,
         syncCredentials: restoredCloudSync.syncCredentials,
-        autoBackupEnabled: restoredCloudSync.autoBackupEnabled,
-        autoBackupHour: restoredCloudSync.autoBackupHour,
-        autoBackupMinute: restoredCloudSync.autoBackupMinute,
       ),
     );
   }
@@ -250,19 +240,12 @@ class AppSettingsRepository {
     return <String, dynamic>{
       'enabled': preferences.enabled,
       'syncCredentials': preferences.syncCredentials,
-      'autoBackupEnabled': preferences.autoBackupEnabled,
-      'autoBackupHour': preferences.autoBackupHour,
-      'autoBackupMinute': preferences.autoBackupMinute,
       'lastSuccessfulSyncAt': preferences.lastSuccessfulSyncAt
           ?.toIso8601String(),
-      'lastAutoBackupAt': preferences.lastAutoBackupAt?.toIso8601String(),
       'lastRestoreAt': preferences.lastRestoreAt?.toIso8601String(),
       'lastSyncedAccountEmail': preferences.lastSyncedAccountEmail,
       'lastKnownCloudBackupAt': preferences.lastKnownCloudBackupAt
           ?.toIso8601String(),
-      'lastBackgroundSyncAttemptAt': preferences.lastBackgroundSyncAttemptAt
-          ?.toIso8601String(),
-      'lastBackgroundSyncError': preferences.lastBackgroundSyncError,
     };
   }
 
@@ -270,9 +253,6 @@ class AppSettingsRepository {
     return <String, dynamic>{
       'enabled': preferences.enabled,
       'syncCredentials': preferences.syncCredentials,
-      'autoBackupEnabled': preferences.autoBackupEnabled,
-      'autoBackupHour': preferences.autoBackupHour,
-      'autoBackupMinute': preferences.autoBackupMinute,
     };
   }
 
@@ -286,13 +266,7 @@ class AppSettingsRepository {
       syncCredentials: value['syncCredentials'] is bool
           ? value['syncCredentials'] as bool
           : true,
-      autoBackupEnabled: value['autoBackupEnabled'] is bool
-          ? value['autoBackupEnabled'] as bool
-          : false,
-      autoBackupHour: _intFromJson(value['autoBackupHour'], fallback: 6),
-      autoBackupMinute: _intFromJson(value['autoBackupMinute']),
       lastSuccessfulSyncAt: _dateTimeFromJson(value['lastSuccessfulSyncAt']),
-      lastAutoBackupAt: _dateTimeFromJson(value['lastAutoBackupAt']),
       lastRestoreAt: _dateTimeFromJson(value['lastRestoreAt']),
       lastSyncedAccountEmail: value['lastSyncedAccountEmail'] is String
           ? (value['lastSyncedAccountEmail'] as String).trim().isEmpty
@@ -302,14 +276,6 @@ class AppSettingsRepository {
       lastKnownCloudBackupAt: _dateTimeFromJson(
         value['lastKnownCloudBackupAt'],
       ),
-      lastBackgroundSyncAttemptAt: _dateTimeFromJson(
-        value['lastBackgroundSyncAttemptAt'],
-      ),
-      lastBackgroundSyncError: value['lastBackgroundSyncError'] is String
-          ? (value['lastBackgroundSyncError'] as String).trim().isEmpty
-                ? null
-                : value['lastBackgroundSyncError'] as String
-          : null,
     );
   }
 
@@ -328,22 +294,7 @@ class AppSettingsRepository {
       syncCredentials: value['syncCredentials'] is bool
           ? value['syncCredentials'] as bool
           : fallback.syncCredentials,
-      autoBackupEnabled: value['autoBackupEnabled'] is bool
-          ? value['autoBackupEnabled'] as bool
-          : fallback.autoBackupEnabled,
-      autoBackupHour: _intFromJson(
-        value['autoBackupHour'],
-        fallback: fallback.autoBackupHour,
-      ),
-      autoBackupMinute: _intFromJson(
-        value['autoBackupMinute'],
-        fallback: fallback.autoBackupMinute,
-      ),
     );
-  }
-
-  int _intFromJson(Object? value, {int fallback = 0}) {
-    return value is int ? value : fallback;
   }
 
   DateTime? _dateTimeFromJson(Object? value) {

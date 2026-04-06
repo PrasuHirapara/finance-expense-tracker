@@ -5,7 +5,6 @@ import '../models/app_preferences.dart';
 import '../constants/legal_constants.dart';
 import '../router/app_router.dart';
 import '../services/app_settings_repository.dart';
-import '../services/cloud_sync_service.dart';
 import '../../features/credentials/presentation/pages/credential_module_page.dart';
 import '../../features/expense/presentation/pages/expense_module_page.dart';
 import '../../features/settings/presentation/pages/settings_module_page.dart';
@@ -33,7 +32,6 @@ class _AppShellState extends State<AppShell> {
     _dialogCheckStarted = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _showPrivacyDialogIfNeeded();
-      await _restoreAutomaticBackupScheduleIfNeeded();
     });
   }
 
@@ -189,30 +187,5 @@ class _AppShellState extends State<AppShell> {
       },
     );
     _dialogVisible = false;
-  }
-
-  Future<void> _restoreAutomaticBackupScheduleIfNeeded() async {
-    if (!mounted) {
-      return;
-    }
-
-    final settingsRepository = context.read<AppSettingsRepository>();
-    final settings = await settingsRepository.getSettings();
-    if (!mounted ||
-        !settings.cloudSync.enabled ||
-        !settings.cloudSync.autoBackupEnabled) {
-      return;
-    }
-
-    try {
-      await context.read<CloudSyncService>().scheduleAutoBackup(
-        TimeOfDay(
-          hour: settings.cloudSync.autoBackupHour,
-          minute: settings.cloudSync.autoBackupMinute,
-        ),
-      );
-    } catch (_) {
-      // Keep startup smooth if the background schedule cannot be restored here.
-    }
   }
 }

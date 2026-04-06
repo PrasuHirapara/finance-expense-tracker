@@ -42,6 +42,7 @@ class AppDataResetService {
     await _taskCategoryRepository.resetToDefaults();
     await _reminderSettingsRepository.resetExpenseReminder();
     await _reminderSettingsRepository.resetTaskReminder();
+    await _reminderSettingsRepository.resetSyncReminder();
 
     final appSettings = await _appSettingsRepository.getSettings();
     if (appSettings.notificationsEnabled) {

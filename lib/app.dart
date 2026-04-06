@@ -3,22 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'core/bootstrap/app_session.dart';
 import 'core/blocs/module_navigation_bloc.dart';
 import 'core/blocs/theme_cubit.dart';
 import 'core/models/app_preferences.dart';
 import 'core/router/app_router.dart';
 import 'core/services/app_data_reset_service.dart';
 import 'core/services/app_settings_repository.dart';
-import 'core/services/cloud_backup_crypto_service.dart';
-import 'core/services/cloud_sync_payload_service.dart';
-import 'core/services/cloud_sync_scheduler.dart';
-import 'core/services/cloud_sync_security_service.dart';
 import 'core/services/cloud_sync_service.dart';
-import 'core/services/credential_crypto_service.dart';
-import 'core/services/credential_security_service.dart';
 import 'core/services/firebase_cloud_sync_auth_service.dart';
 import 'core/services/file_launcher_service.dart';
-import 'core/services/firestore_cloud_sync_store_service.dart';
 import 'core/services/module_data_import_service.dart';
 import 'core/services/module_data_export_service.dart';
 import 'core/services/notification_service.dart';
@@ -26,11 +20,6 @@ import 'core/services/reminder_settings_repository.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/app_shell.dart';
 import 'data/database/app_database.dart';
-import 'data/repositories/export_repository_impl.dart';
-import 'data/repositories/finance_repository_impl.dart';
-import 'data/services/export/csv_export_service.dart';
-import 'data/services/export/pdf_export_service.dart';
-import 'data/services/seed_service.dart';
 import 'domain/repositories/export_repository.dart';
 import 'domain/repositories/finance_repository.dart';
 import 'features/credentials/data/repositories/credential_repository.dart';
@@ -50,29 +39,7 @@ class DailyUseApp extends StatefulWidget {
 }
 
 class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
-  late final AppDatabase _database;
-  late final AppSettingsRepository _appSettingsRepository;
-  late final ExpenseRepository _expenseRepository;
-  late final CredentialRepository _credentialRepository;
-  late final CredentialCryptoService _credentialCryptoService;
-  late final CredentialSecurityService _credentialSecurityService;
-  late final CredentialService _credentialService;
-  late final FinanceRepository _financeRepository;
-  late final ExportRepository _exportRepository;
-  late final TaskRepository _taskRepository;
-  late final NotificationService _notificationService;
-  late final FileLauncherService _fileLauncherService;
-  late final ModuleDataExportService _moduleDataExportService;
-  late final ModuleDataImportService _moduleDataImportService;
-  late final TaskCategoryRepository _taskCategoryRepository;
-  late final ReminderSettingsRepository _reminderSettingsRepository;
-  late final CloudSyncScheduler _cloudSyncScheduler;
-  late final CloudBackupCryptoService _cloudBackupCryptoService;
-  late final FirebaseCloudSyncAuthService _firebaseCloudSyncAuthService;
-  late final FirestoreCloudSyncStoreService _firestoreCloudSyncStoreService;
-  late final CloudSyncSecurityService _cloudSyncSecurityService;
-  late final CloudSyncService _cloudSyncService;
-  late final AppDataResetService _appDataResetService;
+  late final AppSession _session;
   late final Future<void> _bootstrap;
   AppPreferences _appPreferences = const AppPreferences();
 
@@ -80,90 +47,14 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _database = AppDatabase();
-    _appSettingsRepository = AppSettingsRepository();
-    _expenseRepository = ExpenseRepository(_database);
-    _credentialRepository = CredentialRepository(_database);
-    _credentialCryptoService = CredentialCryptoService();
-    _credentialSecurityService = CredentialSecurityService();
-    _reminderSettingsRepository = ReminderSettingsRepository();
-    _notificationService = NotificationService(
-      reminderSettingsRepository: _reminderSettingsRepository,
-      appSettingsRepository: _appSettingsRepository,
-      credentialRepository: _credentialRepository,
-      credentialCryptoService: _credentialCryptoService,
-      credentialSecurityService: _credentialSecurityService,
-    );
-    _credentialService = CredentialService(
-      repository: _credentialRepository,
-      cryptoService: _credentialCryptoService,
-      securityService: _credentialSecurityService,
-      notificationService: _notificationService,
-    );
-    _financeRepository = FinanceRepositoryImpl(
-      database: _database,
-      seedService: SeedService(_database),
-    );
-    _exportRepository = ExportRepositoryImpl(
-      csvExportService: CsvExportService(),
-      pdfExportService: PdfExportService(),
-    );
-    _taskRepository = TaskRepository(_database);
-    _taskCategoryRepository = TaskCategoryRepository(_taskRepository);
-    _cloudSyncScheduler = CloudSyncScheduler();
-    _cloudBackupCryptoService = CloudBackupCryptoService();
-    _firebaseCloudSyncAuthService = FirebaseCloudSyncAuthService();
-    _firestoreCloudSyncStoreService = FirestoreCloudSyncStoreService();
-    _cloudSyncSecurityService = CloudSyncSecurityService();
-    _fileLauncherService = FileLauncherService();
-    _moduleDataExportService = ModuleDataExportService(
-      _appSettingsRepository,
-      _database,
-    );
-    _moduleDataImportService = ModuleDataImportService(
-      database: _database,
-      appSettingsRepository: _appSettingsRepository,
-      credentialCryptoService: _credentialCryptoService,
-      notificationService: _notificationService,
-    );
-    _cloudSyncService = CloudSyncService(
-      appSettingsRepository: _appSettingsRepository,
-      authService: _firebaseCloudSyncAuthService,
-      remoteStoreService: _firestoreCloudSyncStoreService,
-      payloadService: CloudSyncPayloadService(
-        database: _database,
-        taskRepository: _taskRepository,
-        taskCategoryRepository: _taskCategoryRepository,
-        appSettingsRepository: _appSettingsRepository,
-        reminderSettingsRepository: _reminderSettingsRepository,
-        credentialCryptoService: _credentialCryptoService,
-        cloudBackupCryptoService: _cloudBackupCryptoService,
-      ),
-      cloudSyncSecurityService: _cloudSyncSecurityService,
-      credentialSecurityService: _credentialSecurityService,
-      scheduler: _cloudSyncScheduler,
-      notificationService: _notificationService,
-    );
-    _appDataResetService = AppDataResetService(
-      credentialService: _credentialService,
-      expenseRepository: _expenseRepository,
-      taskRepository: _taskRepository,
-      taskCategoryRepository: _taskCategoryRepository,
-      reminderSettingsRepository: _reminderSettingsRepository,
-      appSettingsRepository: _appSettingsRepository,
-      notificationService: _notificationService,
-      cloudSyncService: _cloudSyncService,
-    );
+    _session = AppSession.create();
     _bootstrap = _bootstrapApp();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _reminderSettingsRepository.dispose();
-    unawaited(_appSettingsRepository.dispose());
-    unawaited(_appSettingsRepository.flush());
-    _database.close();
+    unawaited(_session.dispose());
     super.dispose();
   }
 
@@ -173,7 +64,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
-      unawaited(_appSettingsRepository.flush());
+      unawaited(_session.appSettingsRepository.flush());
     }
   }
 
@@ -181,42 +72,54 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: <RepositoryProvider<Object>>[
-        RepositoryProvider<AppDatabase>.value(value: _database),
+        RepositoryProvider<AppDatabase>.value(value: _session.database),
         RepositoryProvider<CredentialRepository>.value(
-          value: _credentialRepository,
+          value: _session.credentialRepository,
         ),
-        RepositoryProvider<CredentialService>.value(value: _credentialService),
-        RepositoryProvider<ExpenseRepository>.value(value: _expenseRepository),
-        RepositoryProvider<FinanceRepository>.value(value: _financeRepository),
-        RepositoryProvider<ExportRepository>.value(value: _exportRepository),
-        RepositoryProvider<TaskRepository>.value(value: _taskRepository),
+        RepositoryProvider<CredentialService>.value(
+          value: _session.credentialService,
+        ),
+        RepositoryProvider<ExpenseRepository>.value(
+          value: _session.expenseRepository,
+        ),
+        RepositoryProvider<FinanceRepository>.value(
+          value: _session.financeRepository,
+        ),
+        RepositoryProvider<ExportRepository>.value(
+          value: _session.exportRepository,
+        ),
+        RepositoryProvider<TaskRepository>.value(
+          value: _session.taskRepository,
+        ),
         RepositoryProvider<TaskCategoryRepository>.value(
-          value: _taskCategoryRepository,
+          value: _session.taskCategoryRepository,
         ),
         RepositoryProvider<AppSettingsRepository>.value(
-          value: _appSettingsRepository,
+          value: _session.appSettingsRepository,
         ),
         RepositoryProvider<ReminderSettingsRepository>.value(
-          value: _reminderSettingsRepository,
+          value: _session.reminderSettingsRepository,
         ),
         RepositoryProvider<NotificationService>.value(
-          value: _notificationService,
+          value: _session.notificationService,
         ),
         RepositoryProvider<FirebaseCloudSyncAuthService>.value(
-          value: _firebaseCloudSyncAuthService,
+          value: _session.firebaseCloudSyncAuthService,
         ),
-        RepositoryProvider<CloudSyncService>.value(value: _cloudSyncService),
+        RepositoryProvider<CloudSyncService>.value(
+          value: _session.cloudSyncService,
+        ),
         RepositoryProvider<AppDataResetService>.value(
-          value: _appDataResetService,
+          value: _session.appDataResetService,
         ),
         RepositoryProvider<FileLauncherService>.value(
-          value: _fileLauncherService,
+          value: _session.fileLauncherService,
         ),
         RepositoryProvider<ModuleDataExportService>.value(
-          value: _moduleDataExportService,
+          value: _session.moduleDataExportService,
         ),
         RepositoryProvider<ModuleDataImportService>.value(
-          value: _moduleDataImportService,
+          value: _session.moduleDataImportService,
         ),
       ],
       child: FutureBuilder<void>(
@@ -260,7 +163,7 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
             providers: <BlocProvider<dynamic>>[
               BlocProvider<ThemeCubit>(
                 create: (_) => ThemeCubit(
-                  settingsRepository: _appSettingsRepository,
+                  settingsRepository: _session.appSettingsRepository,
                   initialThemeMode: _appPreferences.themeMode,
                 ),
               ),
@@ -304,33 +207,13 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   }
 
   Future<void> _bootstrapApp() async {
-    final appPreferences = await _appSettingsRepository.getSettings();
+    final appPreferences = await _session.bootstrap();
     if (mounted) {
       setState(() {
         _appPreferences = appPreferences;
       });
     } else {
       _appPreferences = appPreferences;
-    }
-
-    await _expenseRepository.seedDefaults();
-    await _taskCategoryRepository.ensureSeeded();
-    await _notificationService.initialize();
-    if (_appPreferences.notificationsEnabled) {
-      await _notificationService.scheduleDailyReminders();
-    } else {
-      await _notificationService.cancelDailyReminders();
-    }
-    if (_appPreferences.cloudSync.enabled &&
-        _appPreferences.cloudSync.autoBackupEnabled) {
-      await _cloudSyncService.scheduleAutoBackup(
-        TimeOfDay(
-          hour: _appPreferences.cloudSync.autoBackupHour,
-          minute: _appPreferences.cloudSync.autoBackupMinute,
-        ),
-      );
-    } else {
-      await _cloudSyncScheduler.cancel();
     }
   }
 }

@@ -6,57 +6,33 @@ class CloudSyncPreferences {
   const CloudSyncPreferences({
     this.enabled = false,
     this.syncCredentials = true,
-    this.autoBackupEnabled = false,
-    this.autoBackupHour = 6,
-    this.autoBackupMinute = 0,
     this.lastSuccessfulSyncAt,
-    this.lastAutoBackupAt,
     this.lastRestoreAt,
     this.lastSyncedAccountEmail,
     this.lastKnownCloudBackupAt,
-    this.lastBackgroundSyncAttemptAt,
-    this.lastBackgroundSyncError,
   });
 
   final bool enabled;
   final bool syncCredentials;
-  final bool autoBackupEnabled;
-  final int autoBackupHour;
-  final int autoBackupMinute;
   final DateTime? lastSuccessfulSyncAt;
-  final DateTime? lastAutoBackupAt;
   final DateTime? lastRestoreAt;
   final String? lastSyncedAccountEmail;
   final DateTime? lastKnownCloudBackupAt;
-  final DateTime? lastBackgroundSyncAttemptAt;
-  final String? lastBackgroundSyncError;
 
   CloudSyncPreferences copyWith({
     bool? enabled,
     bool? syncCredentials,
-    bool? autoBackupEnabled,
-    int? autoBackupHour,
-    int? autoBackupMinute,
     Object? lastSuccessfulSyncAt = _appPreferenceUnset,
-    Object? lastAutoBackupAt = _appPreferenceUnset,
     Object? lastRestoreAt = _appPreferenceUnset,
     Object? lastSyncedAccountEmail = _appPreferenceUnset,
     Object? lastKnownCloudBackupAt = _appPreferenceUnset,
-    Object? lastBackgroundSyncAttemptAt = _appPreferenceUnset,
-    Object? lastBackgroundSyncError = _appPreferenceUnset,
   }) {
     return CloudSyncPreferences(
       enabled: enabled ?? this.enabled,
       syncCredentials: syncCredentials ?? this.syncCredentials,
-      autoBackupEnabled: autoBackupEnabled ?? this.autoBackupEnabled,
-      autoBackupHour: autoBackupHour ?? this.autoBackupHour,
-      autoBackupMinute: autoBackupMinute ?? this.autoBackupMinute,
       lastSuccessfulSyncAt: identical(lastSuccessfulSyncAt, _appPreferenceUnset)
           ? this.lastSuccessfulSyncAt
           : lastSuccessfulSyncAt as DateTime?,
-      lastAutoBackupAt: identical(lastAutoBackupAt, _appPreferenceUnset)
-          ? this.lastAutoBackupAt
-          : lastAutoBackupAt as DateTime?,
       lastRestoreAt: identical(lastRestoreAt, _appPreferenceUnset)
           ? this.lastRestoreAt
           : lastRestoreAt as DateTime?,
@@ -68,14 +44,6 @@ class CloudSyncPreferences {
           identical(lastKnownCloudBackupAt, _appPreferenceUnset)
           ? this.lastKnownCloudBackupAt
           : lastKnownCloudBackupAt as DateTime?,
-      lastBackgroundSyncAttemptAt:
-          identical(lastBackgroundSyncAttemptAt, _appPreferenceUnset)
-          ? this.lastBackgroundSyncAttemptAt
-          : lastBackgroundSyncAttemptAt as DateTime?,
-      lastBackgroundSyncError:
-          identical(lastBackgroundSyncError, _appPreferenceUnset)
-          ? this.lastBackgroundSyncError
-          : lastBackgroundSyncError as String?,
     );
   }
 }

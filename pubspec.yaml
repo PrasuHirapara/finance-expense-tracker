@@ -31,7 +31,6 @@ dependencies:
   cryptography: ^2.7.0
   sqlite3_flutter_libs: ^0.5.39
   timezone: ^0.11.0
-  workmanager: ^0.9.0+3
   xml: ^6.6.1
   open_filex: ^4.7.0
   firebase_core: ^4.6.0

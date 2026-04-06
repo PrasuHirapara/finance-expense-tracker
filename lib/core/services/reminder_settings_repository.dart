@@ -47,6 +47,7 @@ class ReminderSettings {
   const ReminderSettings({
     this.expenseReminder = defaultExpenseReminder,
     this.taskReminder = defaultTaskReminder,
+    this.syncReminder = defaultSyncReminder,
   });
 
   static const ReminderTime defaultExpenseReminder = ReminderTime(
@@ -57,23 +58,31 @@ class ReminderSettings {
     hour: 8,
     minute: 0,
   );
+  static const ReminderTime defaultSyncReminder = ReminderTime(
+    hour: 7,
+    minute: 0,
+  );
 
   final ReminderTime expenseReminder;
   final ReminderTime taskReminder;
+  final ReminderTime syncReminder;
 
   ReminderSettings copyWith({
     ReminderTime? expenseReminder,
     ReminderTime? taskReminder,
+    ReminderTime? syncReminder,
   }) {
     return ReminderSettings(
       expenseReminder: expenseReminder ?? this.expenseReminder,
       taskReminder: taskReminder ?? this.taskReminder,
+      syncReminder: syncReminder ?? this.syncReminder,
     );
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'expenseReminder': expenseReminder.toJson(),
     'taskReminder': taskReminder.toJson(),
+    'syncReminder': syncReminder.toJson(),
   };
 
   static ReminderSettings fromJson(Object? json) {
@@ -89,6 +98,10 @@ class ReminderSettings {
       taskReminder: ReminderTime.fromJson(
         json['taskReminder'],
         fallback: ReminderSettings.defaultTaskReminder,
+      ),
+      syncReminder: ReminderTime.fromJson(
+        json['syncReminder'],
+        fallback: ReminderSettings.defaultSyncReminder,
       ),
     );
   }
@@ -132,6 +145,11 @@ class ReminderSettingsRepository {
     await _commit(settings.copyWith(taskReminder: time));
   }
 
+  Future<void> updateSyncReminder(ReminderTime time) async {
+    final settings = await getSettings();
+    await _commit(settings.copyWith(syncReminder: time));
+  }
+
   Future<void> resetExpenseReminder() async {
     final settings = await getSettings();
     await _commit(
@@ -145,6 +163,13 @@ class ReminderSettingsRepository {
     final settings = await getSettings();
     await _commit(
       settings.copyWith(taskReminder: ReminderSettings.defaultTaskReminder),
+    );
+  }
+
+  Future<void> resetSyncReminder() async {
+    final settings = await getSettings();
+    await _commit(
+      settings.copyWith(syncReminder: ReminderSettings.defaultSyncReminder),
     );
   }
 

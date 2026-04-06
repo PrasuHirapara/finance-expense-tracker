@@ -18,6 +18,19 @@ service cloud.firestore {
       return ['Credential', 'Expense', 'Task', 'Settings'];
     }
 
+    function allowedUserProfileKeys() {
+      return [
+        'uid',
+        'email',
+        'displayName',
+        'photoUrl',
+        'providers',
+        'createdAt',
+        'lastSignInAt',
+        'updatedAt',
+      ];
+    }
+
     function hasExactKeys(data, requiredKeys) {
       return data.keys().hasAll(requiredKeys) && data.keys().hasOnly(requiredKeys);
     }
@@ -32,6 +45,22 @@ service cloud.firestore {
 
     function isValidIsoDateString(value) {
       return isShortString(value, 40);
+    }
+
+    function isValidStringList(value, maxItems, maxLength) {
+      return value is list && value.size() <= maxItems && maxLength >= 1;
+    }
+
+    function isValidUserProfileDocument(data) {
+      return hasExactKeys(data, allowedUserProfileKeys()) &&
+          data.uid == request.auth.uid &&
+          isNullableShortString(data.email, 320) &&
+          isNullableShortString(data.displayName, 120) &&
+          isNullableShortString(data.photoUrl, 2048) &&
+          isValidStringList(data.providers, 8, 128) &&
+          data.createdAt is timestamp &&
+          data.lastSignInAt is timestamp &&
+          data.updatedAt is timestamp;
     }
 
     function isValidDomainCounts(value) {
@@ -101,7 +130,13 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, create, update, delete: if isOwner(userId);
+      allow read, delete: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+          isValidUserProfileDocument(request.resource.data);
+      allow update: if isOwner(userId) &&
+          isValidUserProfileDocument(request.resource.data) &&
+          request.resource.data.uid == resource.data.uid &&
+          request.resource.data.createdAt == resource.data.createdAt;
 
       match /cloud_sync/{docId} {
         allow read, delete: if isOwner(userId) && docId in allowedCloudSyncDocIds();

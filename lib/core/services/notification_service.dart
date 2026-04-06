@@ -29,6 +29,7 @@ class NotificationService {
 
   static const int _expenseReminderId = 8001;
   static const int _taskReminderId = 8002;
+  static const int _syncReminderId = 8003;
   static const int _credentialExpiryNotificationIdBase = 50000;
   static const int _credentialExpiryHour = 9;
   static const int _credentialExpiryMinute = 0;
@@ -86,9 +87,11 @@ class NotificationService {
     }
 
     final reminderSettings = await _reminderSettingsRepository.getSettings();
+    final appSettings = await _appSettingsRepository.getSettings();
 
     await _notifications.cancel(id: _expenseReminderId);
     await _notifications.cancel(id: _taskReminderId);
+    await _notifications.cancel(id: _syncReminderId);
 
     final androidScheduleMode = await _resolveAndroidScheduleMode();
 
@@ -136,6 +139,31 @@ class NotificationService {
       matchDateTimeComponents: DateTimeComponents.time,
     );
 
+    if (appSettings.cloudSync.enabled) {
+      await _notifications.zonedSchedule(
+        id: _syncReminderId,
+        title: 'Sync your data',
+        body:
+            'Open Daily Use and manually upload a fresh cloud backup today.',
+        scheduledDate: _nextInstanceOf(reminderSettings.syncReminder),
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'daily_use_sync_reminders',
+            'Sync reminders',
+            channelDescription:
+                'Daily reminders to manually sync your cloud backup.',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(
+            threadIdentifier: 'daily_use_sync_reminders',
+          ),
+        ),
+        androidScheduleMode: androidScheduleMode,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    }
+
     requestCredentialExpiryNotificationSync();
   }
 
@@ -148,6 +176,7 @@ class NotificationService {
 
     await _notifications.cancel(id: _expenseReminderId);
     await _notifications.cancel(id: _taskReminderId);
+    await _notifications.cancel(id: _syncReminderId);
     await cancelCredentialExpiryNotifications();
   }
 

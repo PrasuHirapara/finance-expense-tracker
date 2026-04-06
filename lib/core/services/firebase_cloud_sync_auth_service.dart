@@ -168,7 +168,7 @@ class FirebaseCloudSyncAuthService {
       throw StateError(
         interactive
             ? 'No signed-in Firebase account is available.'
-            : 'No active signed-in account is available for background sync.',
+            : 'No active signed-in account is available for cloud sync.',
       );
     }
     return account;

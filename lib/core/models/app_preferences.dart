@@ -14,6 +14,8 @@ class CloudSyncPreferences {
     this.lastRestoreAt,
     this.lastSyncedAccountEmail,
     this.lastKnownCloudBackupAt,
+    this.lastBackgroundSyncAttemptAt,
+    this.lastBackgroundSyncError,
   });
 
   final bool enabled;
@@ -26,6 +28,8 @@ class CloudSyncPreferences {
   final DateTime? lastRestoreAt;
   final String? lastSyncedAccountEmail;
   final DateTime? lastKnownCloudBackupAt;
+  final DateTime? lastBackgroundSyncAttemptAt;
+  final String? lastBackgroundSyncError;
 
   CloudSyncPreferences copyWith({
     bool? enabled,
@@ -38,6 +42,8 @@ class CloudSyncPreferences {
     Object? lastRestoreAt = _appPreferenceUnset,
     Object? lastSyncedAccountEmail = _appPreferenceUnset,
     Object? lastKnownCloudBackupAt = _appPreferenceUnset,
+    Object? lastBackgroundSyncAttemptAt = _appPreferenceUnset,
+    Object? lastBackgroundSyncError = _appPreferenceUnset,
   }) {
     return CloudSyncPreferences(
       enabled: enabled ?? this.enabled,
@@ -62,6 +68,14 @@ class CloudSyncPreferences {
           identical(lastKnownCloudBackupAt, _appPreferenceUnset)
           ? this.lastKnownCloudBackupAt
           : lastKnownCloudBackupAt as DateTime?,
+      lastBackgroundSyncAttemptAt:
+          identical(lastBackgroundSyncAttemptAt, _appPreferenceUnset)
+          ? this.lastBackgroundSyncAttemptAt
+          : lastBackgroundSyncAttemptAt as DateTime?,
+      lastBackgroundSyncError:
+          identical(lastBackgroundSyncError, _appPreferenceUnset)
+          ? this.lastBackgroundSyncError
+          : lastBackgroundSyncError as String?,
     );
   }
 }

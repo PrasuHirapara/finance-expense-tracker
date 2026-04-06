@@ -439,6 +439,9 @@ class FirestoreCloudSyncStoreService {
     return current.schemaVersion == next.schemaVersion &&
         current.localLatestAt == next.localLatestAt &&
         current.accountEmail == next.accountEmail &&
+        current.payloadEncryptionSchemaVersion ==
+            next.payloadEncryptionSchemaVersion &&
+        current.cloudKeyFormatVersion == next.cloudKeyFormatVersion &&
         _intMapEquals(current.domainCounts, next.domainCounts) &&
         _stringMapEquals(current.domainHashes, next.domainHashes);
   }

@@ -72,6 +72,23 @@ class AppSettingsRepository {
     await _commit(settings.copyWith(cloudSync: preferences));
   }
 
+  Future<void> updateBackgroundSyncStatus({
+    required DateTime attemptedAt,
+    String? error,
+  }) async {
+    final settings = await getSettings();
+    await _commit(
+      settings.copyWith(
+        cloudSync: settings.cloudSync.copyWith(
+          lastBackgroundSyncAttemptAt: attemptedAt,
+          lastBackgroundSyncError: error?.trim().isEmpty == true
+              ? null
+              : error?.trim(),
+        ),
+      ),
+    );
+  }
+
   Future<void> acceptPrivacyPolicy(String version) async {
     final settings = await getSettings();
     await _commit(
@@ -243,6 +260,9 @@ class AppSettingsRepository {
       'lastSyncedAccountEmail': preferences.lastSyncedAccountEmail,
       'lastKnownCloudBackupAt': preferences.lastKnownCloudBackupAt
           ?.toIso8601String(),
+      'lastBackgroundSyncAttemptAt': preferences.lastBackgroundSyncAttemptAt
+          ?.toIso8601String(),
+      'lastBackgroundSyncError': preferences.lastBackgroundSyncError,
     };
   }
 
@@ -282,6 +302,14 @@ class AppSettingsRepository {
       lastKnownCloudBackupAt: _dateTimeFromJson(
         value['lastKnownCloudBackupAt'],
       ),
+      lastBackgroundSyncAttemptAt: _dateTimeFromJson(
+        value['lastBackgroundSyncAttemptAt'],
+      ),
+      lastBackgroundSyncError: value['lastBackgroundSyncError'] is String
+          ? (value['lastBackgroundSyncError'] as String).trim().isEmpty
+                ? null
+                : value['lastBackgroundSyncError'] as String
+          : null,
     );
   }
 

@@ -73,7 +73,11 @@ void cloudSyncCallbackDispatcher() {
     try {
       await cloudSyncService.runAutomaticBackupIfDue();
       return true;
-    } catch (_) {
+    } catch (error) {
+      await appSettingsRepository.updateBackgroundSyncStatus(
+        attemptedAt: DateTime.now(),
+        error: _summarizeBackgroundSyncError(error),
+      );
       return false;
     } finally {
       await database.close();
@@ -82,4 +86,15 @@ void cloudSyncCallbackDispatcher() {
       unawaited(appSettingsRepository.dispose());
     }
   });
+}
+
+String _summarizeBackgroundSyncError(Object error) {
+  final message = error.toString().trim();
+  if (message.isEmpty) {
+    return 'Unknown background sync error.';
+  }
+  if (message.length <= 500) {
+    return message;
+  }
+  return '${message.substring(0, 497)}...';
 }

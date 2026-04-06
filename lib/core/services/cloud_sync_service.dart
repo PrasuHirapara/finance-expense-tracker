@@ -158,6 +158,12 @@ class CloudSyncService {
       lastAutoBackupAt: triggeredByScheduler
           ? syncCompletedAt
           : settings.cloudSync.lastAutoBackupAt,
+      lastBackgroundSyncAttemptAt: triggeredByScheduler
+          ? syncCompletedAt
+          : settings.cloudSync.lastBackgroundSyncAttemptAt,
+      lastBackgroundSyncError: triggeredByScheduler
+          ? null
+          : settings.cloudSync.lastBackgroundSyncError,
     );
     await _appSettingsRepository.updateCloudSyncPreferences(nextCloudSync);
   }
@@ -295,18 +301,19 @@ class CloudSyncService {
     );
   }
 
-  Future<void> runAutomaticBackupIfDue() async {
+  Future<bool> runAutomaticBackupIfDue() async {
     final settings = await _appSettingsRepository.getSettings();
     if (!settings.cloudSync.enabled || !settings.cloudSync.autoBackupEnabled) {
-      return;
+      return false;
     }
 
     final now = DateTime.now();
     if (!_isBackupDue(settings.cloudSync, now)) {
-      return;
+      return false;
     }
 
     await uploadDataToCloud(interactive: false, triggeredByScheduler: true);
+    return true;
   }
 
   void _ensureEnabled(AppPreferences settings) {

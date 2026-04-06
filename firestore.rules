@@ -10,12 +10,104 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function allowedCloudSyncDocIds() {
+      return ['manifest', 'credential', 'expense', 'task', 'settings'];
+    }
+
+    function allowedDomainKeys() {
+      return ['Credential', 'Expense', 'Task', 'Settings'];
+    }
+
+    function hasExactKeys(data, requiredKeys) {
+      return data.keys().hasAll(requiredKeys) && data.keys().hasOnly(requiredKeys);
+    }
+
+    function isShortString(value, maxLength) {
+      return value is string && value.size() > 0 && value.size() <= maxLength;
+    }
+
+    function isNullableShortString(value, maxLength) {
+      return value == null || (value is string && value.size() <= maxLength);
+    }
+
+    function isValidIsoDateString(value) {
+      return isShortString(value, 40);
+    }
+
+    function isValidDomainCounts(value) {
+      return value is map &&
+          hasExactKeys(value, allowedDomainKeys()) &&
+          value.Credential is int &&
+          value.Credential >= 0 &&
+          value.Expense is int &&
+          value.Expense >= 0 &&
+          value.Task is int &&
+          value.Task >= 0 &&
+          value.Settings is int &&
+          value.Settings >= 0;
+    }
+
+    function isValidDomainHashes(value) {
+      return value is map &&
+          hasExactKeys(value, allowedDomainKeys()) &&
+          isNullableShortString(value.Credential, 128) &&
+          isNullableShortString(value.Expense, 128) &&
+          isNullableShortString(value.Task, 128) &&
+          isNullableShortString(value.Settings, 128);
+    }
+
+    function isValidManifestDocument(data) {
+      return hasExactKeys(
+            data,
+            [
+              'schemaVersion',
+              'exportedAt',
+              'localLatestAt',
+              'accountEmail',
+              'domainCounts',
+              'domainHashes',
+              'payloadEncryptionSchemaVersion',
+              'cloudKeyFormatVersion',
+              'updatedAt',
+            ],
+          ) &&
+          data.schemaVersion is int &&
+          data.schemaVersion >= 1 &&
+          data.schemaVersion <= 2 &&
+          isValidIsoDateString(data.exportedAt) &&
+          isValidIsoDateString(data.localLatestAt) &&
+          isNullableShortString(data.accountEmail, 320) &&
+          isValidDomainCounts(data.domainCounts) &&
+          isValidDomainHashes(data.domainHashes) &&
+          data.payloadEncryptionSchemaVersion is int &&
+          data.payloadEncryptionSchemaVersion >= 1 &&
+          data.payloadEncryptionSchemaVersion <= 2 &&
+          data.cloudKeyFormatVersion is int &&
+          data.cloudKeyFormatVersion >= 1 &&
+          data.cloudKeyFormatVersion <= 1 &&
+          data.updatedAt is timestamp;
+    }
+
+    function isValidPayloadDocument(data) {
+      return hasExactKeys(data, ['payload', 'updatedAt']) &&
+          isShortString(data.payload, 900000) &&
+          data.updatedAt is timestamp;
+    }
+
+    function isValidCloudSyncDocument(docId, data) {
+      return docId == 'manifest'
+          ? isValidManifestDocument(data)
+          : isValidPayloadDocument(data);
+    }
+
     match /users/{userId} {
       allow read, create, update, delete: if isOwner(userId);
 
       match /cloud_sync/{docId} {
-        allow read, create, update, delete: if isOwner(userId) &&
-            docId in ['manifest', 'credential', 'expense', 'task'];
+        allow read, delete: if isOwner(userId) && docId in allowedCloudSyncDocIds();
+        allow create, update: if isOwner(userId) &&
+            docId in allowedCloudSyncDocIds() &&
+            isValidCloudSyncDocument(docId, request.resource.data);
       }
     }
   }

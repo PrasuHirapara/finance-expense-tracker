@@ -34,8 +34,11 @@ class FirebaseCloudSyncAuthService {
     return user == null ? null : FirebaseCloudSyncAccount.fromUser(user);
   }
 
-  Future<void> initialize() async {
+  Future<void> initialize({bool prepareInteractiveSignIn = false}) async {
     if (_initialized) {
+      if (prepareInteractiveSignIn) {
+        await _ensureGoogleSignInInitialized();
+      }
       return;
     }
     if (Firebase.apps.isEmpty) {
@@ -43,10 +46,10 @@ class FirebaseCloudSyncAuthService {
         'Firebase is not initialized. Add Firebase setup before using cloud sync.',
       );
     }
-    if (supportsGoogleSignIn) {
-      await _googleSignIn.initialize();
-    }
     _initialized = true;
+    if (prepareInteractiveSignIn) {
+      await _ensureGoogleSignInInitialized();
+    }
   }
 
   Stream<FirebaseCloudSyncAccount?> authStateChanges() {
@@ -61,7 +64,7 @@ class FirebaseCloudSyncAuthService {
     if (user == null) {
       try {
         user = await _firebaseAuth.authStateChanges().first.timeout(
-          const Duration(seconds: 5),
+          const Duration(seconds: 15),
         );
       } on TimeoutException {
         user = _firebaseAuth.currentUser;
@@ -76,7 +79,7 @@ class FirebaseCloudSyncAuthService {
     AppCancellationToken? cancellationToken,
   }) async {
     cancellationToken?.throwIfCancelled();
-    await initialize();
+    await initialize(prepareInteractiveSignIn: true);
     cancellationToken?.throwIfCancelled();
     final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
       email: email.trim(),
@@ -99,7 +102,7 @@ class FirebaseCloudSyncAuthService {
     AppCancellationToken? cancellationToken,
   }) async {
     cancellationToken?.throwIfCancelled();
-    await initialize();
+    await initialize(prepareInteractiveSignIn: true);
     cancellationToken?.throwIfCancelled();
     final userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
       email: email.trim(),
@@ -134,7 +137,7 @@ class FirebaseCloudSyncAuthService {
       );
     }
     cancellationToken?.throwIfCancelled();
-    await initialize();
+    await initialize(prepareInteractiveSignIn: true);
     cancellationToken?.throwIfCancelled();
     final googleUser = await _googleSignIn.authenticate();
     cancellationToken?.throwIfCancelled();
@@ -188,7 +191,7 @@ class FirebaseCloudSyncAuthService {
 
   Future<void> signOut({AppCancellationToken? cancellationToken}) async {
     cancellationToken?.throwIfCancelled();
-    await initialize();
+    await initialize(prepareInteractiveSignIn: true);
     cancellationToken?.throwIfCancelled();
     await _firebaseAuth.signOut();
     cancellationToken?.throwIfCancelled();
@@ -233,6 +236,13 @@ class FirebaseCloudSyncAuthService {
 
     await doc.set(data, SetOptions(merge: true));
     cancellationToken?.throwIfCancelled();
+  }
+
+  Future<void> _ensureGoogleSignInInitialized() async {
+    if (!supportsGoogleSignIn) {
+      return;
+    }
+    await _googleSignIn.initialize();
   }
 }
 

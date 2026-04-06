@@ -41,7 +41,6 @@ class CloudSyncPayloadService {
   final HashAlgorithm _hashAlgorithm = Sha256();
 
   static const int _expensePayloadSchemaVersion = 3;
-  static const int _encryptedEnvelopeSchemaVersion = 1;
 
   Future<CloudBackupBundle> buildBackupBundle({
     DateTime? exportedAt,
@@ -383,7 +382,7 @@ class CloudSyncPayloadService {
 
     return CloudBackupBundle(
       manifest: CloudSyncManifest(
-        schemaVersion: 1,
+        schemaVersion: CloudSyncProtocol.manifestSchemaVersion,
         exportedAt: timestamp,
         localLatestAt: localLatestAt,
         accountEmail: accountEmail,
@@ -400,6 +399,9 @@ class CloudSyncPayloadService {
           CloudSyncDomain.settings.folderName: 2,
         },
         domainHashes: domainHashes,
+        payloadEncryptionSchemaVersion:
+            CloudSyncProtocol.encryptedEnvelopeSchemaVersion,
+        cloudKeyFormatVersion: CloudSyncProtocol.cloudKeyFormatVersion,
       ),
       credentialPayload: credentialJson,
       containsCredentialPayload: includeCredentialsInBundle,
@@ -829,7 +831,6 @@ class CloudSyncPayloadService {
       encryptionKey: trimmedKey,
     );
     return jsonEncode(<String, dynamic>{
-      'schemaVersion': _encryptedEnvelopeSchemaVersion,
       'encrypted': true,
       ...encryptedPayload.toJson(),
     });
@@ -843,6 +844,31 @@ class CloudSyncPayloadService {
     final decoded = jsonDecode(payload);
     if (decoded is! Map<String, dynamic> || decoded['encrypted'] != true) {
       return payload;
+    }
+
+    final schemaVersion = decoded['schemaVersion'] is int
+        ? decoded['schemaVersion'] as int
+        : 1;
+    final keyFormatVersion = decoded['keyFormatVersion'] is int
+        ? decoded['keyFormatVersion'] as int
+        : 1;
+    final algorithm = decoded['algorithm'] as String? ??
+        CloudSyncProtocol.encryptedPayloadAlgorithm;
+
+    if (schemaVersion > CloudSyncProtocol.encryptedEnvelopeSchemaVersion) {
+      throw CloudPayloadDecryptionException(
+        'The $domainLabel cloud payload uses a newer encryption format.',
+      );
+    }
+    if (keyFormatVersion != CloudSyncProtocol.cloudKeyFormatVersion) {
+      throw CloudPayloadDecryptionException(
+        'The $domainLabel cloud payload uses an unsupported cloud key format.',
+      );
+    }
+    if (algorithm != CloudSyncProtocol.encryptedPayloadAlgorithm) {
+      throw CloudPayloadDecryptionException(
+        'The $domainLabel cloud payload uses an unsupported encryption algorithm.',
+      );
     }
 
     final trimmedKey = encryptionKey?.trim();

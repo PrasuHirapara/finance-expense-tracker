@@ -2,6 +2,15 @@ import 'dart:convert';
 
 import 'package:equatable/equatable.dart';
 
+class CloudSyncProtocol {
+  const CloudSyncProtocol._();
+
+  static const int manifestSchemaVersion = 2;
+  static const int encryptedEnvelopeSchemaVersion = 2;
+  static const int cloudKeyFormatVersion = 1;
+  static const String encryptedPayloadAlgorithm = 'aes-256-gcm-pbkdf2-sha256';
+}
+
 enum CloudSyncDomain { credential, expense, task, settings }
 
 extension CloudSyncDomainX on CloudSyncDomain {
@@ -40,6 +49,9 @@ class CloudSyncManifest extends Equatable {
     required this.accountEmail,
     required this.domainCounts,
     required this.domainHashes,
+    this.payloadEncryptionSchemaVersion =
+        CloudSyncProtocol.encryptedEnvelopeSchemaVersion,
+    this.cloudKeyFormatVersion = CloudSyncProtocol.cloudKeyFormatVersion,
   });
 
   final int schemaVersion;
@@ -48,6 +60,8 @@ class CloudSyncManifest extends Equatable {
   final String? accountEmail;
   final Map<String, int> domainCounts;
   final Map<String, String> domainHashes;
+  final int payloadEncryptionSchemaVersion;
+  final int cloudKeyFormatVersion;
 
   CloudSyncManifest copyWith({
     int? schemaVersion,
@@ -56,6 +70,8 @@ class CloudSyncManifest extends Equatable {
     Object? accountEmail = _cloudSyncUnset,
     Map<String, int>? domainCounts,
     Map<String, String>? domainHashes,
+    int? payloadEncryptionSchemaVersion,
+    int? cloudKeyFormatVersion,
   }) {
     return CloudSyncManifest(
       schemaVersion: schemaVersion ?? this.schemaVersion,
@@ -66,6 +82,10 @@ class CloudSyncManifest extends Equatable {
           : accountEmail as String?,
       domainCounts: domainCounts ?? this.domainCounts,
       domainHashes: domainHashes ?? this.domainHashes,
+      payloadEncryptionSchemaVersion:
+          payloadEncryptionSchemaVersion ?? this.payloadEncryptionSchemaVersion,
+      cloudKeyFormatVersion:
+          cloudKeyFormatVersion ?? this.cloudKeyFormatVersion,
     );
   }
 
@@ -76,6 +96,8 @@ class CloudSyncManifest extends Equatable {
     'accountEmail': accountEmail,
     'domainCounts': domainCounts,
     'domainHashes': domainHashes,
+    'payloadEncryptionSchemaVersion': payloadEncryptionSchemaVersion,
+    'cloudKeyFormatVersion': cloudKeyFormatVersion,
   };
 
   factory CloudSyncManifest.fromJson(Map<String, dynamic> json) {
@@ -103,6 +125,13 @@ class CloudSyncManifest extends Equatable {
               (key, value) => MapEntry(key.toString(), value?.toString() ?? ''),
             )
           : const <String, String>{},
+      payloadEncryptionSchemaVersion:
+          json['payloadEncryptionSchemaVersion'] is int
+          ? json['payloadEncryptionSchemaVersion'] as int
+          : 1,
+      cloudKeyFormatVersion: json['cloudKeyFormatVersion'] is int
+          ? json['cloudKeyFormatVersion'] as int
+          : 1,
     );
   }
 
@@ -124,6 +153,8 @@ class CloudSyncManifest extends Equatable {
     accountEmail,
     domainCounts,
     domainHashes,
+    payloadEncryptionSchemaVersion,
+    cloudKeyFormatVersion,
   ];
 }
 
@@ -223,13 +254,22 @@ class EncryptedCloudPayload extends Equatable {
     required this.encryptedPayload,
     required this.saltBase64,
     required this.nonceBase64,
+    this.schemaVersion = CloudSyncProtocol.encryptedEnvelopeSchemaVersion,
+    this.keyFormatVersion = CloudSyncProtocol.cloudKeyFormatVersion,
+    this.algorithm = CloudSyncProtocol.encryptedPayloadAlgorithm,
   });
 
   final String encryptedPayload;
   final String saltBase64;
   final String nonceBase64;
+  final int schemaVersion;
+  final int keyFormatVersion;
+  final String algorithm;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
+    'schemaVersion': schemaVersion,
+    'keyFormatVersion': keyFormatVersion,
+    'algorithm': algorithm,
     'encryptedPayload': encryptedPayload,
     'saltBase64': saltBase64,
     'nonceBase64': nonceBase64,
@@ -237,6 +277,14 @@ class EncryptedCloudPayload extends Equatable {
 
   factory EncryptedCloudPayload.fromJson(Map<String, dynamic> json) {
     return EncryptedCloudPayload(
+      schemaVersion: json['schemaVersion'] is int
+          ? json['schemaVersion'] as int
+          : 1,
+      keyFormatVersion: json['keyFormatVersion'] is int
+          ? json['keyFormatVersion'] as int
+          : 1,
+      algorithm: json['algorithm'] as String? ??
+          CloudSyncProtocol.encryptedPayloadAlgorithm,
       encryptedPayload: json['encryptedPayload'] as String? ?? '',
       saltBase64: json['saltBase64'] as String? ?? '',
       nonceBase64: json['nonceBase64'] as String? ?? '',
@@ -248,6 +296,9 @@ class EncryptedCloudPayload extends Equatable {
     encryptedPayload,
     saltBase64,
     nonceBase64,
+    schemaVersion,
+    keyFormatVersion,
+    algorithm,
   ];
 }
 

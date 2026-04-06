@@ -13,6 +13,7 @@ class FirestoreCloudSyncStoreService {
   static const String _credentialDocId = 'credential';
   static const String _expenseDocId = 'expense';
   static const String _taskDocId = 'task';
+  static const String _settingsDocId = 'settings';
 
   final FirebaseFirestore _firestore;
 
@@ -29,6 +30,7 @@ class FirestoreCloudSyncStoreService {
           collection.doc(_credentialDocId).get(),
           collection.doc(_expenseDocId).get(),
           collection.doc(_taskDocId).get(),
+          collection.doc(_settingsDocId).get(),
         ]);
     cancellationToken?.throwIfCancelled();
 
@@ -36,6 +38,7 @@ class FirestoreCloudSyncStoreService {
     final credentialSnapshot = snapshots[1];
     final expenseSnapshot = snapshots[2];
     final taskSnapshot = snapshots[3];
+    final settingsSnapshot = snapshots[4];
     final manifestData = manifestSnapshot.data();
     final currentManifest = manifestSnapshot.exists && manifestData != null
         ? CloudSyncManifest.fromJson(_normalizeMap(manifestData))
@@ -66,18 +69,29 @@ class FirestoreCloudSyncStoreService {
       shouldExistRemotely: true,
       nextHash: bundle.manifest.domainHashFor(CloudSyncDomain.task.folderName),
     );
+    final shouldUpdateSettings = _shouldUpdateDomain(
+      currentManifest: currentManifest,
+      domain: CloudSyncDomain.settings,
+      remoteDocExists: settingsSnapshot.exists,
+      shouldExistRemotely: bundle.containsSettingsPayload,
+      nextHash: bundle.manifest.domainHashFor(
+        CloudSyncDomain.settings.folderName,
+      ),
+    );
 
     final shouldUpdateManifest =
         currentManifest == null ||
         shouldUpdateCredential ||
         shouldUpdateExpense ||
         shouldUpdateTask ||
+        shouldUpdateSettings ||
         !_matchesStoredManifest(currentManifest, bundle.manifest);
 
     if (!shouldUpdateManifest &&
         !shouldUpdateCredential &&
         !shouldUpdateExpense &&
-        !shouldUpdateTask) {
+        !shouldUpdateTask &&
+        !shouldUpdateSettings) {
       return CloudUploadResult(
         manifest: currentManifest,
         didWriteRemoteData: false,
@@ -123,6 +137,18 @@ class FirestoreCloudSyncStoreService {
       updatedDomains.add(CloudSyncDomain.task.folderName);
     }
 
+    if (shouldUpdateSettings) {
+      if (bundle.containsSettingsPayload) {
+        batch.set(collection.doc(_settingsDocId), <String, dynamic>{
+          'payload': bundle.settingsPayload,
+          'updatedAt': timestamp,
+        });
+      } else {
+        batch.delete(collection.doc(_settingsDocId));
+      }
+      updatedDomains.add(CloudSyncDomain.settings.folderName);
+    }
+
     await batch.commit();
     cancellationToken?.throwIfCancelled();
     updatedDomains.sort();
@@ -159,17 +185,20 @@ class FirestoreCloudSyncStoreService {
           collection.doc(_credentialDocId).get(),
           collection.doc(_expenseDocId).get(),
           collection.doc(_taskDocId).get(),
+          collection.doc(_settingsDocId).get(),
         ]);
     cancellationToken?.throwIfCancelled();
     final manifestSnapshot = snapshots[0];
     final credentialSnapshot = snapshots[1];
     final expenseSnapshot = snapshots[2];
     final taskSnapshot = snapshots[3];
+    final settingsSnapshot = snapshots[4];
 
     final manifestData = manifestSnapshot.data();
     final credentialData = credentialSnapshot.data();
     final expenseData = expenseSnapshot.data();
     final taskData = taskSnapshot.data();
+    final settingsData = settingsSnapshot.data();
 
     if (!manifestSnapshot.exists ||
         !expenseSnapshot.exists ||
@@ -182,6 +211,7 @@ class FirestoreCloudSyncStoreService {
 
     final hasCredentialPayload =
         credentialSnapshot.exists && credentialData != null;
+    final hasSettingsPayload = settingsSnapshot.exists && settingsData != null;
 
     return CloudBackupBundle(
       manifest: CloudSyncManifest.fromJson(_normalizeMap(manifestData)),
@@ -191,6 +221,10 @@ class FirestoreCloudSyncStoreService {
       containsCredentialPayload: hasCredentialPayload,
       expensePayload: expenseData['payload'] as String? ?? '',
       taskPayload: taskData['payload'] as String? ?? '',
+      settingsPayload: hasSettingsPayload
+          ? settingsData['payload'] as String? ?? ''
+          : _emptySettingsPayload(),
+      containsSettingsPayload: hasSettingsPayload,
     );
   }
 
@@ -206,6 +240,7 @@ class FirestoreCloudSyncStoreService {
         _credentialDocId,
         _expenseDocId,
         _taskDocId,
+        _settingsDocId,
       ]) {
         batch.delete(collection.doc(docId));
       }
@@ -217,6 +252,7 @@ class FirestoreCloudSyncStoreService {
       'Credential' => _credentialDocId,
       'Expense' => _expenseDocId,
       'Task' => _taskDocId,
+      'Settings' => _settingsDocId,
       _ => null,
     };
     if (domainDocId == null) {
@@ -280,6 +316,10 @@ class FirestoreCloudSyncStoreService {
 
   String _emptyCredentialPayload() {
     return '{"schemaVersion":0,"exportedAt":"","records":[]}';
+  }
+
+  String _emptySettingsPayload() {
+    return '{"schemaVersion":0,"exportedAt":"","appSettings":{},"reminderSettings":{}}';
   }
 
   bool _shouldUpdateDomain({

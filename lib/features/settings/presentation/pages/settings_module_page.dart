@@ -36,7 +36,7 @@ class SettingsModulePage extends StatelessWidget {
           _buildNavigationTile(
             context,
             icon: Icons.privacy_tip_outlined,
-            title: 'Privacy & Legal',
+            title: 'Privacy Policy',
             routeName: AppRoutes.privacyPolicy,
           ),
           const SizedBox(height: 16),

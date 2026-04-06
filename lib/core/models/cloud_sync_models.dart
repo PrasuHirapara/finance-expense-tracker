@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:equatable/equatable.dart';
 
-enum CloudSyncDomain { credential, expense, task }
+enum CloudSyncDomain { credential, expense, task, settings }
 
 extension CloudSyncDomainX on CloudSyncDomain {
   String get folderName {
@@ -13,6 +13,8 @@ extension CloudSyncDomainX on CloudSyncDomain {
         return 'Expense';
       case CloudSyncDomain.task:
         return 'Task';
+      case CloudSyncDomain.settings:
+        return 'Settings';
     }
   }
 
@@ -24,6 +26,8 @@ extension CloudSyncDomainX on CloudSyncDomain {
         return 'expense.json';
       case CloudSyncDomain.task:
         return 'task.json';
+      case CloudSyncDomain.settings:
+        return 'settings.json';
     }
   }
 }
@@ -190,6 +194,8 @@ class CloudBackupBundle extends Equatable {
     required this.containsCredentialPayload,
     required this.expensePayload,
     required this.taskPayload,
+    required this.settingsPayload,
+    required this.containsSettingsPayload,
   });
 
   final CloudSyncManifest manifest;
@@ -197,6 +203,8 @@ class CloudBackupBundle extends Equatable {
   final bool containsCredentialPayload;
   final String expensePayload;
   final String taskPayload;
+  final String settingsPayload;
+  final bool containsSettingsPayload;
 
   @override
   List<Object?> get props => <Object?>[
@@ -205,6 +213,41 @@ class CloudBackupBundle extends Equatable {
     containsCredentialPayload,
     expensePayload,
     taskPayload,
+    settingsPayload,
+    containsSettingsPayload,
+  ];
+}
+
+class EncryptedCloudPayload extends Equatable {
+  const EncryptedCloudPayload({
+    required this.encryptedPayload,
+    required this.saltBase64,
+    required this.nonceBase64,
+  });
+
+  final String encryptedPayload;
+  final String saltBase64;
+  final String nonceBase64;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'encryptedPayload': encryptedPayload,
+    'saltBase64': saltBase64,
+    'nonceBase64': nonceBase64,
+  };
+
+  factory EncryptedCloudPayload.fromJson(Map<String, dynamic> json) {
+    return EncryptedCloudPayload(
+      encryptedPayload: json['encryptedPayload'] as String? ?? '',
+      saltBase64: json['saltBase64'] as String? ?? '',
+      nonceBase64: json['nonceBase64'] as String? ?? '',
+    );
+  }
+
+  @override
+  List<Object?> get props => <Object?>[
+    encryptedPayload,
+    saltBase64,
+    nonceBase64,
   ];
 }
 
@@ -238,6 +281,15 @@ class CloudCredentialEncryptionKeyRequiredException implements Exception {
 
 class CloudCredentialEncryptionKeyInvalidException implements Exception {
   const CloudCredentialEncryptionKeyInvalidException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+class CloudPayloadDecryptionException implements Exception {
+  const CloudPayloadDecryptionException(this.message);
 
   final String message;
 

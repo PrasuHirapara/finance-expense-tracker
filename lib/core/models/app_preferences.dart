@@ -72,6 +72,7 @@ class AppPreferences {
     this.notificationsEnabled = true,
     this.credentialExpiryNotificationEnabled = false,
     this.exportDirectoryPath,
+    this.acceptedPrivacyPolicyVersion,
     this.cloudSync = const CloudSyncPreferences(),
   });
 
@@ -79,6 +80,7 @@ class AppPreferences {
   final bool notificationsEnabled;
   final bool credentialExpiryNotificationEnabled;
   final String? exportDirectoryPath;
+  final String? acceptedPrivacyPolicyVersion;
   final CloudSyncPreferences cloudSync;
 
   AppPreferences copyWith({
@@ -86,6 +88,7 @@ class AppPreferences {
     bool? notificationsEnabled,
     bool? credentialExpiryNotificationEnabled,
     Object? exportDirectoryPath = _appPreferenceUnset,
+    Object? acceptedPrivacyPolicyVersion = _appPreferenceUnset,
     CloudSyncPreferences? cloudSync,
   }) {
     return AppPreferences(
@@ -97,6 +100,12 @@ class AppPreferences {
       exportDirectoryPath: identical(exportDirectoryPath, _appPreferenceUnset)
           ? this.exportDirectoryPath
           : exportDirectoryPath as String?,
+      acceptedPrivacyPolicyVersion: identical(
+            acceptedPrivacyPolicyVersion,
+            _appPreferenceUnset,
+          )
+          ? this.acceptedPrivacyPolicyVersion
+          : acceptedPrivacyPolicyVersion as String?,
       cloudSync: cloudSync ?? this.cloudSync,
     );
   }

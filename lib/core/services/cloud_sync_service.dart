@@ -9,6 +9,7 @@ import 'app_settings_repository.dart';
 import 'cancellable_task.dart';
 import 'cloud_sync_payload_service.dart';
 import 'cloud_sync_scheduler.dart';
+import 'cloud_sync_security_service.dart';
 import 'credential_security_service.dart';
 import 'firebase_cloud_sync_auth_service.dart';
 import 'firestore_cloud_sync_store_service.dart';
@@ -20,6 +21,7 @@ class CloudSyncService {
     required FirebaseCloudSyncAuthService authService,
     required FirestoreCloudSyncStoreService remoteStoreService,
     required CloudSyncPayloadService payloadService,
+    required CloudSyncSecurityService cloudSyncSecurityService,
     required CredentialSecurityService credentialSecurityService,
     required CloudSyncScheduler scheduler,
     required NotificationService notificationService,
@@ -27,6 +29,7 @@ class CloudSyncService {
        _authService = authService,
        _remoteStoreService = remoteStoreService,
        _payloadService = payloadService,
+       _cloudSyncSecurityService = cloudSyncSecurityService,
        _credentialSecurityService = credentialSecurityService,
        _scheduler = scheduler,
        _notificationService = notificationService;
@@ -35,6 +38,7 @@ class CloudSyncService {
   final FirebaseCloudSyncAuthService _authService;
   final FirestoreCloudSyncStoreService _remoteStoreService;
   final CloudSyncPayloadService _payloadService;
+  final CloudSyncSecurityService _cloudSyncSecurityService;
   final CredentialSecurityService _credentialSecurityService;
   final CloudSyncScheduler _scheduler;
   final NotificationService _notificationService;
@@ -128,11 +132,14 @@ class CloudSyncService {
 
     cancellationToken?.throwIfCancelled();
     final account = await _authService.requireUser(interactive: interactive);
+    final nonCredentialEncryptionKey = _cloudSyncSecurityService
+        .buildCloudPayloadEncryptionKey(userId: account.uid);
     final bundle = await _payloadService.buildBackupBundle(
       accountEmail: account.email,
       credentialEncryptionKey:
           credentialEncryptionKey ??
           await _credentialSecurityService.readEncryptionKey(),
+      nonCredentialEncryptionKey: nonCredentialEncryptionKey,
       includeCredentialsInBundle: settings.cloudSync.syncCredentials,
       cancellationToken: cancellationToken,
     );
@@ -201,6 +208,8 @@ class CloudSyncService {
     }
 
     cancellationToken?.throwIfCancelled();
+    final nonCredentialEncryptionKey = _cloudSyncSecurityService
+        .buildCloudPayloadEncryptionKey(userId: account.uid);
     final localLatestAt = await _payloadService
         .computeLocalLatestChangeAtWithCancellation(
           cancellationToken: cancellationToken,
@@ -215,6 +224,7 @@ class CloudSyncService {
     cancellationToken?.throwIfCancelled();
     final localRollback = await _payloadService.buildBackupBundle(
       encryptCredentialTitlesForCloud: false,
+      encryptNonCredentialPayloadsForCloud: false,
       cancellationToken: cancellationToken,
     );
     try {
@@ -223,10 +233,13 @@ class CloudSyncService {
         credentialPayload: bundle.credentialPayload,
         expensePayload: bundle.expensePayload,
         taskPayload: bundle.taskPayload,
+        settingsPayload: bundle.settingsPayload,
         credentialEncryptionKey:
             credentialEncryptionKey ??
             await _credentialSecurityService.readEncryptionKey(),
+        nonCredentialEncryptionKey: nonCredentialEncryptionKey,
         restoreCredentials: bundle.containsCredentialPayload,
+        restoreSettings: bundle.containsSettingsPayload,
         cancellationToken: cancellationToken,
       );
     } catch (error) {
@@ -234,17 +247,38 @@ class CloudSyncService {
         credentialPayload: localRollback.credentialPayload,
         expensePayload: localRollback.expensePayload,
         taskPayload: localRollback.taskPayload,
+        settingsPayload: localRollback.settingsPayload,
         restoreCredentials: true,
+        restoreSettings: true,
       );
       rethrow;
     }
 
+    final restoredSettings = await _appSettingsRepository.getSettings();
     await _appSettingsRepository.updateCloudSyncPreferences(
-      settings.cloudSync.copyWith(
+      restoredSettings.cloudSync.copyWith(
         lastRestoreAt: DateTime.now(),
         lastKnownCloudBackupAt: bundle.manifest.exportedAt,
+        lastSyncedAccountEmail: account.email,
       ),
     );
+    final refreshedSettings = await _appSettingsRepository.getSettings();
+    if (refreshedSettings.notificationsEnabled) {
+      await _notificationService.scheduleDailyReminders();
+    } else {
+      await _notificationService.cancelDailyReminders();
+    }
+    if (refreshedSettings.cloudSync.enabled &&
+        refreshedSettings.cloudSync.autoBackupEnabled) {
+      await _scheduler.schedule(
+        TimeOfDay(
+          hour: refreshedSettings.cloudSync.autoBackupHour,
+          minute: refreshedSettings.cloudSync.autoBackupMinute,
+        ),
+      );
+    } else {
+      await _scheduler.cancel();
+    }
     _notificationService.requestCredentialExpiryNotificationSync();
   }
 

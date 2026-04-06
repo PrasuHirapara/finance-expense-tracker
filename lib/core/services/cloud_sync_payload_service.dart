@@ -4,37 +4,52 @@ import 'package:cryptography/cryptography.dart';
 import 'package:drift/drift.dart';
 
 import '../../data/database/app_database.dart';
+import '../../features/credentials/domain/models/credential_models.dart';
 import '../../features/tasks/data/repositories/task_category_repository.dart';
 import '../../features/tasks/data/repositories/task_repository.dart';
 import '../models/cloud_sync_models.dart';
-import '../../features/credentials/domain/models/credential_models.dart';
+import 'app_settings_repository.dart';
 import 'cancellable_task.dart';
+import 'cloud_backup_crypto_service.dart';
 import 'credential_crypto_service.dart';
+import 'reminder_settings_repository.dart';
 
 class CloudSyncPayloadService {
   CloudSyncPayloadService({
     required AppDatabase database,
     required TaskRepository taskRepository,
     required TaskCategoryRepository taskCategoryRepository,
+    required AppSettingsRepository appSettingsRepository,
+    required ReminderSettingsRepository reminderSettingsRepository,
     required CredentialCryptoService credentialCryptoService,
+    required CloudBackupCryptoService cloudBackupCryptoService,
   }) : _database = database,
        _taskRepository = taskRepository,
        _taskCategoryRepository = taskCategoryRepository,
-       _credentialCryptoService = credentialCryptoService;
+       _appSettingsRepository = appSettingsRepository,
+       _reminderSettingsRepository = reminderSettingsRepository,
+       _credentialCryptoService = credentialCryptoService,
+       _cloudBackupCryptoService = cloudBackupCryptoService;
 
   final AppDatabase _database;
   final TaskRepository _taskRepository;
   final TaskCategoryRepository _taskCategoryRepository;
+  final AppSettingsRepository _appSettingsRepository;
+  final ReminderSettingsRepository _reminderSettingsRepository;
   final CredentialCryptoService _credentialCryptoService;
+  final CloudBackupCryptoService _cloudBackupCryptoService;
   final HashAlgorithm _hashAlgorithm = Sha256();
 
   static const int _expensePayloadSchemaVersion = 3;
+  static const int _encryptedEnvelopeSchemaVersion = 1;
 
   Future<CloudBackupBundle> buildBackupBundle({
     DateTime? exportedAt,
     String? accountEmail,
     String? credentialEncryptionKey,
+    String? nonCredentialEncryptionKey,
     bool encryptCredentialTitlesForCloud = true,
+    bool encryptNonCredentialPayloadsForCloud = true,
     bool includeCredentialsInBundle = true,
     AppCancellationToken? cancellationToken,
   }) async {
@@ -69,6 +84,10 @@ class CloudSyncPayloadService {
       )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
       _taskCategoryRepository.getCategories(),
       _taskCategoryRepository.lastModifiedAt(),
+      _appSettingsRepository.exportForCloud(),
+      _reminderSettingsRepository.exportForCloud(),
+      _appSettingsRepository.lastModifiedAt(),
+      _reminderSettingsRepository.lastModifiedAt(),
     ]);
     cancellationToken?.throwIfCancelled();
     final categories = loadedData[0] as List<DbCategory>;
@@ -81,6 +100,10 @@ class CloudSyncPayloadService {
     final credentials = loadedData[7] as List<DbCredential>;
     final taskCategories = loadedData[8] as List<String>;
     final taskCategoryUpdatedAt = loadedData[9] as DateTime?;
+    final appSettings = loadedData[10] as Map<String, dynamic>;
+    final reminderSettings = loadedData[11] as Map<String, dynamic>;
+    final appSettingsUpdatedAt = loadedData[12] as DateTime?;
+    final reminderSettingsUpdatedAt = loadedData[13] as DateTime?;
     final normalizedExpensePayload = _buildNormalizedExpensePayloadMaps(
       entries: entries,
       splitRecords: splitRecords,
@@ -150,6 +173,10 @@ class CloudSyncPayloadService {
           )
           .toList(growable: false),
     };
+    final settingsHashSource = <String, dynamic>{
+      'appSettings': appSettings,
+      'reminderSettings': reminderSettings,
+    };
     final domainHashes = <String, String>{
       CloudSyncDomain.credential.folderName: await _hashJsonContent(
         credentialHashSource,
@@ -158,6 +185,9 @@ class CloudSyncPayloadService {
         expenseHashSource,
       ),
       CloudSyncDomain.task.folderName: await _hashJsonContent(taskHashSource),
+      CloudSyncDomain.settings.folderName: await _hashJsonContent(
+        settingsHashSource,
+      ),
     };
 
     if (includeCredentialsInBundle &&
@@ -310,6 +340,33 @@ class CloudSyncPayloadService {
           )
           .toList(growable: false),
     });
+    final settingsJson = jsonEncode(<String, dynamic>{
+      'schemaVersion': 1,
+      'exportedAt': timestamp.toIso8601String(),
+      'appSettings': appSettings,
+      'reminderSettings': reminderSettings,
+    });
+    final protectedExpensePayload = encryptNonCredentialPayloadsForCloud
+        ? await _encryptCloudPayload(
+            payload: expenseJson,
+            encryptionKey: nonCredentialEncryptionKey,
+            domainLabel: CloudSyncDomain.expense.folderName,
+          )
+        : expenseJson;
+    final protectedTaskPayload = encryptNonCredentialPayloadsForCloud
+        ? await _encryptCloudPayload(
+            payload: taskJson,
+            encryptionKey: nonCredentialEncryptionKey,
+            domainLabel: CloudSyncDomain.task.folderName,
+          )
+        : taskJson;
+    final protectedSettingsPayload = encryptNonCredentialPayloadsForCloud
+        ? await _encryptCloudPayload(
+            payload: settingsJson,
+            encryptionKey: nonCredentialEncryptionKey,
+            domainLabel: CloudSyncDomain.settings.folderName,
+          )
+        : settingsJson;
     final localLatestAt = _computeLocalLatestChangeAtFromData(
       categories: categories,
       banks: banks,
@@ -320,6 +377,8 @@ class CloudSyncPayloadService {
       tasks: tasks,
       credentials: credentials,
       taskCategoryUpdatedAt: taskCategoryUpdatedAt,
+      appSettingsUpdatedAt: appSettingsUpdatedAt,
+      reminderSettingsUpdatedAt: reminderSettingsUpdatedAt,
     );
 
     return CloudBackupBundle(
@@ -338,13 +397,16 @@ class CloudSyncPayloadService {
               normalizedExpensePayload.splitParticipants.length +
               normalizedExpensePayload.lentSettlements.length,
           CloudSyncDomain.task.folderName: tasks.length,
+          CloudSyncDomain.settings.folderName: 2,
         },
         domainHashes: domainHashes,
       ),
       credentialPayload: credentialJson,
       containsCredentialPayload: includeCredentialsInBundle,
-      expensePayload: expenseJson,
-      taskPayload: taskJson,
+      expensePayload: protectedExpensePayload,
+      taskPayload: protectedTaskPayload,
+      settingsPayload: protectedSettingsPayload,
+      containsSettingsPayload: true,
     );
   }
 
@@ -368,6 +430,8 @@ class CloudSyncPayloadService {
       (_database.select(_database.dbTasks)).get(),
       (_database.select(_database.dbCredentials)).get(),
       _taskCategoryRepository.lastModifiedAt(),
+      _appSettingsRepository.lastModifiedAt(),
+      _reminderSettingsRepository.lastModifiedAt(),
     ]);
     cancellationToken?.throwIfCancelled();
 
@@ -381,6 +445,8 @@ class CloudSyncPayloadService {
       tasks: loadedData[6] as List<DbTask>,
       credentials: loadedData[7] as List<DbCredential>,
       taskCategoryUpdatedAt: loadedData[8] as DateTime?,
+      appSettingsUpdatedAt: loadedData[9] as DateTime?,
+      reminderSettingsUpdatedAt: loadedData[10] as DateTime?,
     );
   }
 
@@ -394,6 +460,8 @@ class CloudSyncPayloadService {
     required List<DbTask> tasks,
     required List<DbCredential> credentials,
     required DateTime? taskCategoryUpdatedAt,
+    required DateTime? appSettingsUpdatedAt,
+    required DateTime? reminderSettingsUpdatedAt,
   }) {
     final candidates = <DateTime>[
       ...categories.map((item) => item.createdAt),
@@ -408,6 +476,8 @@ class CloudSyncPayloadService {
       ...credentials.map((item) => item.updatedAt),
       ...credentials.map((item) => item.createdAt),
       ...<DateTime?>[taskCategoryUpdatedAt].whereType<DateTime>(),
+      ...<DateTime?>[appSettingsUpdatedAt].whereType<DateTime>(),
+      ...<DateTime?>[reminderSettingsUpdatedAt].whereType<DateTime>(),
     ];
 
     if (candidates.isEmpty) {
@@ -422,13 +492,36 @@ class CloudSyncPayloadService {
     required String credentialPayload,
     required String expensePayload,
     required String taskPayload,
+    required String settingsPayload,
     String? credentialEncryptionKey,
+    String? nonCredentialEncryptionKey,
     bool restoreCredentials = true,
+    bool restoreSettings = true,
     AppCancellationToken? cancellationToken,
   }) async {
     cancellationToken?.throwIfCancelled();
-    final expense = jsonDecode(expensePayload) as Map<String, dynamic>;
-    final task = jsonDecode(taskPayload) as Map<String, dynamic>;
+    final decodedExpensePayload = await _decryptCloudPayloadIfNeeded(
+      payload: expensePayload,
+      encryptionKey: nonCredentialEncryptionKey,
+      domainLabel: CloudSyncDomain.expense.folderName,
+    );
+    final decodedTaskPayload = await _decryptCloudPayloadIfNeeded(
+      payload: taskPayload,
+      encryptionKey: nonCredentialEncryptionKey,
+      domainLabel: CloudSyncDomain.task.folderName,
+    );
+    final decodedSettingsPayload = restoreSettings
+        ? await _decryptCloudPayloadIfNeeded(
+            payload: settingsPayload,
+            encryptionKey: nonCredentialEncryptionKey,
+            domainLabel: CloudSyncDomain.settings.folderName,
+          )
+        : '{}';
+    final expense = jsonDecode(decodedExpensePayload) as Map<String, dynamic>;
+    final task = jsonDecode(decodedTaskPayload) as Map<String, dynamic>;
+    final settings = restoreSettings
+        ? jsonDecode(decodedSettingsPayload) as Map<String, dynamic>
+        : const <String, dynamic>{};
     final credential = restoreCredentials
         ? jsonDecode(credentialPayload) as Map<String, dynamic>
         : const <String, dynamic>{};
@@ -451,6 +544,8 @@ class CloudSyncPayloadService {
     final tasks = (task['tasks'] as List<dynamic>? ?? const <dynamic>[])
         .whereType<Map<String, dynamic>>()
         .toList(growable: false);
+    final appSettings = settings['appSettings'];
+    final reminderSettings = settings['reminderSettings'];
     final credentials = restoreCredentials
         ? (credential['records'] as List<dynamic>? ?? const <dynamic>[])
               .whereType<Map<String, dynamic>>()
@@ -711,6 +806,62 @@ class CloudSyncPayloadService {
 
     cancellationToken?.throwIfCancelled();
     await _taskCategoryRepository.replaceAll(taskCategories);
+    if (restoreSettings) {
+      await _appSettingsRepository.restoreFromCloud(appSettings);
+      await _reminderSettingsRepository.restoreFromCloud(reminderSettings);
+    }
+  }
+
+  Future<String> _encryptCloudPayload({
+    required String payload,
+    required String? encryptionKey,
+    required String domainLabel,
+  }) async {
+    final trimmedKey = encryptionKey?.trim();
+    if (trimmedKey == null || trimmedKey.isEmpty) {
+      throw CloudPayloadDecryptionException(
+        'A non-credential encryption key is required for the $domainLabel cloud payload.',
+      );
+    }
+
+    final encryptedPayload = await _cloudBackupCryptoService.encryptText(
+      plainText: payload,
+      encryptionKey: trimmedKey,
+    );
+    return jsonEncode(<String, dynamic>{
+      'schemaVersion': _encryptedEnvelopeSchemaVersion,
+      'encrypted': true,
+      ...encryptedPayload.toJson(),
+    });
+  }
+
+  Future<String> _decryptCloudPayloadIfNeeded({
+    required String payload,
+    required String? encryptionKey,
+    required String domainLabel,
+  }) async {
+    final decoded = jsonDecode(payload);
+    if (decoded is! Map<String, dynamic> || decoded['encrypted'] != true) {
+      return payload;
+    }
+
+    final trimmedKey = encryptionKey?.trim();
+    if (trimmedKey == null || trimmedKey.isEmpty) {
+      throw CloudPayloadDecryptionException(
+        'A non-credential encryption key is required to restore the $domainLabel cloud payload.',
+      );
+    }
+
+    try {
+      return await _cloudBackupCryptoService.decryptText(
+        payload: EncryptedCloudPayload.fromJson(decoded),
+        encryptionKey: trimmedKey,
+      );
+    } catch (_) {
+      throw CloudPayloadDecryptionException(
+        'Unable to decrypt the $domainLabel cloud payload.',
+      );
+    }
   }
 
   Future<String> _restoreCredentialTitle(
@@ -866,7 +1017,9 @@ class CloudSyncPayloadService {
     required List<DbLentSettlement> lentSettlements,
   }) {
     final legacyManagedLentEntryIds = splitRecords
-        .where((item) => item.expenseEntryId != null && item.lentEntryId != null)
+        .where(
+          (item) => item.expenseEntryId != null && item.lentEntryId != null,
+        )
         .map((item) => item.lentEntryId)
         .whereType<int>()
         .toSet();
@@ -899,7 +1052,9 @@ class CloudSyncPayloadService {
             (item) => <String, dynamic>{
               'id': item.id,
               'expenseEntryId': item.expenseEntryId,
-              'lentEntryId': item.expenseEntryId != null ? null : item.lentEntryId,
+              'lentEntryId': item.expenseEntryId != null
+                  ? null
+                  : item.lentEntryId,
               'totalAmount': item.totalAmount,
               'createdAt': item.createdAt.toIso8601String(),
             },
@@ -938,9 +1093,10 @@ class CloudSyncPayloadService {
   _NormalizedExpenseSyncPayload _normalizeExpenseRestorePayload(
     Map<String, dynamic> expense,
   ) {
-    final rawEntries = (expense['entries'] as List<dynamic>? ?? const <dynamic>[])
-        .whereType<Map<String, dynamic>>()
-        .toList(growable: false);
+    final rawEntries =
+        (expense['entries'] as List<dynamic>? ?? const <dynamic>[])
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
     final rawSplitRecords =
         (expense['splitRecords'] as List<dynamic>? ?? const <dynamic>[])
             .whereType<Map<String, dynamic>>()
@@ -990,7 +1146,8 @@ class CloudSyncPayloadService {
           .map((item) {
             final normalized = Map<String, dynamic>.from(item);
             final entryId = normalized['id'];
-            if (entryId is int && totalAmountByExpenseEntryId.containsKey(entryId)) {
+            if (entryId is int &&
+                totalAmountByExpenseEntryId.containsKey(entryId)) {
               normalized['amount'] = totalAmountByExpenseEntryId[entryId];
             }
             return normalized;

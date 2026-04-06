@@ -9,8 +9,10 @@ import 'core/models/app_preferences.dart';
 import 'core/router/app_router.dart';
 import 'core/services/app_data_reset_service.dart';
 import 'core/services/app_settings_repository.dart';
+import 'core/services/cloud_backup_crypto_service.dart';
 import 'core/services/cloud_sync_payload_service.dart';
 import 'core/services/cloud_sync_scheduler.dart';
+import 'core/services/cloud_sync_security_service.dart';
 import 'core/services/cloud_sync_service.dart';
 import 'core/services/credential_crypto_service.dart';
 import 'core/services/credential_security_service.dart';
@@ -65,8 +67,10 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
   late final TaskCategoryRepository _taskCategoryRepository;
   late final ReminderSettingsRepository _reminderSettingsRepository;
   late final CloudSyncScheduler _cloudSyncScheduler;
+  late final CloudBackupCryptoService _cloudBackupCryptoService;
   late final FirebaseCloudSyncAuthService _firebaseCloudSyncAuthService;
   late final FirestoreCloudSyncStoreService _firestoreCloudSyncStoreService;
+  late final CloudSyncSecurityService _cloudSyncSecurityService;
   late final CloudSyncService _cloudSyncService;
   late final AppDataResetService _appDataResetService;
   late final Future<void> _bootstrap;
@@ -107,8 +111,10 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
     _taskRepository = TaskRepository(_database);
     _taskCategoryRepository = TaskCategoryRepository(_taskRepository);
     _cloudSyncScheduler = CloudSyncScheduler();
+    _cloudBackupCryptoService = CloudBackupCryptoService();
     _firebaseCloudSyncAuthService = FirebaseCloudSyncAuthService();
     _firestoreCloudSyncStoreService = FirestoreCloudSyncStoreService();
+    _cloudSyncSecurityService = CloudSyncSecurityService();
     _fileLauncherService = FileLauncherService();
     _moduleDataExportService = ModuleDataExportService(
       _appSettingsRepository,
@@ -128,8 +134,12 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
         database: _database,
         taskRepository: _taskRepository,
         taskCategoryRepository: _taskCategoryRepository,
+        appSettingsRepository: _appSettingsRepository,
+        reminderSettingsRepository: _reminderSettingsRepository,
         credentialCryptoService: _credentialCryptoService,
+        cloudBackupCryptoService: _cloudBackupCryptoService,
       ),
+      cloudSyncSecurityService: _cloudSyncSecurityService,
       credentialSecurityService: _credentialSecurityService,
       scheduler: _cloudSyncScheduler,
       notificationService: _notificationService,

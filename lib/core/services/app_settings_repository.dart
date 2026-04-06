@@ -72,6 +72,32 @@ class AppSettingsRepository {
     await _commit(settings.copyWith(cloudSync: preferences));
   }
 
+  Future<void> acceptPrivacyPolicy(String version) async {
+    final settings = await getSettings();
+    await _commit(
+      settings.copyWith(acceptedPrivacyPolicyVersion: version.trim()),
+    );
+  }
+
+  Future<Map<String, dynamic>> exportForCloud() async {
+    final settings = await getSettings();
+    return _toCloudJson(settings);
+  }
+
+  Future<void> restoreFromCloud(Object? json) async {
+    final current = await getSettings();
+    final restored = _fromCloudJson(json, fallback: current);
+    await _commit(restored);
+  }
+
+  Future<DateTime?> lastModifiedAt() async {
+    final file = await _settingsFile();
+    if (!await file.exists()) {
+      return null;
+    }
+    return file.lastModified();
+  }
+
   Future<void> flush() => _pendingWrite;
 
   Future<void> dispose() async {
@@ -102,7 +128,20 @@ class AppSettingsRepository {
       'credentialExpiryNotificationEnabled':
           settings.credentialExpiryNotificationEnabled,
       'exportDirectoryPath': settings.exportDirectoryPath,
+      'acceptedPrivacyPolicyVersion': settings.acceptedPrivacyPolicyVersion,
       'cloudSync': _cloudSyncToJson(settings.cloudSync),
+    };
+  }
+
+  Map<String, dynamic> _toCloudJson(AppPreferences settings) {
+    return <String, dynamic>{
+      'themeMode': settings.themeMode.name,
+      'notificationsEnabled': settings.notificationsEnabled,
+      'credentialExpiryNotificationEnabled':
+          settings.credentialExpiryNotificationEnabled,
+      'exportDirectoryPath': settings.exportDirectoryPath,
+      'acceptedPrivacyPolicyVersion': settings.acceptedPrivacyPolicyVersion,
+      'cloudSync': _cloudSyncToCloudJson(settings.cloudSync),
     };
   }
 
@@ -123,7 +162,50 @@ class AppSettingsRepository {
       exportDirectoryPath: _exportDirectoryPathFromJson(
         json['exportDirectoryPath'],
       ),
+      acceptedPrivacyPolicyVersion: _stringFromJson(
+        json['acceptedPrivacyPolicyVersion'],
+      ),
       cloudSync: _cloudSyncFromJson(json['cloudSync']),
+    );
+  }
+
+  AppPreferences _fromCloudJson(
+    Object? json, {
+    required AppPreferences fallback,
+  }) {
+    if (json is! Map) {
+      return fallback;
+    }
+
+    final restoredCloudSync = _cloudSyncFromCloudJson(
+      json['cloudSync'],
+      fallback: fallback.cloudSync,
+    );
+
+    return AppPreferences(
+      themeMode: _themeModeFromString(json['themeMode']),
+      notificationsEnabled: _notificationsEnabledFromJson(
+        json['notificationsEnabled'],
+      ),
+      credentialExpiryNotificationEnabled:
+          json['credentialExpiryNotificationEnabled'] is bool
+          ? json['credentialExpiryNotificationEnabled'] as bool
+          : fallback.credentialExpiryNotificationEnabled,
+      exportDirectoryPath: json.containsKey('exportDirectoryPath')
+          ? _exportDirectoryPathFromJson(json['exportDirectoryPath'])
+          : fallback.exportDirectoryPath,
+      acceptedPrivacyPolicyVersion: json.containsKey(
+            'acceptedPrivacyPolicyVersion',
+          )
+          ? _stringFromJson(json['acceptedPrivacyPolicyVersion'])
+          : fallback.acceptedPrivacyPolicyVersion,
+      cloudSync: fallback.cloudSync.copyWith(
+        enabled: restoredCloudSync.enabled,
+        syncCredentials: restoredCloudSync.syncCredentials,
+        autoBackupEnabled: restoredCloudSync.autoBackupEnabled,
+        autoBackupHour: restoredCloudSync.autoBackupHour,
+        autoBackupMinute: restoredCloudSync.autoBackupMinute,
+      ),
     );
   }
 
@@ -143,6 +225,10 @@ class AppSettingsRepository {
     return value is String && value.trim().isNotEmpty ? value : null;
   }
 
+  String? _stringFromJson(Object? value) {
+    return value is String && value.trim().isNotEmpty ? value.trim() : null;
+  }
+
   Map<String, dynamic> _cloudSyncToJson(CloudSyncPreferences preferences) {
     return <String, dynamic>{
       'enabled': preferences.enabled,
@@ -157,6 +243,16 @@ class AppSettingsRepository {
       'lastSyncedAccountEmail': preferences.lastSyncedAccountEmail,
       'lastKnownCloudBackupAt': preferences.lastKnownCloudBackupAt
           ?.toIso8601String(),
+    };
+  }
+
+  Map<String, dynamic> _cloudSyncToCloudJson(CloudSyncPreferences preferences) {
+    return <String, dynamic>{
+      'enabled': preferences.enabled,
+      'syncCredentials': preferences.syncCredentials,
+      'autoBackupEnabled': preferences.autoBackupEnabled,
+      'autoBackupHour': preferences.autoBackupHour,
+      'autoBackupMinute': preferences.autoBackupMinute,
     };
   }
 
@@ -185,6 +281,35 @@ class AppSettingsRepository {
           : null,
       lastKnownCloudBackupAt: _dateTimeFromJson(
         value['lastKnownCloudBackupAt'],
+      ),
+    );
+  }
+
+  CloudSyncPreferences _cloudSyncFromCloudJson(
+    Object? value, {
+    required CloudSyncPreferences fallback,
+  }) {
+    if (value is! Map) {
+      return fallback;
+    }
+
+    return fallback.copyWith(
+      enabled: value['enabled'] is bool
+          ? value['enabled'] as bool
+          : fallback.enabled,
+      syncCredentials: value['syncCredentials'] is bool
+          ? value['syncCredentials'] as bool
+          : fallback.syncCredentials,
+      autoBackupEnabled: value['autoBackupEnabled'] is bool
+          ? value['autoBackupEnabled'] as bool
+          : fallback.autoBackupEnabled,
+      autoBackupHour: _intFromJson(
+        value['autoBackupHour'],
+        fallback: fallback.autoBackupHour,
+      ),
+      autoBackupMinute: _intFromJson(
+        value['autoBackupMinute'],
+        fallback: fallback.autoBackupMinute,
       ),
     );
   }

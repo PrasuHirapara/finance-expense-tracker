@@ -9,8 +9,10 @@ import '../../features/credentials/data/repositories/credential_repository.dart'
 import '../../features/tasks/data/repositories/task_category_repository.dart';
 import '../../features/tasks/data/repositories/task_repository.dart';
 import 'app_settings_repository.dart';
+import 'cloud_backup_crypto_service.dart';
 import 'cloud_sync_payload_service.dart';
 import 'cloud_sync_scheduler.dart';
+import 'cloud_sync_security_service.dart';
 import 'cloud_sync_service.dart';
 import 'credential_crypto_service.dart';
 import 'credential_security_service.dart';
@@ -40,6 +42,8 @@ void cloudSyncCallbackDispatcher() {
     final credentialSecurityService = CredentialSecurityService();
     final taskRepository = TaskRepository(database);
     final taskCategoryRepository = TaskCategoryRepository(taskRepository);
+    final cloudBackupCryptoService = CloudBackupCryptoService();
+    final cloudSyncSecurityService = CloudSyncSecurityService();
     final notificationService = NotificationService(
       reminderSettingsRepository: reminderSettingsRepository,
       appSettingsRepository: appSettingsRepository,
@@ -55,8 +59,12 @@ void cloudSyncCallbackDispatcher() {
         database: database,
         taskRepository: taskRepository,
         taskCategoryRepository: taskCategoryRepository,
+        appSettingsRepository: appSettingsRepository,
+        reminderSettingsRepository: reminderSettingsRepository,
         credentialCryptoService: credentialCryptoService,
+        cloudBackupCryptoService: cloudBackupCryptoService,
       ),
+      cloudSyncSecurityService: cloudSyncSecurityService,
       credentialSecurityService: credentialSecurityService,
       scheduler: CloudSyncScheduler(),
       notificationService: notificationService,

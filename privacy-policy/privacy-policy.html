@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Use Privacy Policy</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(180deg, #f5f1e8 0%, #f8fafb 100%);
+      color: #1f2933;
+      line-height: 1.7;
+    }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 40px 20px 64px;
+    }
+
+    h1, h2 {
+      color: #102a43;
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .meta {
+      color: #52606d;
+      margin-bottom: 16px;
+    }
+
+    .intro {
+      margin-bottom: 24px;
+      font-size: 1.02rem;
+    }
+
+    section {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 16px;
+      box-shadow: 0 10px 30px rgba(16, 42, 67, 0.08);
+    }
+
+    ul {
+      padding-left: 22px;
+      margin: 10px 0 14px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    strong {
+      color: #0b4f6c;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Privacy Policy</h1>
+    <p class="meta">Last updated: April 6, 2026</p>
+    <p class="intro">
+      This Privacy Policy explains how <strong>Daily Use</strong> stores, processes, protects, and restores
+      the information you place inside the app. It is intended to help you understand the app behavior implemented
+      in this project, especially around <strong>local storage</strong>, <strong>reminders</strong>,
+      <strong>encryption</strong>, and optional <strong>Firebase cloud backup</strong>.
+    </p>
+
+    <section>
+      <h2>1. Information Stored by the App</h2>
+      <p>
+        Daily Use can store several kinds of information so the app keeps working between sessions and so your records
+        remain available on the same device.
+      </p>
+      <ul>
+        <li>Credential records, including encrypted credential payloads and related metadata.</li>
+        <li>Expense records, banks, categories, split information, and transaction history.</li>
+        <li>Task records, task categories, completion state, and task dates.</li>
+        <li>Reminder preferences, app theme, export folder path, notification settings, and cloud sync preferences.</li>
+        <li>Privacy-policy acceptance version so the app can know whether you have accepted the current policy text.</li>
+      </ul>
+      <p>
+        Some information is stored in the app database, while some settings are stored in local settings files on the
+        device. These values are used only to provide the app features described in the project.
+      </p>
+    </section>
+
+    <section>
+      <h2>2. Local Device Storage</h2>
+      <p>
+        Most app data is intended to live primarily on <strong>your own device</strong>. This includes expense data,
+        task data, settings, and locally stored credential records.
+      </p>
+      <p>
+        Credential records are treated differently from ordinary app data. The credential content is encrypted before
+        local storage, while some visible metadata, such as titles, may remain readable in the app so you can identify
+        entries more easily.
+      </p>
+      <p>
+        If you delete the app, clear storage, reset the device, or remove local data from the app settings,
+        some or all of this locally stored information may be removed unless you have separately backed it up.
+      </p>
+    </section>
+
+    <section>
+      <h2>3. Cloud Backup and Firebase</h2>
+      <p>
+        Cloud sync is <strong>optional</strong>. If you enable it, Daily Use can store backup documents in your Firebase
+        project under your signed-in account. This backup is designed to help you restore app data on the same or
+        another device using the same signed-in Firebase account.
+      </p>
+      <ul>
+        <li>Expense data can be backed up to Firebase.</li>
+        <li>Task data can be backed up to Firebase.</li>
+        <li>Saved app settings and reminder settings can be backed up to Firebase.</li>
+        <li>Credential backup is optional and can be turned on or off separately.</li>
+      </ul>
+      <p>
+        If credential cloud backup is disabled, credential records are intended to remain local only, and any previous
+        Firebase credential backup for that signed-in account is intended to be deleted when the option is turned off.
+      </p>
+    </section>
+
+    <section>
+      <h2>4. Encryption and Data Protection</h2>
+      <p>
+        The app uses separate protection paths for different kinds of data. This distinction is important.
+      </p>
+      <ul>
+        <li><strong>Credential data</strong> uses a dedicated credential encryption key flow.</li>
+        <li><strong>Expense, task, and settings cloud payloads</strong> use a separate encryption flow and do not use the credential encryption key.</li>
+        <li>Credential titles and selected credential metadata may be additionally protected during cloud sync when credential backup is enabled.</li>
+        <li>Secure-storage mechanisms supported by the device platform are used where applicable for sensitive local key material.</li>
+      </ul>
+      <p>
+        Although the app uses encryption and storage safeguards, no software system can promise absolute security.
+        You remain responsible for protecting access to your device, Firebase account, and any keys or credentials
+        that you create.
+      </p>
+    </section>
+
+    <section>
+      <h2>5. Account and Sign-In Information</h2>
+      <p>
+        If you choose to sign in with Firebase, the app may process basic account-related data so the cloud sync feature
+        can identify your account and attach backups to it.
+      </p>
+      <ul>
+        <li>Firebase user ID</li>
+        <li>Email address</li>
+        <li>Display name</li>
+        <li>Provider information, such as Google or email/password</li>
+        <li>Basic sign-in timestamps used by Firebase-related account features</li>
+      </ul>
+      <p>
+        This account information is used for app account linkage and cloud backup behavior. The project expects Firebase
+        security rules to limit access so users only read and write their own cloud data.
+      </p>
+    </section>
+
+    <section>
+      <h2>6. Notifications and Reminders</h2>
+      <p>
+        The app can schedule reminders for expenses, tasks, and credential expiry. Those reminders depend on your local
+        settings and platform notification permissions.
+      </p>
+      <p>
+        If reminders are enabled, the app may use stored reminder times and task or credential metadata to schedule
+        local notifications on your device. These notifications are meant to improve usability and do not require
+        cloud sync to work.
+      </p>
+    </section>
+
+    <section>
+      <h2>7. Your Choices and Controls</h2>
+      <p>You remain in control of several important privacy-related choices inside the app.</p>
+      <ul>
+        <li>Use the app without signing in to Firebase.</li>
+        <li>Enable or disable cloud sync.</li>
+        <li>Enable or disable credential cloud backup separately.</li>
+        <li>Turn notifications and reminders on or off.</li>
+        <li>Delete local app data from the app settings area.</li>
+        <li>Delete cloud backup data linked to your Firebase account.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>8. First-Run Acceptance</h2>
+      <p>
+        On first launch, the app asks you to review and accept this Privacy Policy before continuing to use the main
+        experience. The accepted version may be stored in app settings and may also be restored if your settings are
+        restored from backup.
+      </p>
+      <p>
+        If the policy is updated in a future version, the app may ask you to review and accept the updated version again.
+      </p>
+    </section>
+
+    <section>
+      <h2>9. Policy Changes</h2>
+      <p>
+        This Privacy Policy may change as app features change. If storage, backup, encryption, or account behavior changes
+        materially, the in-app policy text and related HTML copies should be updated to reflect those changes.
+      </p>
+    </section>
+
+    <section>
+      <h2>10. Important Notice</h2>
+      <p>
+        This Privacy Policy is provided for transparency regarding the behavior implemented in this project.
+        It is <strong>not legal advice</strong>, and it does not replace advice from a qualified lawyer or compliance professional.
+      </p>
+    </section>
+  </main>
+</body>
+</html>

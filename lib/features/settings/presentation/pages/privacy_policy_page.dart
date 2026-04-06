@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/constants/legal_constants.dart';
+
 class PrivacyPolicyPage extends StatelessWidget {
   const PrivacyPolicyPage({super.key});
 
@@ -15,41 +17,164 @@ class PrivacyPolicyPage extends StatelessWidget {
           Text('Privacy Policy', style: theme.textTheme.headlineMedium),
           const SizedBox(height: 8),
           Text(
-            'Last updated: April 3, 2026',
+            'Last updated: ${LegalConstants.privacyPolicyLastUpdatedLabel}',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
+          const SizedBox(height: 12),
+          Text(
+            'This Privacy Policy explains how Daily Use stores, processes, protects, and restores the information you place inside the app. It is written to help you understand the app behavior implemented in this project, especially around local storage, reminders, encryption, and optional Firebase cloud backup.',
+            style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+          ),
           const SizedBox(height: 20),
-          const _PolicySection(
-            title: 'What the app stores',
-            body:
-                'Credential, expense, task, and preference data are primarily stored on your device. Credential fields are encrypted before local storage. Local credential titles remain visible in the app so you can identify entries quickly.',
+          _PolicySection(
+            title: '1. Information Stored by the App',
+            children: const <Widget>[
+              _PolicyParagraph(
+                'Daily Use can store several kinds of information so the app keeps working between sessions and so your records remain available on the same device.',
+              ),
+              _PolicyBulletList(
+                items: <String>[
+                  'Credential records, including encrypted credential payloads and related metadata.',
+                  'Expense records, banks, categories, split information, and transaction history.',
+                  'Task records, task categories, completion state, and task dates.',
+                  'Reminder preferences, app theme, export folder path, notification settings, and cloud sync preferences.',
+                  'Privacy-policy acceptance version so the app can know whether you have accepted the current policy text.',
+                ],
+              ),
+              _PolicyParagraph(
+                'Some information is stored in the app database, while some settings are stored in local settings files on the device. These values are used only to provide the app features described in the project.',
+              ),
+            ],
           ),
-          const _PolicySection(
-            title: 'Cloud sync',
-            body:
-                'Cloud sync is optional. If enabled, the app can store backups in your Firebase project under your signed-in account. You can choose whether credential data is included in that backup. When credential backup is enabled, credential titles are encrypted before upload and the encrypted credential payload is uploaded. If credential backup is disabled, credential records stay local and any previous Firebase credential backup is deleted.',
+          _PolicySection(
+            title: '2. Local Device Storage',
+            children: const <Widget>[
+              _PolicyParagraph(
+                'Most app data is intended to live primarily on your own device. This includes expense data, task data, settings, and locally stored credential records.',
+              ),
+              _PolicyParagraph(
+                'Credential records are treated differently from ordinary app data. The credential content is encrypted before local storage, while some visible metadata, such as titles, may remain readable in the app so you can identify entries more easily.',
+              ),
+              _PolicyParagraph(
+                'If you delete the app, clear storage, reset the device, or remove local data from the app settings, some or all of this locally stored information may be removed unless you have separately backed it up.',
+              ),
+            ],
           ),
-          const _PolicySection(
-            title: 'Account information',
-            body:
-                'If you sign in with Firebase, the app stores basic account profile details such as your user ID, email address, display name, provider list, and sign-in timestamps so cloud sync can be tied to your account.',
+          _PolicySection(
+            title: '3. Cloud Backup and Firebase',
+            children: const <Widget>[
+              _PolicyParagraph(
+                'Cloud sync is optional. If you enable it, Daily Use can store backup documents in your Firebase project under your signed-in account. This backup is designed to help you restore app data on the same or another device using the same signed-in Firebase account.',
+              ),
+              _PolicyBulletList(
+                items: <String>[
+                  'Expense data can be backed up to Firebase.',
+                  'Task data can be backed up to Firebase.',
+                  'Saved app settings and reminder settings can be backed up to Firebase.',
+                  'Credential backup is optional and can be turned on or off separately.',
+                ],
+              ),
+              _PolicyParagraph(
+                'If credential cloud backup is disabled, credential records are intended to remain local only, and any previous Firebase credential backup for that signed-in account is intended to be deleted when the option is turned off.',
+              ),
+            ],
           ),
-          const _PolicySection(
-            title: 'Security controls',
-            body:
-                'Credential encryption keys are stored using the device secure-storage facilities supported by the platform. Biometric authentication can be used as an access gate where supported. Firestore access is expected to be restricted so users can only read and write their own documents.',
+          _PolicySection(
+            title: '4. Encryption and Data Protection',
+            children: const <Widget>[
+              _PolicyParagraph(
+                'The app uses separate protection paths for different kinds of data. This distinction is important.',
+              ),
+              _PolicyBulletList(
+                items: <String>[
+                  'Credential data uses a dedicated credential encryption key flow.',
+                  'Expense, task, and settings cloud payloads use a separate encryption flow and do not use the credential encryption key.',
+                  'Credential titles and selected credential metadata may be additionally protected during cloud sync when credential backup is enabled.',
+                  'Secure-storage mechanisms supported by the device platform are used where applicable for sensitive local key material.',
+                ],
+              ),
+              _PolicyParagraph(
+                'Although the app uses encryption and storage safeguards, no software system can promise absolute security. You remain responsible for protecting access to your device, Firebase account, and any keys or credentials that you create.',
+              ),
+            ],
           ),
-          const _PolicySection(
-            title: 'Your choices',
-            body:
-                'You can use the app without signing in, disable cloud sync, disable credential cloud backup separately, delete cloud data for your account, or remove all app data locally from the settings screens.',
+          _PolicySection(
+            title: '5. Account and Sign-In Information',
+            children: const <Widget>[
+              _PolicyParagraph(
+                'If you choose to sign in with Firebase, the app may process basic account-related data so the cloud sync feature can identify your account and attach backups to it.',
+              ),
+              _PolicyBulletList(
+                items: <String>[
+                  'Firebase user ID',
+                  'Email address',
+                  'Display name',
+                  'Provider information, such as Google or email/password',
+                  'Basic sign-in timestamps used by Firebase-related account features',
+                ],
+              ),
+              _PolicyParagraph(
+                'This account information is used for app account linkage and cloud backup behavior. The project expects Firebase security rules to limit access so users only read and write their own cloud data.',
+              ),
+            ],
           ),
-          const _PolicySection(
-            title: 'Important note',
-            body:
-                'This page describes the app behavior implemented in this project and is provided for transparency inside the app. It is not legal advice.',
+          _PolicySection(
+            title: '6. Notifications and Reminders',
+            children: const <Widget>[
+              _PolicyParagraph(
+                'The app can schedule reminders for expenses, tasks, and credential expiry. Those reminders depend on your local settings and platform notification permissions.',
+              ),
+              _PolicyParagraph(
+                'If reminders are enabled, the app may use stored reminder times and task or credential metadata to schedule local notifications on your device. These notifications are meant to improve usability and do not require cloud sync to work.',
+              ),
+            ],
+          ),
+          _PolicySection(
+            title: '7. Your Choices and Controls',
+            children: const <Widget>[
+              _PolicyParagraph(
+                'You remain in control of several important privacy-related choices inside the app.',
+              ),
+              _PolicyBulletList(
+                items: <String>[
+                  'Use the app without signing in to Firebase.',
+                  'Enable or disable cloud sync.',
+                  'Enable or disable credential cloud backup separately.',
+                  'Turn notifications and reminders on or off.',
+                  'Delete local app data from the app settings area.',
+                  'Delete cloud backup data linked to your Firebase account.',
+                ],
+              ),
+            ],
+          ),
+          _PolicySection(
+            title: '8. First-Run Acceptance',
+            children: const <Widget>[
+              _PolicyParagraph(
+                'On first launch, the app asks you to review and accept this Privacy Policy before continuing to use the main experience. The accepted version may be stored in app settings and may also be restored if your settings are restored from backup.',
+              ),
+              _PolicyParagraph(
+                'If the policy is updated in a future version, the app may ask you to review and accept the updated version again.',
+              ),
+            ],
+          ),
+          _PolicySection(
+            title: '9. Policy Changes',
+            children: const <Widget>[
+              _PolicyParagraph(
+                'This Privacy Policy may change as app features change. If storage, backup, encryption, or account behavior changes materially, the in-app policy text and related HTML copies should be updated to reflect those changes.',
+              ),
+            ],
+          ),
+          _PolicySection(
+            title: '10. Important Notice',
+            children: const <Widget>[
+              _PolicyParagraph(
+                'This Privacy Policy is provided for transparency regarding the behavior implemented in this project. It is not legal advice, and it does not replace advice from a qualified lawyer or compliance professional.',
+              ),
+            ],
           ),
         ],
       ),
@@ -60,27 +185,77 @@ class PrivacyPolicyPage extends StatelessWidget {
 class _PolicySection extends StatelessWidget {
   const _PolicySection({
     required this.title,
-    required this.body,
+    required this.children,
   });
 
   final String title;
-  final String body;
+  final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(title, style: theme.textTheme.titleLarge),
-          const SizedBox(height: 6),
-          Text(
-            body,
-            style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
-          ),
+          const SizedBox(height: 8),
+          ...children,
         ],
+      ),
+    );
+  }
+}
+
+class _PolicyParagraph extends StatelessWidget {
+  const _PolicyParagraph(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.6),
+      ),
+    );
+  }
+}
+
+class _PolicyBulletList extends StatelessWidget {
+  const _PolicyBulletList({
+    required this.items,
+  });
+
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final textStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(height: 1.6);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: items
+            .map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('• ', style: textStyle),
+                    Expanded(child: Text(item, style: textStyle)),
+                  ],
+                ),
+              ),
+            )
+            .toList(growable: false),
       ),
     );
   }

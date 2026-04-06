@@ -14,6 +14,10 @@ class CloudSyncSecurityService {
   final FlutterSecureStorage _storage;
   final Random _random = Random.secure();
 
+  String buildCloudPayloadEncryptionKey({required String userId}) {
+    return 'daily_use.cloud_payload::$userId';
+  }
+
   Future<String> getOrCreateBackupKey() async {
     final existing = await _storage.read(key: _backupKeyStorageKey);
     if (existing != null && existing.isNotEmpty) {

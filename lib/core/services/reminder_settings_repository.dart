@@ -148,6 +148,25 @@ class ReminderSettingsRepository {
     );
   }
 
+  Future<Map<String, dynamic>> exportForCloud() async {
+    final settings = await getSettings();
+    return settings.toJson();
+  }
+
+  Future<void> restoreFromCloud(Object? json) async {
+    final current = await getSettings();
+    final restored = json is Map ? ReminderSettings.fromJson(json) : current;
+    await _commit(restored);
+  }
+
+  Future<DateTime?> lastModifiedAt() async {
+    final file = await _settingsFile();
+    if (!await file.exists()) {
+      return null;
+    }
+    return file.lastModified();
+  }
+
   Future<void> dispose() async {
     await _controller.close();
   }

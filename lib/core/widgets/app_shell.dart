@@ -2,14 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_preferences.dart';
+import '../constants/legal_constants.dart';
+import '../router/app_router.dart';
+import '../services/app_settings_repository.dart';
 import '../../features/credentials/presentation/pages/credential_module_page.dart';
 import '../../features/expense/presentation/pages/expense_module_page.dart';
 import '../../features/settings/presentation/pages/settings_module_page.dart';
+import '../../features/settings/presentation/widgets/privacy_policy_consent_dialog.dart';
 import '../../features/tasks/presentation/pages/tasks_module_page.dart';
 import '../blocs/module_navigation_bloc.dart';
 
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   const AppShell({super.key});
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  bool _dialogCheckStarted = false;
+  bool _dialogVisible = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_dialogCheckStarted) {
+      return;
+    }
+    _dialogCheckStarted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showPrivacyDialogIfNeeded();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,5 +150,42 @@ class AppShell extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _showPrivacyDialogIfNeeded() async {
+    if (!mounted || _dialogVisible) {
+      return;
+    }
+
+    final settingsRepository = context.read<AppSettingsRepository>();
+    final settings = await settingsRepository.getSettings();
+    if (!mounted ||
+        settings.acceptedPrivacyPolicyVersion ==
+            LegalConstants.privacyPolicyVersion) {
+      return;
+    }
+
+    _dialogVisible = true;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return PrivacyPolicyConsentDialog(
+          lastUpdatedLabel: LegalConstants.privacyPolicyLastUpdatedLabel,
+          onViewFullPolicy: () {
+            Navigator.of(dialogContext).pushNamed(AppRoutes.privacyPolicy);
+          },
+          onAccept: () async {
+            await settingsRepository.acceptPrivacyPolicy(
+              LegalConstants.privacyPolicyVersion,
+            );
+            if (dialogContext.mounted) {
+              Navigator.of(dialogContext).pop();
+            }
+          },
+        );
+      },
+    );
+    _dialogVisible = false;
   }
 }

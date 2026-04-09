@@ -84,6 +84,12 @@ class AppConstants {
     colorValue: 0xFF1ABC9C,
   );
 
+  static final DefaultCategorySeed borrowedCategorySeed = DefaultCategorySeed(
+    name: 'Borrowed',
+    iconCodePoint: Icons.account_balance_wallet_rounded.codePoint,
+    colorValue: 0xFF2E86DE,
+  );
+
   static const List<IconData> categoryIconChoices = <IconData>[
     Icons.restaurant_rounded,
     Icons.school_rounded,
@@ -97,6 +103,7 @@ class AppConstants {
     Icons.category_rounded,
     Icons.pets_rounded,
     Icons.savings_rounded,
+    Icons.account_balance_wallet_rounded,
   ];
 
   static const List<int> categoryColorChoices = <int>[
@@ -112,6 +119,7 @@ class AppConstants {
     0xFF7F8C8D,
     0xFFD35400,
     0xFF1ABC9C,
+    0xFF2E86DE,
   ];
 
   static const List<String> taskCategoryChoices = <String>[
@@ -165,6 +173,9 @@ class AppConstants {
     }
     if (codePoint == Icons.savings_rounded.codePoint) {
       return Icons.savings_rounded;
+    }
+    if (codePoint == Icons.account_balance_wallet_rounded.codePoint) {
+      return Icons.account_balance_wallet_rounded;
     }
     return Icons.category_rounded;
   }

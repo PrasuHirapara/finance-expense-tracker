@@ -40,24 +40,41 @@ Future<LentResolutionDraft?> showLentResolutionEditor(
   );
 }
 
+Future<BorrowedResolutionDraft?> showBorrowedResolutionEditor(
+  BuildContext context, {
+  required ExpenseRepository repository,
+  required double expenseAmount,
+  BorrowedResolutionDraft? initialDraft,
+}) {
+  return Navigator.of(context).push<BorrowedResolutionDraft>(
+    MaterialPageRoute<BorrowedResolutionDraft>(
+      builder: (_) => _BorrowedResolutionPage(
+        repository: repository,
+        expenseAmount: expenseAmount,
+        initialDraft: initialDraft,
+      ),
+      fullscreenDialog: true,
+    ),
+  );
+}
+
 class _ExpenseSplitEditorPage extends StatefulWidget {
-  const _ExpenseSplitEditorPage({
-    required this.totalAmount,
-    this.initialDraft,
-  });
+  const _ExpenseSplitEditorPage({required this.totalAmount, this.initialDraft});
 
   final double totalAmount;
   final ExpenseSplitDraft? initialDraft;
 
   @override
-  State<_ExpenseSplitEditorPage> createState() => _ExpenseSplitEditorPageState();
+  State<_ExpenseSplitEditorPage> createState() =>
+      _ExpenseSplitEditorPageState();
 }
 
 class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
   static final List<TextInputFormatter> _decimalInputFormatters =
       <TextInputFormatter>[_TwoDecimalTextInputFormatter()];
 
-  final List<_SplitParticipantController> _participants = <_SplitParticipantController>[];
+  final List<_SplitParticipantController> _participants =
+      <_SplitParticipantController>[];
   bool _syncing = false;
 
   bool get _locked => widget.initialDraft?.hasSettlements ?? false;
@@ -78,10 +95,13 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
 
   void _seedParticipants() {
     final source = widget.initialDraft;
-    final items = source?.participants ??
+    final items =
+        source?.participants ??
         _equalSeed(totalAmount: widget.totalAmount, count: 2);
     for (final participant in items) {
-      _participants.add(_SplitParticipantController.fromParticipant(participant));
+      _participants.add(
+        _SplitParticipantController.fromParticipant(participant),
+      );
     }
   }
 
@@ -102,7 +122,9 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
           amount: double.parse(amount.toStringAsFixed(2)),
           percentage: double.parse(percentage.toStringAsFixed(2)),
           isSelf: index == 0,
-          settledAmount: index == 0 ? double.parse(amount.toStringAsFixed(2)) : 0,
+          settledAmount: index == 0
+              ? double.parse(amount.toStringAsFixed(2))
+              : 0,
           sortOrder: index,
         ),
       );
@@ -116,7 +138,10 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
     if (_locked) {
       return;
     }
-    final next = _equalSeed(totalAmount: widget.totalAmount, count: _participants.length);
+    final next = _equalSeed(
+      totalAmount: widget.totalAmount,
+      count: _participants.length,
+    );
     _syncing = true;
     for (var index = 0; index < _participants.length; index++) {
       final controller = _participants[index];
@@ -127,7 +152,9 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
                 : controller.nameController.text
           : controller.nameController.text;
       controller.amountController.text = _formatNumber(participant.amount);
-      controller.percentageController.text = _formatNumber(participant.percentage);
+      controller.percentageController.text = _formatNumber(
+        participant.percentage,
+      );
     }
     _syncing = false;
     setState(() {});
@@ -220,9 +247,14 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
       );
     }
 
-    final totalAmount = participants.fold<double>(0, (sum, item) => sum + item.amount);
-    final totalPercentage =
-        participants.fold<double>(0, (sum, item) => sum + item.percentage);
+    final totalAmount = participants.fold<double>(
+      0,
+      (sum, item) => sum + item.amount,
+    );
+    final totalPercentage = participants.fold<double>(
+      0,
+      (sum, item) => sum + item.percentage,
+    );
     if ((totalAmount - widget.totalAmount).abs() > 0.01) {
       _showError('Participant amounts must exactly match the expense amount.');
       return null;
@@ -242,7 +274,9 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   double _parseValue(String value) => double.tryParse(value) ?? 0;
@@ -262,7 +296,8 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
     );
     final percentageTotal = _participants.fold<double>(
       0,
-      (sum, item) => sum + (double.tryParse(item.percentageController.text) ?? 0),
+      (sum, item) =>
+          sum + (double.tryParse(item.percentageController.text) ?? 0),
     );
 
     return Scaffold(
@@ -344,14 +379,16 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
                               controller: participant.amountController,
                               enabled: !_locked,
                               inputFormatters: _decimalInputFormatters,
-                              keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               decoration: const InputDecoration(
                                 labelText: 'Amount',
                                 prefixText: 'Rs ',
                               ),
-                              onChanged: (value) => _onAmountChanged(participant, value),
+                              onChanged: (value) =>
+                                  _onAmountChanged(participant, value),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -360,9 +397,10 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
                               controller: participant.percentageController,
                               enabled: !_locked,
                               inputFormatters: _decimalInputFormatters,
-                              keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
                               decoration: const InputDecoration(
                                 labelText: 'Percentage',
                                 suffixText: '%',
@@ -421,8 +459,8 @@ class _LentResolutionPage extends StatefulWidget {
 }
 
 class _LentResolutionPageState extends State<_LentResolutionPage> {
-  late final Future<List<LentResolutionCandidate>> _future =
-      widget.repository.loadResolvableLentEntries();
+  late final Future<List<LentResolutionCandidate>> _future = widget.repository
+      .loadResolvableLentEntries();
   final TextEditingController _searchController = TextEditingController();
   LentResolutionCandidate? _selected;
   final Set<String> _selectedKeys = <String>{};
@@ -464,8 +502,9 @@ class _LentResolutionPageState extends State<_LentResolutionPage> {
                 : () {
                     final participants = _selected!.splitDraft.participants
                         .where(
-                          (participant) =>
-                              _selectedKeys.contains(_participantKey(participant)),
+                          (participant) => _selectedKeys.contains(
+                            _participantKey(participant),
+                          ),
                         )
                         .toList(growable: false);
                     final total = participants.fold<double>(
@@ -500,17 +539,19 @@ class _LentResolutionPageState extends State<_LentResolutionPage> {
             return const Center(child: CircularProgressIndicator());
           }
           final all = snapshot.data!;
-          final filtered = all.where((candidate) {
-            final query = _searchController.text.trim().toLowerCase();
-            if (query.isEmpty) {
-              return true;
-            }
-            return <String>[
-              candidate.entry.title,
-              candidate.entry.counterparty ?? '',
-              ...candidate.splitDraft.participants.map((item) => item.name),
-            ].any((value) => value.toLowerCase().contains(query));
-          }).toList(growable: false);
+          final filtered = all
+              .where((candidate) {
+                final query = _searchController.text.trim().toLowerCase();
+                if (query.isEmpty) {
+                  return true;
+                }
+                return <String>[
+                  candidate.entry.title,
+                  candidate.entry.counterparty ?? '',
+                  ...candidate.splitDraft.participants.map((item) => item.name),
+                ].any((value) => value.toLowerCase().contains(query));
+              })
+              .toList(growable: false);
 
           if (_selected == null &&
               widget.initialDraft != null &&
@@ -526,12 +567,16 @@ class _LentResolutionPageState extends State<_LentResolutionPage> {
             }
           }
 
-          final selectedTotal = _selected?.splitDraft.participants
+          final selectedTotal =
+              _selected?.splitDraft.participants
                   .where(
                     (participant) =>
                         _selectedKeys.contains(_participantKey(participant)),
                   )
-                  .fold<double>(0, (sum, participant) => sum + participant.pendingAmount) ??
+                  .fold<double>(
+                    0,
+                    (sum, participant) => sum + participant.pendingAmount,
+                  ) ??
               0;
 
           return ListView(
@@ -548,8 +593,12 @@ class _LentResolutionPageState extends State<_LentResolutionPage> {
               const SizedBox(height: 16),
               Card(
                 child: ListTile(
-                  title: Text('Income amount: ${AppConstants.currency(widget.incomeAmount)}'),
-                  subtitle: Text('Selected total: ${AppConstants.currency(selectedTotal)}'),
+                  title: Text(
+                    'Income amount: ${AppConstants.currency(widget.incomeAmount)}',
+                  ),
+                  subtitle: Text(
+                    'Selected total: ${AppConstants.currency(selectedTotal)}',
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -633,6 +682,298 @@ class _LentResolutionPageState extends State<_LentResolutionPage> {
                     ),
                   );
                 }),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BorrowedResolutionPage extends StatefulWidget {
+  const _BorrowedResolutionPage({
+    required this.repository,
+    required this.expenseAmount,
+    this.initialDraft,
+  });
+
+  final ExpenseRepository repository;
+  final double expenseAmount;
+  final BorrowedResolutionDraft? initialDraft;
+
+  @override
+  State<_BorrowedResolutionPage> createState() =>
+      _BorrowedResolutionPageState();
+}
+
+class _BorrowedResolutionPageState extends State<_BorrowedResolutionPage> {
+  late final Future<List<BorrowedResolutionCandidate>> _future = widget
+      .repository
+      .loadResolvableBorrowedEntries();
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _settledAmountController =
+      TextEditingController();
+  BorrowedResolutionCandidate? _selected;
+  bool _syncingSettledAmount = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _settledAmountController.dispose();
+    super.dispose();
+  }
+
+  void _seedInitialSelection(List<BorrowedResolutionCandidate> candidates) {
+    final initialDraft = widget.initialDraft;
+    if (_selected != null || initialDraft == null) {
+      return;
+    }
+    for (final candidate in candidates) {
+      if (candidate.entry.id == initialDraft.borrowedEntryId) {
+        _selected = candidate;
+        _setSettledAmount(
+          initialDraft.settledAmount <= _maxAllowedAmountFor(candidate)
+              ? initialDraft.settledAmount
+              : _maxAllowedAmountFor(candidate),
+        );
+        return;
+      }
+    }
+  }
+
+  double _selectedAmount() =>
+      double.tryParse(_settledAmountController.text) ?? 0;
+
+  double _maxAllowedAmountFor(BorrowedResolutionCandidate candidate) {
+    return widget.expenseAmount <= candidate.pendingAmount
+        ? widget.expenseAmount
+        : candidate.pendingAmount;
+  }
+
+  void _setSettledAmount(double amount) {
+    _syncingSettledAmount = true;
+    _settledAmountController.text = _formatNumber(amount);
+    _settledAmountController.selection = TextSelection.collapsed(
+      offset: _settledAmountController.text.length,
+    );
+    _syncingSettledAmount = false;
+  }
+
+  void _handleSettledAmountChanged(String value) {
+    if (_syncingSettledAmount || _selected == null) {
+      return;
+    }
+    final amount = double.tryParse(value);
+    if (amount == null) {
+      return;
+    }
+    final maxAllowed = _maxAllowedAmountFor(_selected!);
+    if (amount > maxAllowed + 0.005) {
+      _setSettledAmount(maxAllowed);
+    }
+  }
+
+  String? _resolveAmountErrorText() {
+    if (_selected == null || _settledAmountController.text.trim().isEmpty) {
+      return null;
+    }
+    final amount = _selectedAmount();
+    if (amount <= 0) {
+      return 'Enter a valid amount.';
+    }
+    if (amount > widget.expenseAmount + 0.005) {
+      return 'Amount cannot exceed the entered expense amount.';
+    }
+    if (amount > _selected!.pendingAmount + 0.005) {
+      return 'Amount cannot exceed the pending borrowed amount.';
+    }
+    if ((amount - widget.expenseAmount).abs() > 0.01) {
+      return 'Resolve amount must exactly match the expense amount.';
+    }
+    return null;
+  }
+
+  String _formatNumber(double value) {
+    final rounded = double.parse(value.toStringAsFixed(2));
+    return rounded == rounded.roundToDouble()
+        ? rounded.toStringAsFixed(0)
+        : rounded.toStringAsFixed(2);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Resolve Borrowed'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: _selected == null
+                ? null
+                : () {
+                    final selectedAmount = _selectedAmount();
+                    if ((selectedAmount - widget.expenseAmount).abs() > 0.01) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Resolved borrowed amount must exactly match the expense amount.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    if (selectedAmount <= 0 ||
+                        selectedAmount > _selected!.pendingAmount + 0.01) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Resolved borrowed amount cannot exceed the pending amount.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.of(context).pop(
+                      BorrowedResolutionDraft(
+                        borrowedEntryId: _selected!.entry.id,
+                        borrowedEntryTitle: _selected!.entry.title,
+                        settledAmount: double.parse(
+                          selectedAmount.toStringAsFixed(2),
+                        ),
+                      ),
+                    );
+                  },
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+      body: FutureBuilder<List<BorrowedResolutionCandidate>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final all = snapshot.data!;
+          _seedInitialSelection(all);
+          final query = _searchController.text.trim().toLowerCase();
+          final filtered = all
+              .where((candidate) {
+                final matchesAmount =
+                    candidate.pendingAmount + 0.005 >= widget.expenseAmount ||
+                    candidate.entry.id ==
+                        widget.initialDraft?.borrowedEntryId;
+                if (!matchesAmount) {
+                  return false;
+                }
+                if (query.isEmpty) {
+                  return true;
+                }
+                return <String>[
+                  candidate.entry.title,
+                  candidate.entry.counterparty ?? '',
+                  candidate.entry.notes,
+                  candidate.entry.category.name,
+                ].any((value) => value.toLowerCase().contains(query));
+              })
+              .toList(growable: false);
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            children: <Widget>[
+              TextField(
+                controller: _searchController,
+                decoration: const InputDecoration(
+                  labelText: 'Search borrowed entries',
+                  prefixIcon: Icon(Icons.search_rounded),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                child: ListTile(
+                  title: Text(
+                    'Expense amount: ${AppConstants.currency(widget.expenseAmount)}',
+                  ),
+                  subtitle: Text(
+                    _selected == null
+                        ? 'Select one borrowed entry with enough pending amount to resolve.'
+                        : 'Pending borrowed: ${AppConstants.currency(_selected!.pendingAmount)}',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (filtered.isEmpty)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Text(
+                      'No borrowed entries have enough pending amount for this expense.',
+                    ),
+                  ),
+                ),
+              ...filtered.map((candidate) {
+                final isSelected = _selected?.entry.id == candidate.entry.id;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Card(
+                    child: ListTile(
+                      onTap: () {
+                        setState(() {
+                          _selected = candidate;
+                          _setSettledAmount(_maxAllowedAmountFor(candidate));
+                        });
+                      },
+                      leading: Icon(
+                        isSelected
+                            ? Icons.radio_button_checked_rounded
+                            : Icons.radio_button_off_rounded,
+                      ),
+                      title: Text(candidate.entry.title),
+                      subtitle: Text(
+                        '${AppConstants.shortDateFormat.format(candidate.entry.date)} | Pending ${AppConstants.currency(candidate.pendingAmount)}',
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              if (_selected != null) ...<Widget>[
+                const SizedBox(height: 16),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          _selected!.entry.title,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Pending amount: ${AppConstants.currency(_selected!.pendingAmount)}',
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _settledAmountController,
+                          inputFormatters: _ExpenseSplitEditorPageState
+                              ._decimalInputFormatters,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: InputDecoration(
+                            labelText: 'Resolve amount',
+                            prefixText: 'Rs ',
+                            errorText: _resolveAmountErrorText(),
+                          ),
+                          onChanged: (value) {
+                            _handleSettledAmountChanged(value);
+                            setState(() {});
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ],
           );

@@ -242,7 +242,8 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                       controller: _searchController,
                       decoration: const InputDecoration(
                         labelText: 'Search expenses',
-                        hintText: 'Search by date, title, description, or amount',
+                        hintText:
+                            'Search by date, title, description, or amount',
                         prefixIcon: Icon(Icons.search_rounded),
                       ),
                       onChanged: (_) => setState(() {}),
@@ -345,7 +346,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
         return !entry.isManagedLentEntry &&
             (entry.type == 'lent' || entry.hasTrackedSplitLent);
       case _ExpenseSummaryFilter.borrowed:
-        return entry.type == 'borrowed';
+        return entry.type == 'borrowed' || entry.isBorrowedResolutionExpense;
     }
   }
 
@@ -393,6 +394,11 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
         content: Text(
           entry.isResolutionIncome
               ? 'Delete "${entry.title}"? This will add the amount back to pending lent.'
+              : entry.isBorrowedResolutionExpense
+              ? 'Delete "${entry.title}"? This will add the amount back to pending borrowed.'
+              : entry.borrowedSummary?.resolutionCount != null &&
+                    entry.borrowedSummary!.resolutionCount > 0
+              ? 'Delete "${entry.title}" and all linked borrowed resolution entries?'
               : entry.splitSummary?.hasSettlements == true
               ? 'Delete "${entry.title}" and all linked resolution entries?'
               : 'Delete "${entry.title}"?',
@@ -673,21 +679,19 @@ class _DateTransactionGroup extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: entries
-                    .map(
-                      (entry) {
-                        final actionEntry = _resolveActionEntry(entry, entryById);
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _ExpenseEntryCard(
-                            entry: entry,
-                            actionEntry: actionEntry,
-                            onView: () => onView(entry),
-                            onEdit: () => onEdit(actionEntry),
-                            onDelete: () => onDelete(actionEntry),
-                          ),
-                        );
-                      },
-                    )
+                    .map((entry) {
+                      final actionEntry = _resolveActionEntry(entry, entryById);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _ExpenseEntryCard(
+                          entry: entry,
+                          actionEntry: actionEntry,
+                          onView: () => onView(entry),
+                          onEdit: () => onEdit(actionEntry),
+                          onDelete: () => onDelete(actionEntry),
+                        ),
+                      );
+                    })
                     .toList(growable: false),
               ),
             ),
@@ -773,14 +777,25 @@ class _ExpenseEntryCard extends StatelessWidget {
                     ],
                     if (entry.splitSummary != null) ...<Widget>[
                       const SizedBox(height: 6),
-                      _SplitEntrySummary(
-                        entry: entry,
-                      ),
+                      _SplitEntrySummary(entry: entry),
+                    ],
+                    if (entry.borrowedSummary != null) ...<Widget>[
+                      const SizedBox(height: 6),
+                      _BorrowedEntrySummary(entry: entry),
                     ],
                     if (entry.isResolutionIncome) ...<Widget>[
                       const SizedBox(height: 6),
                       Text(
                         'Lent resolution income',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    if (entry.isBorrowedResolutionExpense) ...<Widget>[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Borrowed resolution expense',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -803,20 +818,11 @@ class _ExpenseEntryCard extends StatelessWidget {
             alignment: WrapAlignment.end,
             spacing: 4,
             children: <Widget>[
-              TextButton(
-                onPressed: onView,
-                child: const Text('View'),
-              ),
+              TextButton(onPressed: onView, child: const Text('View')),
               if (actionEntry.canEdit)
-                TextButton(
-                  onPressed: onEdit,
-                  child: const Text('Edit'),
-                ),
+                TextButton(onPressed: onEdit, child: const Text('Edit')),
               if (actionEntry.canDelete)
-                TextButton(
-                  onPressed: onDelete,
-                  child: const Text('Delete'),
-                ),
+                TextButton(onPressed: onDelete, child: const Text('Delete')),
             ],
           ),
         ],
@@ -838,6 +844,40 @@ class _ExpenseEntryCard extends StatelessWidget {
   }
 }
 
+class _BorrowedEntrySummary extends StatelessWidget {
+  const _BorrowedEntrySummary({required this.entry});
+
+  final ExpenseRecord entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = entry.borrowedSummary;
+    if (summary == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _SplitSummaryLine(
+          label: 'Resolved',
+          value: AppConstants.currency(summary.settledAmount),
+        ),
+        const SizedBox(height: 4),
+        _SplitSummaryLine(
+          label: 'Pending',
+          value: AppConstants.currency(summary.pendingAmount),
+        ),
+        const SizedBox(height: 4),
+        _SplitSummaryLine(
+          label: 'Repayments',
+          value: '${summary.resolutionCount}',
+        ),
+      ],
+    );
+  }
+}
+
 ExpenseRecord _resolveActionEntry(
   ExpenseRecord entry,
   Map<int, ExpenseRecord> entryById,
@@ -849,9 +889,7 @@ ExpenseRecord _resolveActionEntry(
 }
 
 class _SplitEntrySummary extends StatelessWidget {
-  const _SplitEntrySummary({
-    required this.entry,
-  });
+  const _SplitEntrySummary({required this.entry});
 
   final ExpenseRecord entry;
 
@@ -891,10 +929,7 @@ class _SplitEntrySummary extends StatelessWidget {
 }
 
 class _SplitSummaryLine extends StatelessWidget {
-  const _SplitSummaryLine({
-    required this.label,
-    required this.value,
-  });
+  const _SplitSummaryLine({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -915,10 +950,7 @@ class _SplitSummaryLine extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            value,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          child: Text(value, style: Theme.of(context).textTheme.bodySmall),
         ),
       ],
     );

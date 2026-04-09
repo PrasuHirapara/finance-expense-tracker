@@ -292,23 +292,30 @@ class ExpenseAnalyticsPage extends StatelessWidget {
   }
 
   String _trendDescription(ExpenseAnalyticsData analytics) {
-    if (_usesMonthlyTrendLabels(analytics)) {
+    if (_usesYearlyTrendLabels(analytics)) {
       return 'Bottom labels show month buckets across the selected year.';
+    }
+
+    if (_usesWeeklyTrendLabels(analytics)) {
+      return 'Bottom labels show each weekday once across the selected week.';
     }
 
     return 'Bottom labels show the day number and day name so the expense trend reads like the task consistency graph.';
   }
 
   String _trendXAxisTitle(ExpenseAnalyticsData analytics) {
-    return _usesMonthlyTrendLabels(analytics) ? 'Month' : 'Day';
+    return _usesYearlyTrendLabels(analytics) ? 'Month' : 'Day';
   }
 
   double _trendBottomReservedSize(
     ExpenseAnalyticsData analytics,
     double availableWidth,
   ) {
-    if (_usesMonthlyTrendLabels(analytics)) {
+    if (_usesYearlyTrendLabels(analytics)) {
       return 44;
+    }
+    if (_usesWeeklyTrendLabels(analytics)) {
+      return availableWidth < 420 ? 36 : 40;
     }
     return availableWidth < 420 ? 52 : 58;
   }
@@ -317,7 +324,7 @@ class ExpenseAnalyticsPage extends StatelessWidget {
     double availableWidth,
     ExpenseAnalyticsData analytics,
   ) {
-    final pointWidth = _usesMonthlyTrendLabels(analytics) ? 56.0 : 30.0;
+    final pointWidth = _usesYearlyTrendLabels(analytics) ? 56.0 : 30.0;
     return math.max(availableWidth, analytics.trend.length * pointWidth);
   }
 
@@ -325,8 +332,12 @@ class ExpenseAnalyticsPage extends StatelessWidget {
     return availableWidth < 420 ? 300 : 340;
   }
 
-  bool _usesMonthlyTrendLabels(ExpenseAnalyticsData analytics) {
+  bool _usesYearlyTrendLabels(ExpenseAnalyticsData analytics) {
     return analytics.window == ExpenseAnalyticsWindow.yearly;
+  }
+
+  bool _usesWeeklyTrendLabels(ExpenseAnalyticsData analytics) {
+    return analytics.window == ExpenseAnalyticsWindow.weekly;
   }
 
   Widget _buildTrendBottomLabel(
@@ -339,13 +350,13 @@ class ExpenseAnalyticsPage extends StatelessWidget {
     if (!_shouldShowTrendLabel(
       index: index,
       totalPoints: totalPoints,
-      useMonthlyLabels: _usesMonthlyTrendLabels(analytics),
+      useMonthlyLabels: _usesYearlyTrendLabels(analytics),
     )) {
       return const SizedBox.shrink();
     }
 
     final textTheme = Theme.of(context).textTheme;
-    if (_usesMonthlyTrendLabels(analytics)) {
+    if (_usesYearlyTrendLabels(analytics) || _usesWeeklyTrendLabels(analytics)) {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[

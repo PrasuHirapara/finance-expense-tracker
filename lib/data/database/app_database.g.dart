@@ -2626,6 +2626,385 @@ class DbLentSettlementsCompanion extends UpdateCompanion<DbLentSettlement> {
   }
 }
 
+class $DbBorrowedSettlementsTable extends DbBorrowedSettlements
+    with TableInfo<$DbBorrowedSettlementsTable, DbBorrowedSettlement> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DbBorrowedSettlementsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _borrowedEntryIdMeta = const VerificationMeta(
+    'borrowedEntryId',
+  );
+  @override
+  late final GeneratedColumn<int> borrowedEntryId = GeneratedColumn<int>(
+    'borrowed_entry_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES db_finance_entries (id)',
+    ),
+  );
+  static const VerificationMeta _expenseEntryIdMeta = const VerificationMeta(
+    'expenseEntryId',
+  );
+  @override
+  late final GeneratedColumn<int> expenseEntryId = GeneratedColumn<int>(
+    'expense_entry_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES db_finance_entries (id)',
+    ),
+  );
+  static const VerificationMeta _settledAmountMeta = const VerificationMeta(
+    'settledAmount',
+  );
+  @override
+  late final GeneratedColumn<double> settledAmount = GeneratedColumn<double>(
+    'settled_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    borrowedEntryId,
+    expenseEntryId,
+    settledAmount,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'db_borrowed_settlements';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DbBorrowedSettlement> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('borrowed_entry_id')) {
+      context.handle(
+        _borrowedEntryIdMeta,
+        borrowedEntryId.isAcceptableOrUnknown(
+          data['borrowed_entry_id']!,
+          _borrowedEntryIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_borrowedEntryIdMeta);
+    }
+    if (data.containsKey('expense_entry_id')) {
+      context.handle(
+        _expenseEntryIdMeta,
+        expenseEntryId.isAcceptableOrUnknown(
+          data['expense_entry_id']!,
+          _expenseEntryIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_expenseEntryIdMeta);
+    }
+    if (data.containsKey('settled_amount')) {
+      context.handle(
+        _settledAmountMeta,
+        settledAmount.isAcceptableOrUnknown(
+          data['settled_amount']!,
+          _settledAmountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_settledAmountMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DbBorrowedSettlement map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DbBorrowedSettlement(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      borrowedEntryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}borrowed_entry_id'],
+      )!,
+      expenseEntryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expense_entry_id'],
+      )!,
+      settledAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}settled_amount'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DbBorrowedSettlementsTable createAlias(String alias) {
+    return $DbBorrowedSettlementsTable(attachedDatabase, alias);
+  }
+}
+
+class DbBorrowedSettlement extends DataClass
+    implements Insertable<DbBorrowedSettlement> {
+  final int id;
+  final int borrowedEntryId;
+  final int expenseEntryId;
+  final double settledAmount;
+  final DateTime createdAt;
+  const DbBorrowedSettlement({
+    required this.id,
+    required this.borrowedEntryId,
+    required this.expenseEntryId,
+    required this.settledAmount,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['borrowed_entry_id'] = Variable<int>(borrowedEntryId);
+    map['expense_entry_id'] = Variable<int>(expenseEntryId);
+    map['settled_amount'] = Variable<double>(settledAmount);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DbBorrowedSettlementsCompanion toCompanion(bool nullToAbsent) {
+    return DbBorrowedSettlementsCompanion(
+      id: Value(id),
+      borrowedEntryId: Value(borrowedEntryId),
+      expenseEntryId: Value(expenseEntryId),
+      settledAmount: Value(settledAmount),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DbBorrowedSettlement.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DbBorrowedSettlement(
+      id: serializer.fromJson<int>(json['id']),
+      borrowedEntryId: serializer.fromJson<int>(json['borrowedEntryId']),
+      expenseEntryId: serializer.fromJson<int>(json['expenseEntryId']),
+      settledAmount: serializer.fromJson<double>(json['settledAmount']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'borrowedEntryId': serializer.toJson<int>(borrowedEntryId),
+      'expenseEntryId': serializer.toJson<int>(expenseEntryId),
+      'settledAmount': serializer.toJson<double>(settledAmount),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DbBorrowedSettlement copyWith({
+    int? id,
+    int? borrowedEntryId,
+    int? expenseEntryId,
+    double? settledAmount,
+    DateTime? createdAt,
+  }) => DbBorrowedSettlement(
+    id: id ?? this.id,
+    borrowedEntryId: borrowedEntryId ?? this.borrowedEntryId,
+    expenseEntryId: expenseEntryId ?? this.expenseEntryId,
+    settledAmount: settledAmount ?? this.settledAmount,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DbBorrowedSettlement copyWithCompanion(DbBorrowedSettlementsCompanion data) {
+    return DbBorrowedSettlement(
+      id: data.id.present ? data.id.value : this.id,
+      borrowedEntryId: data.borrowedEntryId.present
+          ? data.borrowedEntryId.value
+          : this.borrowedEntryId,
+      expenseEntryId: data.expenseEntryId.present
+          ? data.expenseEntryId.value
+          : this.expenseEntryId,
+      settledAmount: data.settledAmount.present
+          ? data.settledAmount.value
+          : this.settledAmount,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbBorrowedSettlement(')
+          ..write('id: $id, ')
+          ..write('borrowedEntryId: $borrowedEntryId, ')
+          ..write('expenseEntryId: $expenseEntryId, ')
+          ..write('settledAmount: $settledAmount, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    borrowedEntryId,
+    expenseEntryId,
+    settledAmount,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DbBorrowedSettlement &&
+          other.id == this.id &&
+          other.borrowedEntryId == this.borrowedEntryId &&
+          other.expenseEntryId == this.expenseEntryId &&
+          other.settledAmount == this.settledAmount &&
+          other.createdAt == this.createdAt);
+}
+
+class DbBorrowedSettlementsCompanion
+    extends UpdateCompanion<DbBorrowedSettlement> {
+  final Value<int> id;
+  final Value<int> borrowedEntryId;
+  final Value<int> expenseEntryId;
+  final Value<double> settledAmount;
+  final Value<DateTime> createdAt;
+  const DbBorrowedSettlementsCompanion({
+    this.id = const Value.absent(),
+    this.borrowedEntryId = const Value.absent(),
+    this.expenseEntryId = const Value.absent(),
+    this.settledAmount = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  DbBorrowedSettlementsCompanion.insert({
+    this.id = const Value.absent(),
+    required int borrowedEntryId,
+    required int expenseEntryId,
+    required double settledAmount,
+    this.createdAt = const Value.absent(),
+  }) : borrowedEntryId = Value(borrowedEntryId),
+       expenseEntryId = Value(expenseEntryId),
+       settledAmount = Value(settledAmount);
+  static Insertable<DbBorrowedSettlement> custom({
+    Expression<int>? id,
+    Expression<int>? borrowedEntryId,
+    Expression<int>? expenseEntryId,
+    Expression<double>? settledAmount,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (borrowedEntryId != null) 'borrowed_entry_id': borrowedEntryId,
+      if (expenseEntryId != null) 'expense_entry_id': expenseEntryId,
+      if (settledAmount != null) 'settled_amount': settledAmount,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  DbBorrowedSettlementsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? borrowedEntryId,
+    Value<int>? expenseEntryId,
+    Value<double>? settledAmount,
+    Value<DateTime>? createdAt,
+  }) {
+    return DbBorrowedSettlementsCompanion(
+      id: id ?? this.id,
+      borrowedEntryId: borrowedEntryId ?? this.borrowedEntryId,
+      expenseEntryId: expenseEntryId ?? this.expenseEntryId,
+      settledAmount: settledAmount ?? this.settledAmount,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (borrowedEntryId.present) {
+      map['borrowed_entry_id'] = Variable<int>(borrowedEntryId.value);
+    }
+    if (expenseEntryId.present) {
+      map['expense_entry_id'] = Variable<int>(expenseEntryId.value);
+    }
+    if (settledAmount.present) {
+      map['settled_amount'] = Variable<double>(settledAmount.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbBorrowedSettlementsCompanion(')
+          ..write('id: $id, ')
+          ..write('borrowedEntryId: $borrowedEntryId, ')
+          ..write('expenseEntryId: $expenseEntryId, ')
+          ..write('settledAmount: $settledAmount, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $DbTasksTable extends DbTasks with TableInfo<$DbTasksTable, DbTask> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -3706,6 +4085,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $DbSplitParticipantsTable(this);
   late final $DbLentSettlementsTable dbLentSettlements =
       $DbLentSettlementsTable(this);
+  late final $DbBorrowedSettlementsTable dbBorrowedSettlements =
+      $DbBorrowedSettlementsTable(this);
   late final $DbTasksTable dbTasks = $DbTasksTable(this);
   late final $DbCredentialsTable dbCredentials = $DbCredentialsTable(this);
   @override
@@ -3719,6 +4100,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     dbSplitRecords,
     dbSplitParticipants,
     dbLentSettlements,
+    dbBorrowedSettlements,
     dbTasks,
     dbCredentials,
   ];
@@ -6835,6 +7217,440 @@ typedef $$DbLentSettlementsTableProcessedTableManager =
         bool incomeEntryId,
       })
     >;
+typedef $$DbBorrowedSettlementsTableCreateCompanionBuilder =
+    DbBorrowedSettlementsCompanion Function({
+      Value<int> id,
+      required int borrowedEntryId,
+      required int expenseEntryId,
+      required double settledAmount,
+      Value<DateTime> createdAt,
+    });
+typedef $$DbBorrowedSettlementsTableUpdateCompanionBuilder =
+    DbBorrowedSettlementsCompanion Function({
+      Value<int> id,
+      Value<int> borrowedEntryId,
+      Value<int> expenseEntryId,
+      Value<double> settledAmount,
+      Value<DateTime> createdAt,
+    });
+
+final class $$DbBorrowedSettlementsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $DbBorrowedSettlementsTable,
+          DbBorrowedSettlement
+        > {
+  $$DbBorrowedSettlementsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $DbFinanceEntriesTable _borrowedEntryIdTable(_$AppDatabase db) =>
+      db.dbFinanceEntries.createAlias(
+        $_aliasNameGenerator(
+          db.dbBorrowedSettlements.borrowedEntryId,
+          db.dbFinanceEntries.id,
+        ),
+      );
+
+  $$DbFinanceEntriesTableProcessedTableManager get borrowedEntryId {
+    final $_column = $_itemColumn<int>('borrowed_entry_id')!;
+
+    final manager = $$DbFinanceEntriesTableTableManager(
+      $_db,
+      $_db.dbFinanceEntries,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_borrowedEntryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $DbFinanceEntriesTable _expenseEntryIdTable(_$AppDatabase db) =>
+      db.dbFinanceEntries.createAlias(
+        $_aliasNameGenerator(
+          db.dbBorrowedSettlements.expenseEntryId,
+          db.dbFinanceEntries.id,
+        ),
+      );
+
+  $$DbFinanceEntriesTableProcessedTableManager get expenseEntryId {
+    final $_column = $_itemColumn<int>('expense_entry_id')!;
+
+    final manager = $$DbFinanceEntriesTableTableManager(
+      $_db,
+      $_db.dbFinanceEntries,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_expenseEntryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DbBorrowedSettlementsTableFilterComposer
+    extends Composer<_$AppDatabase, $DbBorrowedSettlementsTable> {
+  $$DbBorrowedSettlementsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get settledAmount => $composableBuilder(
+    column: $table.settledAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$DbFinanceEntriesTableFilterComposer get borrowedEntryId {
+    final $$DbFinanceEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.borrowedEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$DbFinanceEntriesTableFilterComposer get expenseEntryId {
+    final $$DbFinanceEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.expenseEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DbBorrowedSettlementsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DbBorrowedSettlementsTable> {
+  $$DbBorrowedSettlementsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get settledAmount => $composableBuilder(
+    column: $table.settledAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$DbFinanceEntriesTableOrderingComposer get borrowedEntryId {
+    final $$DbFinanceEntriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.borrowedEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$DbFinanceEntriesTableOrderingComposer get expenseEntryId {
+    final $$DbFinanceEntriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.expenseEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DbBorrowedSettlementsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DbBorrowedSettlementsTable> {
+  $$DbBorrowedSettlementsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get settledAmount => $composableBuilder(
+    column: $table.settledAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$DbFinanceEntriesTableAnnotationComposer get borrowedEntryId {
+    final $$DbFinanceEntriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.borrowedEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$DbFinanceEntriesTableAnnotationComposer get expenseEntryId {
+    final $$DbFinanceEntriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.expenseEntryId,
+      referencedTable: $db.dbFinanceEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbFinanceEntriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dbFinanceEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DbBorrowedSettlementsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DbBorrowedSettlementsTable,
+          DbBorrowedSettlement,
+          $$DbBorrowedSettlementsTableFilterComposer,
+          $$DbBorrowedSettlementsTableOrderingComposer,
+          $$DbBorrowedSettlementsTableAnnotationComposer,
+          $$DbBorrowedSettlementsTableCreateCompanionBuilder,
+          $$DbBorrowedSettlementsTableUpdateCompanionBuilder,
+          (DbBorrowedSettlement, $$DbBorrowedSettlementsTableReferences),
+          DbBorrowedSettlement,
+          PrefetchHooks Function({bool borrowedEntryId, bool expenseEntryId})
+        > {
+  $$DbBorrowedSettlementsTableTableManager(
+    _$AppDatabase db,
+    $DbBorrowedSettlementsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DbBorrowedSettlementsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$DbBorrowedSettlementsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DbBorrowedSettlementsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> borrowedEntryId = const Value.absent(),
+                Value<int> expenseEntryId = const Value.absent(),
+                Value<double> settledAmount = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DbBorrowedSettlementsCompanion(
+                id: id,
+                borrowedEntryId: borrowedEntryId,
+                expenseEntryId: expenseEntryId,
+                settledAmount: settledAmount,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int borrowedEntryId,
+                required int expenseEntryId,
+                required double settledAmount,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DbBorrowedSettlementsCompanion.insert(
+                id: id,
+                borrowedEntryId: borrowedEntryId,
+                expenseEntryId: expenseEntryId,
+                settledAmount: settledAmount,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DbBorrowedSettlementsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({borrowedEntryId = false, expenseEntryId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (borrowedEntryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.borrowedEntryId,
+                                    referencedTable:
+                                        $$DbBorrowedSettlementsTableReferences
+                                            ._borrowedEntryIdTable(db),
+                                    referencedColumn:
+                                        $$DbBorrowedSettlementsTableReferences
+                                            ._borrowedEntryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (expenseEntryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.expenseEntryId,
+                                    referencedTable:
+                                        $$DbBorrowedSettlementsTableReferences
+                                            ._expenseEntryIdTable(db),
+                                    referencedColumn:
+                                        $$DbBorrowedSettlementsTableReferences
+                                            ._expenseEntryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$DbBorrowedSettlementsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DbBorrowedSettlementsTable,
+      DbBorrowedSettlement,
+      $$DbBorrowedSettlementsTableFilterComposer,
+      $$DbBorrowedSettlementsTableOrderingComposer,
+      $$DbBorrowedSettlementsTableAnnotationComposer,
+      $$DbBorrowedSettlementsTableCreateCompanionBuilder,
+      $$DbBorrowedSettlementsTableUpdateCompanionBuilder,
+      (DbBorrowedSettlement, $$DbBorrowedSettlementsTableReferences),
+      DbBorrowedSettlement,
+      PrefetchHooks Function({bool borrowedEntryId, bool expenseEntryId})
+    >;
 typedef $$DbTasksTableCreateCompanionBuilder =
     DbTasksCompanion Function({
       Value<int> id,
@@ -7378,6 +8194,8 @@ class $AppDatabaseManager {
       $$DbSplitParticipantsTableTableManager(_db, _db.dbSplitParticipants);
   $$DbLentSettlementsTableTableManager get dbLentSettlements =>
       $$DbLentSettlementsTableTableManager(_db, _db.dbLentSettlements);
+  $$DbBorrowedSettlementsTableTableManager get dbBorrowedSettlements =>
+      $$DbBorrowedSettlementsTableTableManager(_db, _db.dbBorrowedSettlements);
   $$DbTasksTableTableManager get dbTasks =>
       $$DbTasksTableTableManager(_db, _db.dbTasks);
   $$DbCredentialsTableTableManager get dbCredentials =>

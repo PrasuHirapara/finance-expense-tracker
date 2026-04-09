@@ -114,7 +114,7 @@ class AppSettingsRepository {
   Future<void> _commit(AppPreferences settings) async {
     _cachedPreferences = settings;
     _pendingWrite = _pendingWrite
-        .catchError((Object _, StackTrace __) {})
+        .catchError((Object error, StackTrace stackTrace) {})
         .then((_) => _writeSettings(settings));
     await _pendingWrite;
     _controller.add(settings);

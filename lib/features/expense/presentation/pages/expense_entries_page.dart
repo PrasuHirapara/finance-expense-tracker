@@ -77,7 +77,8 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                               onPressed: () async {
                                 final picked = await showDatePicker(
                                   context: context,
-                                  initialDate: _filter.fromDate ?? DateTime.now(),
+                                  initialDate:
+                                      _filter.fromDate ?? DateTime.now(),
                                   firstDate: DateTime(2022),
                                   lastDate: DateTime.now().add(
                                     const Duration(days: 365),
@@ -85,7 +86,9 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                                 );
                                 if (picked != null) {
                                   setState(() {
-                                    _filter = _filter.copyWith(fromDate: picked);
+                                    _filter = _filter.copyWith(
+                                      fromDate: picked,
+                                    );
                                   });
                                 }
                               },
@@ -187,7 +190,9 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                     const AppPanel(
                       child: Padding(
                         padding: EdgeInsets.all(12),
-                        child: Center(child: Text('No entries match your filters.')),
+                        child: Center(
+                          child: Text('No entries match your filters.'),
+                        ),
                       ),
                     )
                   else
@@ -215,7 +220,8 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: <Widget>[
                                         Text(
                                           entry.title,
@@ -227,24 +233,47 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                                         Text(
                                           [
                                             entry.category.name,
-                                            if (entry.bank != null) entry.bank!.name,
+                                            if (entry.bank != null)
+                                              entry.bank!.name,
                                             AppConstants.shortDateFormat.format(
                                               entry.date,
                                             ),
                                             entry.isCredit ? 'Credit' : 'Debit',
                                           ].join(' • '),
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodySmall?.copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurfaceVariant,
-                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                              ),
                                         ),
-                                        if (entry.splitSummary != null) ...<Widget>[
+                                        if (entry.splitSummary !=
+                                            null) ...<Widget>[
                                           const SizedBox(height: 8),
-                                          _SplitEntrySummary(
-                                            entry: entry,
+                                          _SplitEntrySummary(entry: entry),
+                                        ],
+                                        if (entry.borrowedSummary !=
+                                            null) ...<Widget>[
+                                          const SizedBox(height: 8),
+                                          _BorrowedEntrySummary(entry: entry),
+                                        ],
+                                        if (entry
+                                            .isBorrowedResolutionExpense) ...<
+                                          Widget
+                                        >[
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Borrowed resolution expense',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall
+                                                ?.copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
                                           ),
                                         ],
                                       ],
@@ -265,27 +294,30 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                                 spacing: 4,
                                 children: <Widget>[
                                   TextButton(
-                                    onPressed: () => Navigator.of(context).pushNamed(
-                                      AppRoutes.expenseDetail,
-                                      arguments: ExpenseDetailArgs(
-                                        entryId: entry.id,
-                                      ),
-                                    ),
+                                    onPressed: () =>
+                                        Navigator.of(context).pushNamed(
+                                          AppRoutes.expenseDetail,
+                                          arguments: ExpenseDetailArgs(
+                                            entryId: entry.id,
+                                          ),
+                                        ),
                                     child: const Text('View'),
                                   ),
                                   if (actionEntry.canEdit)
                                     TextButton(
-                                      onPressed: () => Navigator.of(context).pushNamed(
-                                        AppRoutes.expenseAdd,
-                                        arguments: ExpenseEditorArgs(
-                                          entry: actionEntry,
-                                        ),
-                                      ),
+                                      onPressed: () =>
+                                          Navigator.of(context).pushNamed(
+                                            AppRoutes.expenseAdd,
+                                            arguments: ExpenseEditorArgs(
+                                              entry: actionEntry,
+                                            ),
+                                          ),
                                       child: const Text('Edit'),
                                     ),
                                   if (actionEntry.canDelete)
                                     TextButton(
-                                      onPressed: () => _deleteEntry(actionEntry),
+                                      onPressed: () =>
+                                          _deleteEntry(actionEntry),
                                       child: const Text('Delete'),
                                     ),
                                 ],
@@ -304,7 +336,9 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
     );
   }
 
-  Future<_ExpenseFilterOptions> _loadOptions(ExpenseRepository repository) async {
+  Future<_ExpenseFilterOptions> _loadOptions(
+    ExpenseRepository repository,
+  ) async {
     final categories = await repository.watchCategories().first;
     final banks = await repository.watchBanks().first;
     return _ExpenseFilterOptions(categories: categories, banks: banks);
@@ -319,6 +353,11 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
         content: Text(
           entry.isResolutionIncome
               ? 'Delete "${entry.title}"? This will add the amount back to pending lent.'
+              : entry.isBorrowedResolutionExpense
+              ? 'Delete "${entry.title}"? This will add the amount back to pending borrowed.'
+              : entry.borrowedSummary?.resolutionCount != null &&
+                    entry.borrowedSummary!.resolutionCount > 0
+              ? 'Delete "${entry.title}" and all linked borrowed resolution entries?'
               : entry.splitSummary?.hasSettlements == true
               ? 'Delete "${entry.title}" and all linked resolution entries?'
               : 'Delete "${entry.title}"?',
@@ -345,16 +384,16 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('"${entry.title}" deleted.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('"${entry.title}" deleted.')));
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 }
@@ -385,10 +424,7 @@ class _DateFilterButton extends StatelessWidget {
 }
 
 class _ExpenseFilterOptions {
-  const _ExpenseFilterOptions({
-    required this.categories,
-    required this.banks,
-  });
+  const _ExpenseFilterOptions({required this.categories, required this.banks});
 
   final List<ExpenseCategory> categories;
   final List<BankName> banks;
@@ -405,9 +441,7 @@ ExpenseRecord _resolveActionEntry(
 }
 
 class _SplitEntrySummary extends StatelessWidget {
-  const _SplitEntrySummary({
-    required this.entry,
-  });
+  const _SplitEntrySummary({required this.entry});
 
   final ExpenseRecord entry;
 
@@ -446,11 +480,42 @@ class _SplitEntrySummary extends StatelessWidget {
   }
 }
 
+class _BorrowedEntrySummary extends StatelessWidget {
+  const _BorrowedEntrySummary({required this.entry});
+
+  final ExpenseRecord entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = entry.borrowedSummary;
+    if (summary == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _SplitSummaryLine(
+          label: 'Resolved',
+          value: AppConstants.currency(summary.settledAmount),
+        ),
+        const SizedBox(height: 4),
+        _SplitSummaryLine(
+          label: 'Pending',
+          value: AppConstants.currency(summary.pendingAmount),
+        ),
+        const SizedBox(height: 4),
+        _SplitSummaryLine(
+          label: 'Repayments',
+          value: '${summary.resolutionCount}',
+        ),
+      ],
+    );
+  }
+}
+
 class _SplitSummaryLine extends StatelessWidget {
-  const _SplitSummaryLine({
-    required this.label,
-    required this.value,
-  });
+  const _SplitSummaryLine({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -471,10 +536,7 @@ class _SplitSummaryLine extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            value,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          child: Text(value, style: Theme.of(context).textTheme.bodySmall),
         ),
       ],
     );

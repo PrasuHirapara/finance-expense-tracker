@@ -82,7 +82,7 @@ class AppSelectField<T> extends StatelessWidget {
     }
 
     final origin = box.localToGlobal(Offset.zero, ancestor: overlay);
-    final selected = await showMenu<T>(
+    final selectedIndex = await showMenu<int>(
       context: context,
       position: RelativeRect.fromLTRB(
         origin.dx,
@@ -96,31 +96,36 @@ class AppSelectField<T> extends StatelessWidget {
         maxHeight: 320,
       ),
       items: options
+          .asMap()
           .map(
-            (option) => PopupMenuItem<T>(
-              value: option.value,
-              child: Row(
-                children: <Widget>[
-                  if (option.leading != null) ...<Widget>[
-                    option.leading!,
-                    const SizedBox(width: 12),
-                  ],
-                  Expanded(
-                    child: Text(
-                      option.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            (index, option) => MapEntry(
+              index,
+              PopupMenuItem<int>(
+                value: index,
+                child: Row(
+                  children: <Widget>[
+                    if (option.leading != null) ...<Widget>[
+                      option.leading!,
+                      const SizedBox(width: 12),
+                    ],
+                    Expanded(
+                      child: Text(
+                        option.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           )
+          .values
           .toList(growable: false),
     );
 
-    if (selected != null) {
-      onChanged(selected);
+    if (selectedIndex != null) {
+      onChanged(options[selectedIndex].value);
     }
   }
 }

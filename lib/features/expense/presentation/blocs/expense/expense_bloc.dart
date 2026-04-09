@@ -99,6 +99,7 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
       state.copyWith(
         status: ExpenseStatus.loading,
         selectedBankId: event.bankId,
+        clearBankId: event.bankId == null,
         errorMessage: null,
       ),
     );

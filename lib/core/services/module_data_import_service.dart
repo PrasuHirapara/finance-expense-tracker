@@ -167,7 +167,7 @@ class ModuleDataImportService {
     referenceSheet.appendRow(<CellValue?>[
       TextCellValue('Split metadata sheets'),
       TextCellValue(
-        'Optional. If the workbook also contains "Split Records", "Split Participants", and "Lent Settlements" sheets from an app export, split relationships are restored automatically.',
+        'Optional. If the workbook also contains "Split Records", "Split Participants", "Lent Settlements", and "Borrowed Settlements" sheets from an app export, split and borrowed-resolution relationships are restored automatically.',
       ),
     ]);
     referenceSheet.appendRow(const <CellValue?>[]);
@@ -741,6 +741,7 @@ class ModuleDataImportService {
     final splitRecordsSheet = workbook.tables['Split Records'];
     final splitParticipantsSheet = workbook.tables['Split Participants'];
     final settlementsSheet = workbook.tables['Lent Settlements'];
+    final borrowedSettlementsSheet = workbook.tables['Borrowed Settlements'];
 
     final splitRecords = splitRecordsSheet == null
         ? const <_ImportedSplitRecord>[]
@@ -751,11 +752,15 @@ class ModuleDataImportService {
     final settlements = settlementsSheet == null
         ? const <_ImportedLentSettlement>[]
         : _parseLentSettlementSheet(settlementsSheet);
+    final borrowedSettlements = borrowedSettlementsSheet == null
+        ? const <_ImportedBorrowedSettlement>[]
+        : _parseBorrowedSettlementSheet(borrowedSettlementsSheet);
 
     return _ExpenseSplitImportBundle(
       splitRecords: splitRecords,
       splitParticipants: splitParticipants,
       settlements: settlements,
+      borrowedSettlements: borrowedSettlements,
     );
   }
 
@@ -941,6 +946,67 @@ class ModuleDataImportService {
     return rows;
   }
 
+  List<_ImportedBorrowedSettlement> _parseBorrowedSettlementSheet(Sheet sheet) {
+    final headerMap = _resolveHeaderMap(
+      headerRow: sheet.row(0),
+      aliases: const <String, List<String>>{
+        'settlementId': <String>['settlement id', 'settlementid'],
+        'borrowedEntryId': <String>[
+          'borrowed entry id',
+          'borrowedentryid',
+        ],
+        'expenseEntryId': <String>['expense entry id', 'expenseentryid'],
+        'settledAmount': <String>['settled amount', 'settledamount'],
+        'createdAt': <String>['created at', 'createdat'],
+      },
+      requiredKeys: const <String>[
+        'settlementId',
+        'borrowedEntryId',
+        'expenseEntryId',
+        'settledAmount',
+      ],
+    );
+
+    final rows = <_ImportedBorrowedSettlement>[];
+    for (var rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
+      final row = sheet.row(rowIndex);
+      if (_isBlankRow(row, headerMap.values)) {
+        continue;
+      }
+      final sourceId = _parseOptionalInt(_cellAt(row, headerMap['settlementId']));
+      final sourceBorrowedEntryId = _parseOptionalInt(
+        _cellAt(row, headerMap['borrowedEntryId']),
+      );
+      final sourceExpenseEntryId = _parseOptionalInt(
+        _cellAt(row, headerMap['expenseEntryId']),
+      );
+      final settledAmount = _parseAmount(_cellAt(row, headerMap['settledAmount']));
+      if (sourceId == null ||
+          sourceBorrowedEntryId == null ||
+          sourceExpenseEntryId == null ||
+          settledAmount == null) {
+        throw ModuleImportException(
+          'The Borrowed Settlements sheet contains invalid data.',
+          <String>[
+            'Row ${rowIndex + 1}: Settlement ID, Borrowed Entry ID, Expense Entry ID, and Settled Amount are required.',
+          ],
+        );
+      }
+      rows.add(
+        _ImportedBorrowedSettlement(
+          sourceId: sourceId,
+          sourceBorrowedEntryId: sourceBorrowedEntryId,
+          sourceExpenseEntryId: sourceExpenseEntryId,
+          settledAmount: settledAmount,
+          createdAt:
+              DateTime.tryParse(_cellText(_cellAt(row, headerMap['createdAt']))) ??
+              DateTime.now(),
+        ),
+      );
+    }
+    return rows;
+  }
+
   Future<void> _importExpenseSplitBundle(
     _ExpenseSplitImportBundle bundle, {
     required Map<int, int> entryIdMap,
@@ -1018,6 +1084,27 @@ class ModuleDataImportService {
         ),
       );
     }
+
+    for (final settlement in bundle.borrowedSettlements) {
+      final borrowedEntryId = entryIdMap[settlement.sourceBorrowedEntryId];
+      final expenseEntryId = entryIdMap[settlement.sourceExpenseEntryId];
+      if (borrowedEntryId == null || expenseEntryId == null) {
+        throw ModuleImportException(
+          'Borrowed settlement import failed because linked entries are missing.',
+          <String>[
+            'Settlement ${settlement.sourceId} references a missing borrowed or expense entry.',
+          ],
+        );
+      }
+      await _database.into(_database.dbBorrowedSettlements).insert(
+        DbBorrowedSettlementsCompanion.insert(
+          borrowedEntryId: borrowedEntryId,
+          expenseEntryId: expenseEntryId,
+          settledAmount: settlement.settledAmount,
+          createdAt: Value(settlement.createdAt),
+        ),
+      );
+    }
   }
 
   _NormalizedExpenseImportData _normalizeExpenseImportData({
@@ -1073,6 +1160,7 @@ class ModuleDataImportService {
           .toList(growable: false),
       splitParticipants: splitBundle.splitParticipants,
       settlements: splitBundle.settlements,
+      borrowedSettlements: splitBundle.borrowedSettlements,
     );
 
     return _NormalizedExpenseImportData(
@@ -1584,16 +1672,19 @@ class _ExpenseSplitImportBundle {
     this.splitRecords = const <_ImportedSplitRecord>[],
     this.splitParticipants = const <_ImportedSplitParticipant>[],
     this.settlements = const <_ImportedLentSettlement>[],
+    this.borrowedSettlements = const <_ImportedBorrowedSettlement>[],
   });
 
   final List<_ImportedSplitRecord> splitRecords;
   final List<_ImportedSplitParticipant> splitParticipants;
   final List<_ImportedLentSettlement> settlements;
+  final List<_ImportedBorrowedSettlement> borrowedSettlements;
 
   bool get hasData =>
       splitRecords.isNotEmpty ||
       splitParticipants.isNotEmpty ||
-      settlements.isNotEmpty;
+      settlements.isNotEmpty ||
+      borrowedSettlements.isNotEmpty;
 }
 
 class _ImportedSplitRecord {
@@ -1682,6 +1773,22 @@ class _ImportedLentSettlement {
   final int sourceSplitRecordId;
   final int sourceSplitParticipantId;
   final int sourceIncomeEntryId;
+  final double settledAmount;
+  final DateTime createdAt;
+}
+
+class _ImportedBorrowedSettlement {
+  const _ImportedBorrowedSettlement({
+    required this.sourceId,
+    required this.sourceBorrowedEntryId,
+    required this.sourceExpenseEntryId,
+    required this.settledAmount,
+    required this.createdAt,
+  });
+
+  final int sourceId;
+  final int sourceBorrowedEntryId;
+  final int sourceExpenseEntryId;
   final double settledAmount;
   final DateTime createdAt;
 }

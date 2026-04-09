@@ -153,7 +153,7 @@ class ModuleDataExportService {
               'Split Total',
               'My Share',
               'Split Pending',
-              'Resolution',
+              'Resolution Type',
             ],
             data: entries
                 .map(
@@ -186,7 +186,11 @@ class ModuleDataExportService {
                         : IndianNumberFormatter.formatFull(
                             entry.splitSummary!.pendingLentAmount,
                           ),
-                    entry.isResolutionIncome ? 'Yes' : 'No',
+                    entry.isResolutionIncome
+                        ? 'Lent'
+                        : entry.isBorrowedResolutionExpense
+                        ? 'Borrowed'
+                        : '-',
                   ],
                 )
                 .toList(growable: false),
@@ -263,7 +267,9 @@ class ModuleDataExportService {
                       IndianNumberFormatter.formatFull(participant.amount),
                       participant.percentage.toStringAsFixed(2),
                       participant.isSelf ? 'Yes' : 'No',
-                      IndianNumberFormatter.formatFull(participant.settledAmount),
+                      IndianNumberFormatter.formatFull(
+                        participant.settledAmount,
+                      ),
                     ],
                   )
                   .toList(growable: false),
@@ -293,6 +299,36 @@ class ModuleDataExportService {
                       settlement.splitRecordId.toString(),
                       settlement.splitParticipantId.toString(),
                       settlement.incomeEntryId.toString(),
+                      IndianNumberFormatter.formatFull(
+                        settlement.settledAmount,
+                      ),
+                    ],
+                  )
+                  .toList(growable: false),
+            ),
+          ],
+          if (splitBundle.borrowedSettlements.isNotEmpty) ...<pw.Widget>[
+            pw.SizedBox(height: 18),
+            pw.Text(
+              'Borrowed Settlements',
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 8),
+            pw.TableHelper.fromTextArray(
+              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              cellStyle: const pw.TextStyle(fontSize: 8.5),
+              headers: const <String>[
+                'Settlement ID',
+                'Borrowed Entry ID',
+                'Expense Entry ID',
+                'Settled Amount',
+              ],
+              data: splitBundle.borrowedSettlements
+                  .map(
+                    (settlement) => <String>[
+                      settlement.id.toString(),
+                      settlement.borrowedEntryId.toString(),
+                      settlement.expenseEntryId.toString(),
                       IndianNumberFormatter.formatFull(
                         settlement.settledAmount,
                       ),
@@ -420,7 +456,7 @@ class ModuleDataExportService {
       TextCellValue('Split Total Amount'),
       TextCellValue('My Share Amount'),
       TextCellValue('Split Pending Amount'),
-      TextCellValue('Resolution Income'),
+      TextCellValue('Resolution Type'),
     ]);
     _applyRowStyle(
       entriesSheet,
@@ -454,7 +490,13 @@ class ModuleDataExportService {
         entry.splitSummary == null
             ? TextCellValue('')
             : _numericCell(entry.splitSummary!.pendingLentAmount),
-        TextCellValue(entry.isResolutionIncome ? 'Yes' : 'No'),
+        TextCellValue(
+          entry.isResolutionIncome
+              ? 'Lent'
+              : entry.isBorrowedResolutionExpense
+              ? 'Borrowed'
+              : '',
+        ),
       ]);
       _applyCellStyle(
         entriesSheet,
@@ -541,10 +583,17 @@ class ModuleDataExportService {
           );
         }
       }
-      _setColumnWidths(
-        splitRecordsSheet,
-        <double>[16, 16, 16, 16, 16, 16, 14, 14, 24],
-      );
+      _setColumnWidths(splitRecordsSheet, <double>[
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        14,
+        14,
+        24,
+      ]);
     }
 
     if (splitBundle.participants.isNotEmpty) {
@@ -588,10 +637,17 @@ class ModuleDataExportService {
           );
         }
       }
-      _setColumnWidths(
-        splitParticipantsSheet,
-        <double>[16, 16, 24, 14, 14, 12, 16, 12, 24],
-      );
+      _setColumnWidths(splitParticipantsSheet, <double>[
+        16,
+        16,
+        24,
+        14,
+        14,
+        12,
+        16,
+        12,
+        24,
+      ]);
     }
 
     if (splitBundle.settlements.isNotEmpty) {
@@ -630,6 +686,42 @@ class ModuleDataExportService {
         }
       }
       _setColumnWidths(settlementsSheet, <double>[16, 16, 18, 16, 16, 24]);
+    }
+
+    if (splitBundle.borrowedSettlements.isNotEmpty) {
+      final borrowedSettlementsSheet = excel['Borrowed Settlements'];
+      borrowedSettlementsSheet.appendRow(<CellValue?>[
+        TextCellValue('Settlement ID'),
+        TextCellValue('Borrowed Entry ID'),
+        TextCellValue('Expense Entry ID'),
+        TextCellValue('Settled Amount'),
+        TextCellValue('Created At'),
+      ]);
+      _applyRowStyle(
+        borrowedSettlementsSheet,
+        rowIndex: 0,
+        columnCount: 5,
+        style: wrappedHeaderStyle,
+      );
+      for (final settlement in splitBundle.borrowedSettlements) {
+        final rowIndex = borrowedSettlementsSheet.maxRows;
+        borrowedSettlementsSheet.appendRow(<CellValue?>[
+          _numericCell(settlement.id),
+          _numericCell(settlement.borrowedEntryId),
+          _numericCell(settlement.expenseEntryId),
+          _numericCell(settlement.settledAmount),
+          TextCellValue(settlement.createdAt.toIso8601String()),
+        ]);
+        for (final columnIndex in <int>[0, 1, 2, 3]) {
+          _applyCellStyle(
+            borrowedSettlementsSheet,
+            rowIndex: rowIndex,
+            columnIndex: columnIndex,
+            style: numberStyle,
+          );
+        }
+      }
+      _setColumnWidths(borrowedSettlementsSheet, <double>[16, 18, 18, 16, 24]);
     }
 
     _setColumnWidths(summarySheet, <double>[26, 22]);
@@ -1080,21 +1172,24 @@ class ModuleDataExportService {
   Future<_ExpenseSplitExportBundle> _loadExpenseSplitExportBundle(
     List<ExpenseRecord> entries,
   ) async {
-    final entryIds = entries.map((entry) => entry.id).toSet().toList(growable: false);
+    final entryIds = entries
+        .map((entry) => entry.id)
+        .toSet()
+        .toList(growable: false);
     if (entryIds.isEmpty) {
       return const _ExpenseSplitExportBundle();
     }
 
     final directlyLinkedSplitRecords =
         await (_database.select(_database.dbSplitRecords)..where(
-          (table) =>
-              table.expenseEntryId.isIn(entryIds) | table.lentEntryId.isIn(entryIds),
-        ))
+              (table) =>
+                  table.expenseEntryId.isIn(entryIds) |
+                  table.lentEntryId.isIn(entryIds),
+            ))
             .get();
-    final settlementsByIncomeEntry =
-        await (_database.select(_database.dbLentSettlements)
-              ..where((table) => table.incomeEntryId.isIn(entryIds)))
-            .get();
+    final settlementsByIncomeEntry = await (_database.select(
+      _database.dbLentSettlements,
+    )..where((table) => table.incomeEntryId.isIn(entryIds))).get();
     final splitRecordIds = <int>{
       ...directlyLinkedSplitRecords.map((record) => record.id),
       ...settlementsByIncomeEntry.map((settlement) => settlement.splitRecordId),
@@ -1102,27 +1197,39 @@ class ModuleDataExportService {
     final splitRecords = splitRecordIds.isEmpty
         ? <DbSplitRecord>[]
         : await (_database.select(_database.dbSplitRecords)
-              ..where((table) => table.id.isIn(splitRecordIds))
-              ..orderBy(<OrderingTerm Function($DbSplitRecordsTable)>[
-                (table) => OrderingTerm.asc(table.id),
-              ]))
-            .get();
+                ..where((table) => table.id.isIn(splitRecordIds))
+                ..orderBy(<OrderingTerm Function($DbSplitRecordsTable)>[
+                  (table) => OrderingTerm.asc(table.id),
+                ]))
+              .get();
     final splitParticipants = splitRecordIds.isEmpty
         ? <DbSplitParticipant>[]
         : await (_database.select(_database.dbSplitParticipants)
-              ..where((table) => table.splitRecordId.isIn(splitRecordIds))
-              ..orderBy(<OrderingTerm Function($DbSplitParticipantsTable)>[
-                (table) => OrderingTerm.asc(table.splitRecordId),
-                (table) => OrderingTerm.asc(table.sortOrder),
-                (table) => OrderingTerm.asc(table.id),
-              ]))
-            .get();
+                ..where((table) => table.splitRecordId.isIn(splitRecordIds))
+                ..orderBy(<OrderingTerm Function($DbSplitParticipantsTable)>[
+                  (table) => OrderingTerm.asc(table.splitRecordId),
+                  (table) => OrderingTerm.asc(table.sortOrder),
+                  (table) => OrderingTerm.asc(table.id),
+                ]))
+              .get();
     final settlements = splitRecordIds.isEmpty
         ? <DbLentSettlement>[]
         : await (_database.select(_database.dbLentSettlements)
-              ..where((table) => table.splitRecordId.isIn(splitRecordIds))
-              ..orderBy(<OrderingTerm Function($DbLentSettlementsTable)>[
-                (table) => OrderingTerm.asc(table.splitRecordId),
+                ..where((table) => table.splitRecordId.isIn(splitRecordIds))
+                ..orderBy(<OrderingTerm Function($DbLentSettlementsTable)>[
+                  (table) => OrderingTerm.asc(table.splitRecordId),
+                  (table) => OrderingTerm.asc(table.id),
+                ]))
+              .get();
+    final borrowedSettlements =
+        await (_database.select(_database.dbBorrowedSettlements)
+              ..where(
+                (table) =>
+                    table.borrowedEntryId.isIn(entryIds) |
+                    table.expenseEntryId.isIn(entryIds),
+              )
+              ..orderBy(<OrderingTerm Function($DbBorrowedSettlementsTable)>[
+                (table) => OrderingTerm.asc(table.borrowedEntryId),
                 (table) => OrderingTerm.asc(table.id),
               ]))
             .get();
@@ -1163,6 +1270,7 @@ class ModuleDataExportService {
       records: splitRecords,
       participants: splitParticipants,
       settlements: settlements,
+      borrowedSettlements: borrowedSettlements,
       selfAmountByRecordId: selfAmountByRecordId.map(
         (key, value) => MapEntry(key, double.parse(value.toStringAsFixed(2))),
       ),
@@ -1296,9 +1404,7 @@ class ModuleDataExportService {
     }
 
     return task.checklist
-        .map(
-          (item) => '${item.isCompleted ? '[x]' : '[ ]'} ${item.title}',
-        )
+        .map((item) => '${item.isCompleted ? '[x]' : '[ ]'} ${item.title}')
         .join(' | ');
   }
 
@@ -1360,7 +1466,11 @@ class _ExpenseExportSummary {
       ),
       totalBorrowed: entries
           .where((entry) => entry.type == 'borrowed')
-          .fold<double>(0, (sum, entry) => sum + entry.amount),
+          .fold<double>(
+            0,
+            (sum, entry) =>
+                sum + (entry.borrowedSummary?.pendingAmount ?? entry.amount),
+          ),
       totalLent: entries.fold<double>(
         0,
         (sum, entry) => sum + entry.effectiveLentAmount,
@@ -1381,6 +1491,7 @@ class _ExpenseSplitExportBundle {
     this.records = const <DbSplitRecord>[],
     this.participants = const <DbSplitParticipant>[],
     this.settlements = const <DbLentSettlement>[],
+    this.borrowedSettlements = const <DbBorrowedSettlement>[],
     this.selfAmountByRecordId = const <int, double>{},
     this.pendingAmountByRecordId = const <int, double>{},
     this.participantCountByRecordId = const <int, int>{},
@@ -1390,6 +1501,7 @@ class _ExpenseSplitExportBundle {
   final List<DbSplitRecord> records;
   final List<DbSplitParticipant> participants;
   final List<DbLentSettlement> settlements;
+  final List<DbBorrowedSettlement> borrowedSettlements;
   final Map<int, double> selfAmountByRecordId;
   final Map<int, double> pendingAmountByRecordId;
   final Map<int, int> participantCountByRecordId;

@@ -9,10 +9,7 @@ import '../../data/repositories/expense_repository.dart';
 import '../../domain/models/expense_models.dart';
 
 class ExpenseEntryDetailPage extends StatelessWidget {
-  const ExpenseEntryDetailPage({
-    required this.args,
-    super.key,
-  });
+  const ExpenseEntryDetailPage({required this.args, super.key});
 
   final ExpenseDetailArgs args;
 
@@ -57,18 +54,12 @@ class ExpenseEntryDetailPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     _DetailLine(label: 'Type', value: _typeLabel(entry)),
-                    _DetailLine(
-                      label: 'Category',
-                      value: entry.category.name,
-                    ),
+                    _DetailLine(label: 'Category', value: entry.category.name),
                     _DetailLine(
                       label: 'Date',
                       value: AppConstants.shortDateFormat.format(entry.date),
                     ),
-                    _DetailLine(
-                      label: 'Payment',
-                      value: entry.paymentMode,
-                    ),
+                    _DetailLine(label: 'Payment', value: entry.paymentMode),
                     if (entry.bank != null)
                       _DetailLine(label: 'Bank', value: entry.bank!.name),
                     if (entry.counterparty?.trim().isNotEmpty == true)
@@ -81,6 +72,39 @@ class ExpenseEntryDetailPage extends StatelessWidget {
                   ],
                 ),
               ),
+              if (entry.borrowedSummary != null) ...<Widget>[
+                const SizedBox(height: 16),
+                AppPanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Borrowed Summary',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 12),
+                      _DetailLine(
+                        label: 'Original',
+                        value: AppConstants.currency(
+                          entry.borrowedSummary!.originalAmount,
+                        ),
+                      ),
+                      _DetailLine(
+                        label: 'Resolved',
+                        value: AppConstants.currency(
+                          entry.borrowedSummary!.settledAmount,
+                        ),
+                      ),
+                      _DetailLine(
+                        label: 'Pending',
+                        value: AppConstants.currency(
+                          entry.borrowedSummary!.pendingAmount,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               if (details.splitDraft != null) ...<Widget>[
                 const SizedBox(height: 16),
                 AppPanel(
@@ -94,11 +118,15 @@ class ExpenseEntryDetailPage extends StatelessWidget {
                       const SizedBox(height: 12),
                       _DetailLine(
                         label: 'Total spent',
-                        value: AppConstants.currency(details.splitDraft!.totalAmount),
+                        value: AppConstants.currency(
+                          details.splitDraft!.totalAmount,
+                        ),
                       ),
                       _DetailLine(
                         label: 'My share',
-                        value: AppConstants.currency(details.splitDraft!.selfAmount),
+                        value: AppConstants.currency(
+                          details.splitDraft!.selfAmount,
+                        ),
                       ),
                       _DetailLine(
                         label: 'Pending lent',
@@ -154,7 +182,28 @@ class ExpenseEntryDetailPage extends StatelessWidget {
                   ),
                 ),
               ],
-              if (details.isResolutionEntry) ...<Widget>[
+              if (details.borrowedResolutionEntries.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 16),
+                AppPanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Borrowed Resolution History',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 12),
+                      ...details.borrowedResolutionEntries.map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _BorrowedResolutionCard(item: item),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (details.isLentResolutionEntry) ...<Widget>[
                 const SizedBox(height: 16),
                 AppPanel(
                   child: Column(
@@ -207,6 +256,45 @@ class ExpenseEntryDetailPage extends StatelessWidget {
                   ),
                 ),
               ],
+              if (details.isBorrowedResolutionEntry) ...<Widget>[
+                const SizedBox(height: 16),
+                AppPanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Resolved Against',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 12),
+                      if (details.sourceBorrowedEntry == null)
+                        const Text('Original borrowed entry was not found.')
+                      else ...<Widget>[
+                        _DetailLine(
+                          label: 'Entry',
+                          value: details.sourceBorrowedEntry!.title,
+                        ),
+                        _DetailLine(
+                          label: 'Resolved',
+                          value: AppConstants.currency(
+                            details.borrowedResolvedAmount ?? entry.amount,
+                          ),
+                        ),
+                        _DetailLine(
+                          label: 'Current pending',
+                          value: AppConstants.currency(
+                            details
+                                    .sourceBorrowedEntry!
+                                    .borrowedSummary
+                                    ?.pendingAmount ??
+                                details.sourceBorrowedEntry!.amount,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ],
           );
         },
@@ -217,6 +305,9 @@ class ExpenseEntryDetailPage extends StatelessWidget {
   static String _typeLabel(ExpenseRecord entry) {
     if (entry.isResolutionIncome) {
       return 'Lent Resolution Income';
+    }
+    if (entry.isBorrowedResolutionExpense) {
+      return 'Borrowed Resolution Expense';
     }
     switch (entry.type) {
       case 'income':
@@ -231,11 +322,47 @@ class ExpenseEntryDetailPage extends StatelessWidget {
   }
 }
 
+class _BorrowedResolutionCard extends StatelessWidget {
+  const _BorrowedResolutionCard({required this.item});
+
+  final BorrowedResolutionDetail item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(item.title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          _DetailLine(
+            label: 'Expense',
+            value: AppConstants.currency(item.amount),
+          ),
+          _DetailLine(
+            label: 'Resolved',
+            value: AppConstants.currency(item.settledAmount),
+          ),
+          _DetailLine(
+            label: 'Date',
+            value: AppConstants.shortDateFormat.format(item.date),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _DetailLine extends StatelessWidget {
-  const _DetailLine({
-    required this.label,
-    required this.value,
-  });
+  const _DetailLine({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -279,16 +406,17 @@ class _ParticipantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusLabel = forcedStatusLabel ??
+    final statusLabel =
+        forcedStatusLabel ??
         (participant.isSelf || participant.isSettled ? 'Settled' : 'Pending');
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.35,
-        ),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -331,9 +459,9 @@ class _ResolutionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.35,
-        ),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(

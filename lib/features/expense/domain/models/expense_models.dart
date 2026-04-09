@@ -112,10 +112,9 @@ class ExpenseSplitDraft extends Equatable {
   bool get hasLentParticipants =>
       participants.any((participant) => !participant.isSelf);
 
-  bool get hasSettlements =>
-      participants.any(
-        (participant) => !participant.isSelf && participant.hasSettlement,
-      );
+  bool get hasSettlements => participants.any(
+    (participant) => !participant.isSelf && participant.hasSettlement,
+  );
 
   int get settledParticipantCount =>
       participants.where((participant) => participant.isSettled).length;
@@ -202,6 +201,25 @@ class LentResolutionDraft extends Equatable {
   List<Object?> get props => <Object?>[lentEntryId, participants];
 }
 
+class BorrowedResolutionDraft extends Equatable {
+  const BorrowedResolutionDraft({
+    required this.borrowedEntryId,
+    required this.borrowedEntryTitle,
+    required this.settledAmount,
+  });
+
+  final int borrowedEntryId;
+  final String borrowedEntryTitle;
+  final double settledAmount;
+
+  @override
+  List<Object?> get props => <Object?>[
+    borrowedEntryId,
+    borrowedEntryTitle,
+    settledAmount,
+  ];
+}
+
 class LentResolutionCandidate extends Equatable {
   const LentResolutionCandidate({
     required this.entry,
@@ -213,6 +231,45 @@ class LentResolutionCandidate extends Equatable {
 
   @override
   List<Object?> get props => <Object?>[entry, splitDraft];
+}
+
+class BorrowedResolutionCandidate extends Equatable {
+  const BorrowedResolutionCandidate({
+    required this.entry,
+    required this.pendingAmount,
+    required this.settledAmount,
+  });
+
+  final ExpenseRecord entry;
+  final double pendingAmount;
+  final double settledAmount;
+
+  @override
+  List<Object?> get props => <Object?>[entry, pendingAmount, settledAmount];
+}
+
+class BorrowedResolutionSummary extends Equatable {
+  const BorrowedResolutionSummary({
+    required this.originalAmount,
+    required this.settledAmount,
+    required this.pendingAmount,
+    required this.resolutionCount,
+  });
+
+  final double originalAmount;
+  final double settledAmount;
+  final double pendingAmount;
+  final int resolutionCount;
+
+  bool get isFullySettled => pendingAmount <= 0.005;
+
+  @override
+  List<Object?> get props => <Object?>[
+    originalAmount,
+    settledAmount,
+    pendingAmount,
+    resolutionCount,
+  ];
 }
 
 class ExpenseRecord extends Equatable {
@@ -228,8 +285,10 @@ class ExpenseRecord extends Equatable {
     this.counterparty,
     this.bank,
     this.splitSummary,
+    this.borrowedSummary,
     this.isManagedLentEntry = false,
     this.isResolutionIncome = false,
+    this.isBorrowedResolutionExpense = false,
     this.canEdit = true,
     this.canDelete = true,
   });
@@ -245,8 +304,10 @@ class ExpenseRecord extends Equatable {
   final String? counterparty;
   final BankName? bank;
   final ExpenseSplitSummary? splitSummary;
+  final BorrowedResolutionSummary? borrowedSummary;
   final bool isManagedLentEntry;
   final bool isResolutionIncome;
+  final bool isBorrowedResolutionExpense;
   final bool canEdit;
   final bool canDelete;
 
@@ -283,8 +344,10 @@ class ExpenseRecord extends Equatable {
     counterparty,
     bank,
     splitSummary,
+    borrowedSummary,
     isManagedLentEntry,
     isResolutionIncome,
+    isBorrowedResolutionExpense,
     canEdit,
     canDelete,
   ];
@@ -315,31 +378,69 @@ class ExpenseResolutionDetail extends Equatable {
   ];
 }
 
+class BorrowedResolutionDetail extends Equatable {
+  const BorrowedResolutionDetail({
+    required this.expenseEntryId,
+    required this.title,
+    required this.amount,
+    required this.settledAmount,
+    required this.date,
+  });
+
+  final int expenseEntryId;
+  final String title;
+  final double amount;
+  final double settledAmount;
+  final DateTime date;
+
+  @override
+  List<Object?> get props => <Object?>[
+    expenseEntryId,
+    title,
+    amount,
+    settledAmount,
+    date,
+  ];
+}
+
 class ExpenseEntryDetails extends Equatable {
   const ExpenseEntryDetails({
     required this.entry,
     this.splitDraft,
     this.sourceEntry,
+    this.sourceBorrowedEntry,
+    this.borrowedResolvedAmount,
     this.resolvedParticipants = const <ExpenseSplitParticipant>[],
     this.resolutionEntries = const <ExpenseResolutionDetail>[],
+    this.borrowedResolutionEntries = const <BorrowedResolutionDetail>[],
   });
 
   final ExpenseRecord entry;
   final ExpenseSplitDraft? splitDraft;
   final ExpenseRecord? sourceEntry;
+  final ExpenseRecord? sourceBorrowedEntry;
+  final double? borrowedResolvedAmount;
   final List<ExpenseSplitParticipant> resolvedParticipants;
   final List<ExpenseResolutionDetail> resolutionEntries;
+  final List<BorrowedResolutionDetail> borrowedResolutionEntries;
 
   bool get isSplitTracked => splitDraft != null;
-  bool get isResolutionEntry => resolvedParticipants.isNotEmpty || sourceEntry != null;
+  bool get isLentResolutionEntry =>
+      resolvedParticipants.isNotEmpty || sourceEntry != null;
+  bool get isBorrowedResolutionEntry => sourceBorrowedEntry != null;
+  bool get isResolutionEntry =>
+      isLentResolutionEntry || isBorrowedResolutionEntry;
 
   @override
   List<Object?> get props => <Object?>[
     entry,
     splitDraft,
     sourceEntry,
+    sourceBorrowedEntry,
+    borrowedResolvedAmount,
     resolvedParticipants,
     resolutionEntries,
+    borrowedResolutionEntries,
   ];
 }
 
@@ -356,6 +457,7 @@ class ExpenseDraft extends Equatable {
     this.bankId,
     this.splitDraft,
     this.lentResolutionDraft,
+    this.borrowedResolutionDraft,
   });
 
   final String title;
@@ -369,6 +471,7 @@ class ExpenseDraft extends Equatable {
   final int? bankId;
   final ExpenseSplitDraft? splitDraft;
   final LentResolutionDraft? lentResolutionDraft;
+  final BorrowedResolutionDraft? borrowedResolutionDraft;
 
   @override
   List<Object?> get props => <Object?>[
@@ -383,6 +486,7 @@ class ExpenseDraft extends Equatable {
     bankId,
     splitDraft,
     lentResolutionDraft,
+    borrowedResolutionDraft,
   ];
 }
 

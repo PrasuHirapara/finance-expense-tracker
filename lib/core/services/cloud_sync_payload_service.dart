@@ -40,7 +40,7 @@ class CloudSyncPayloadService {
   final CloudBackupCryptoService _cloudBackupCryptoService;
   final HashAlgorithm _hashAlgorithm = Sha256();
 
-  static const int _expensePayloadSchemaVersion = 3;
+  static const int _expensePayloadSchemaVersion = 4;
 
   Future<CloudBackupBundle> buildBackupBundle({
     DateTime? exportedAt,
@@ -76,6 +76,9 @@ class CloudSyncPayloadService {
         _database.dbLentSettlements,
       )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
       (_database.select(
+        _database.dbBorrowedSettlements,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
+      (_database.select(
         _database.dbTasks,
       )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
       (_database.select(
@@ -95,19 +98,21 @@ class CloudSyncPayloadService {
     final splitRecords = loadedData[3] as List<DbSplitRecord>;
     final splitParticipants = loadedData[4] as List<DbSplitParticipant>;
     final lentSettlements = loadedData[5] as List<DbLentSettlement>;
-    final tasks = loadedData[6] as List<DbTask>;
-    final credentials = loadedData[7] as List<DbCredential>;
-    final taskCategories = loadedData[8] as List<String>;
-    final taskCategoryUpdatedAt = loadedData[9] as DateTime?;
-    final appSettings = loadedData[10] as Map<String, dynamic>;
-    final reminderSettings = loadedData[11] as Map<String, dynamic>;
-    final appSettingsUpdatedAt = loadedData[12] as DateTime?;
-    final reminderSettingsUpdatedAt = loadedData[13] as DateTime?;
+    final borrowedSettlements = loadedData[6] as List<DbBorrowedSettlement>;
+    final tasks = loadedData[7] as List<DbTask>;
+    final credentials = loadedData[8] as List<DbCredential>;
+    final taskCategories = loadedData[9] as List<String>;
+    final taskCategoryUpdatedAt = loadedData[10] as DateTime?;
+    final appSettings = loadedData[11] as Map<String, dynamic>;
+    final reminderSettings = loadedData[12] as Map<String, dynamic>;
+    final appSettingsUpdatedAt = loadedData[13] as DateTime?;
+    final reminderSettingsUpdatedAt = loadedData[14] as DateTime?;
     final normalizedExpensePayload = _buildNormalizedExpensePayloadMaps(
       entries: entries,
       splitRecords: splitRecords,
       splitParticipants: splitParticipants,
       lentSettlements: lentSettlements,
+      borrowedSettlements: borrowedSettlements,
     );
     final credentialHashSource = <String, dynamic>{
       'syncEnabled': includeCredentialsInBundle,
@@ -152,6 +157,7 @@ class CloudSyncPayloadService {
       'splitRecords': normalizedExpensePayload.splitRecords,
       'splitParticipants': normalizedExpensePayload.splitParticipants,
       'lentSettlements': normalizedExpensePayload.lentSettlements,
+      'borrowedSettlements': normalizedExpensePayload.borrowedSettlements,
     };
     final taskHashSource = <String, dynamic>{
       'categories': taskCategories,
@@ -316,6 +322,7 @@ class CloudSyncPayloadService {
       'splitRecords': normalizedExpensePayload.splitRecords,
       'splitParticipants': normalizedExpensePayload.splitParticipants,
       'lentSettlements': normalizedExpensePayload.lentSettlements,
+      'borrowedSettlements': normalizedExpensePayload.borrowedSettlements,
     });
 
     final taskJson = jsonEncode(<String, dynamic>{
@@ -373,6 +380,7 @@ class CloudSyncPayloadService {
       splitRecords: splitRecords,
       splitParticipants: splitParticipants,
       lentSettlements: lentSettlements,
+      borrowedSettlements: borrowedSettlements,
       tasks: tasks,
       credentials: credentials,
       taskCategoryUpdatedAt: taskCategoryUpdatedAt,
@@ -394,7 +402,8 @@ class CloudSyncPayloadService {
               normalizedExpensePayload.entries.length +
               normalizedExpensePayload.splitRecords.length +
               normalizedExpensePayload.splitParticipants.length +
-              normalizedExpensePayload.lentSettlements.length,
+              normalizedExpensePayload.lentSettlements.length +
+              normalizedExpensePayload.borrowedSettlements.length,
           CloudSyncDomain.task.folderName: tasks.length,
           CloudSyncDomain.settings.folderName: 2,
         },
@@ -429,6 +438,7 @@ class CloudSyncPayloadService {
       (_database.select(_database.dbSplitRecords)).get(),
       (_database.select(_database.dbSplitParticipants)).get(),
       (_database.select(_database.dbLentSettlements)).get(),
+      (_database.select(_database.dbBorrowedSettlements)).get(),
       (_database.select(_database.dbTasks)).get(),
       (_database.select(_database.dbCredentials)).get(),
       _taskCategoryRepository.lastModifiedAt(),
@@ -444,11 +454,12 @@ class CloudSyncPayloadService {
       splitRecords: loadedData[3] as List<DbSplitRecord>,
       splitParticipants: loadedData[4] as List<DbSplitParticipant>,
       lentSettlements: loadedData[5] as List<DbLentSettlement>,
-      tasks: loadedData[6] as List<DbTask>,
-      credentials: loadedData[7] as List<DbCredential>,
-      taskCategoryUpdatedAt: loadedData[8] as DateTime?,
-      appSettingsUpdatedAt: loadedData[9] as DateTime?,
-      reminderSettingsUpdatedAt: loadedData[10] as DateTime?,
+      borrowedSettlements: loadedData[6] as List<DbBorrowedSettlement>,
+      tasks: loadedData[7] as List<DbTask>,
+      credentials: loadedData[8] as List<DbCredential>,
+      taskCategoryUpdatedAt: loadedData[9] as DateTime?,
+      appSettingsUpdatedAt: loadedData[10] as DateTime?,
+      reminderSettingsUpdatedAt: loadedData[11] as DateTime?,
     );
   }
 
@@ -459,6 +470,7 @@ class CloudSyncPayloadService {
     required List<DbSplitRecord> splitRecords,
     required List<DbSplitParticipant> splitParticipants,
     required List<DbLentSettlement> lentSettlements,
+    required List<DbBorrowedSettlement> borrowedSettlements,
     required List<DbTask> tasks,
     required List<DbCredential> credentials,
     required DateTime? taskCategoryUpdatedAt,
@@ -473,6 +485,7 @@ class CloudSyncPayloadService {
       ...splitRecords.map((item) => item.createdAt),
       ...splitParticipants.map((item) => item.createdAt),
       ...lentSettlements.map((item) => item.createdAt),
+      ...borrowedSettlements.map((item) => item.createdAt),
       ...tasks.map((item) => item.createdAt),
       ...tasks.map((item) => item.taskDate),
       ...credentials.map((item) => item.updatedAt),
@@ -539,6 +552,7 @@ class CloudSyncPayloadService {
     final splitRecords = normalizedExpensePayload.splitRecords;
     final splitParticipants = normalizedExpensePayload.splitParticipants;
     final lentSettlements = normalizedExpensePayload.lentSettlements;
+    final borrowedSettlements = normalizedExpensePayload.borrowedSettlements;
     final taskCategories =
         (task['categories'] as List<dynamic>? ?? const <dynamic>[])
             .map((item) => item.toString())
@@ -594,6 +608,7 @@ class CloudSyncPayloadService {
 
     await _database.transaction(() async {
       cancellationToken?.throwIfCancelled();
+      await _database.delete(_database.dbBorrowedSettlements).go();
       await _database.delete(_database.dbLentSettlements).go();
       await _database.delete(_database.dbSplitParticipants).go();
       await _database.delete(_database.dbSplitRecords).go();
@@ -767,6 +782,33 @@ class CloudSyncPayloadService {
         });
       }
 
+      if (borrowedSettlements.isNotEmpty) {
+        cancellationToken?.throwIfCancelled();
+        await _database.batch((batch) {
+          batch.insertAll(
+            _database.dbBorrowedSettlements,
+            borrowedSettlements
+                .map((item) {
+                  return DbBorrowedSettlementsCompanion(
+                    id: Value(item['id'] as int),
+                    borrowedEntryId: Value(
+                      item['borrowedEntryId'] as int? ?? 0,
+                    ),
+                    expenseEntryId: Value(item['expenseEntryId'] as int? ?? 0),
+                    settledAmount: Value(
+                      (item['settledAmount'] as num?)?.toDouble() ?? 0,
+                    ),
+                    createdAt: Value(
+                      DateTime.tryParse(item['createdAt'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                  );
+                })
+                .toList(growable: false),
+          );
+        });
+      }
+
       if (tasks.isNotEmpty) {
         cancellationToken?.throwIfCancelled();
         await _database.batch((batch) {
@@ -852,7 +894,8 @@ class CloudSyncPayloadService {
     final keyFormatVersion = decoded['keyFormatVersion'] is int
         ? decoded['keyFormatVersion'] as int
         : 1;
-    final algorithm = decoded['algorithm'] as String? ??
+    final algorithm =
+        decoded['algorithm'] as String? ??
         CloudSyncProtocol.encryptedPayloadAlgorithm;
 
     if (schemaVersion > CloudSyncProtocol.encryptedEnvelopeSchemaVersion) {
@@ -1041,6 +1084,7 @@ class CloudSyncPayloadService {
     required List<DbSplitRecord> splitRecords,
     required List<DbSplitParticipant> splitParticipants,
     required List<DbLentSettlement> lentSettlements,
+    required List<DbBorrowedSettlement> borrowedSettlements,
   }) {
     final legacyManagedLentEntryIds = splitRecords
         .where(
@@ -1113,6 +1157,17 @@ class CloudSyncPayloadService {
             },
           )
           .toList(growable: false),
+      borrowedSettlements: borrowedSettlements
+          .map(
+            (item) => <String, dynamic>{
+              'id': item.id,
+              'borrowedEntryId': item.borrowedEntryId,
+              'expenseEntryId': item.expenseEntryId,
+              'settledAmount': item.settledAmount,
+              'createdAt': item.createdAt.toIso8601String(),
+            },
+          )
+          .toList(growable: false),
     );
   }
 
@@ -1135,6 +1190,10 @@ class CloudSyncPayloadService {
         (expense['lentSettlements'] as List<dynamic>? ?? const <dynamic>[])
             .whereType<Map<String, dynamic>>()
             .toList(growable: false);
+    final rawBorrowedSettlements =
+        (expense['borrowedSettlements'] as List<dynamic>? ?? const <dynamic>[])
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false);
 
     if (rawSplitRecords.isEmpty) {
       return _NormalizedExpenseSyncPayload(
@@ -1146,6 +1205,9 @@ class CloudSyncPayloadService {
             .map((item) => Map<String, dynamic>.from(item))
             .toList(growable: false),
         lentSettlements: rawLentSettlements
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList(growable: false),
+        borrowedSettlements: rawBorrowedSettlements
             .map((item) => Map<String, dynamic>.from(item))
             .toList(growable: false),
       );
@@ -1194,6 +1256,9 @@ class CloudSyncPayloadService {
       lentSettlements: rawLentSettlements
           .map((item) => Map<String, dynamic>.from(item))
           .toList(growable: false),
+      borrowedSettlements: rawBorrowedSettlements
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList(growable: false),
     );
   }
 
@@ -1209,10 +1274,12 @@ class _NormalizedExpenseSyncPayload {
     required this.splitRecords,
     required this.splitParticipants,
     required this.lentSettlements,
+    required this.borrowedSettlements,
   });
 
   final List<Map<String, dynamic>> entries;
   final List<Map<String, dynamic>> splitRecords;
   final List<Map<String, dynamic>> splitParticipants;
   final List<Map<String, dynamic>> lentSettlements;
+  final List<Map<String, dynamic>> borrowedSettlements;
 }

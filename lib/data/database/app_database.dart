@@ -78,6 +78,16 @@ class DbLentSettlements extends Table {
       dateTime().clientDefault(() => DateTime.now())();
 }
 
+class DbBorrowedSettlements extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get borrowedEntryId =>
+      integer().references(DbFinanceEntries, #id)();
+  IntColumn get expenseEntryId => integer().references(DbFinanceEntries, #id)();
+  RealColumn get settledAmount => real()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+}
+
 class DbTasks extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get sourceTaskId => integer().nullable()();
@@ -112,6 +122,7 @@ class DbCredentials extends Table {
     DbSplitRecords,
     DbSplitParticipants,
     DbLentSettlements,
+    DbBorrowedSettlements,
     DbTasks,
     DbCredentials,
   ],
@@ -120,7 +131,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -140,6 +151,9 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(dbSplitRecords);
         await m.createTable(dbSplitParticipants);
         await m.createTable(dbLentSettlements);
+      }
+      if (from < 5) {
+        await m.createTable(dbBorrowedSettlements);
       }
     },
   );

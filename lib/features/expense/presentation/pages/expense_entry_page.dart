@@ -25,9 +25,8 @@ class ExpenseEntryPage extends StatelessWidget {
           title: BlocBuilder<ExpenseFormBloc, ExpenseFormState>(
             buildWhen: (previous, current) =>
                 previous.expenseId != current.expenseId,
-            builder: (context, state) => Text(
-              state.isEditing ? 'Edit Transaction' : 'Add Transaction',
-            ),
+            builder: (context, state) =>
+                Text(state.isEditing ? 'Edit Transaction' : 'Add Transaction'),
           ),
         ),
         body: BlocBuilder<ExpenseFormBloc, ExpenseFormState>(
@@ -60,19 +59,14 @@ class ExpenseEntryPage extends StatelessWidget {
                 label: 'No bank selected',
               ),
               ...state.banks.map(
-                (bank) => AppSelectOption<int?>(
-                  value: bank.id,
-                  label: bank.name,
-                ),
+                (bank) =>
+                    AppSelectOption<int?>(value: bank.id, label: bank.name),
               ),
             ];
 
             final paymentOptions = AppConstants.paymentModes
                 .map(
-                  (mode) => AppSelectOption<String>(
-                    value: mode,
-                    label: mode,
-                  ),
+                  (mode) => AppSelectOption<String>(value: mode, label: mode),
                 )
                 .toList(growable: false);
 
@@ -92,7 +86,6 @@ class ExpenseEntryPage extends StatelessWidget {
                     children: <Widget>[
                       _TypeRadioCard(
                         label: 'Expense',
-                        icon: Icons.arrow_circle_down_rounded,
                         selected: state.type == 'expense',
                         onTap: () => context.read<ExpenseFormBloc>().add(
                           const ExpenseTypeChanged('expense'),
@@ -100,7 +93,6 @@ class ExpenseEntryPage extends StatelessWidget {
                       ),
                       _TypeRadioCard(
                         label: 'Income',
-                        icon: Icons.arrow_circle_up_rounded,
                         selected: state.type == 'income',
                         onTap: () => context.read<ExpenseFormBloc>().add(
                           const ExpenseTypeChanged('income'),
@@ -108,7 +100,6 @@ class ExpenseEntryPage extends StatelessWidget {
                       ),
                       _TypeRadioCard(
                         label: 'Lent',
-                        icon: Icons.savings_rounded,
                         selected: state.type == 'lent',
                         onTap: () => context.read<ExpenseFormBloc>().add(
                           const ExpenseTypeChanged('lent'),
@@ -116,7 +107,6 @@ class ExpenseEntryPage extends StatelessWidget {
                       ),
                       _TypeRadioCard(
                         label: 'Borrowed',
-                        icon: Icons.account_balance_wallet_rounded,
                         selected: state.type == 'borrowed',
                         onTap: () => context.read<ExpenseFormBloc>().add(
                           const ExpenseTypeChanged('borrowed'),
@@ -129,8 +119,7 @@ class ExpenseEntryPage extends StatelessWidget {
                 TextFormField(
                   initialValue: state.title,
                   decoration: InputDecoration(
-                    labelText:
-                        state.type == 'borrowed' || state.type == 'lent'
+                    labelText: state.type == 'borrowed' || state.type == 'lent'
                         ? 'Title or purpose'
                         : 'Title',
                     errorText:
@@ -174,35 +163,80 @@ class ExpenseEntryPage extends StatelessWidget {
                 ),
                 if (state.type == 'expense') ...<Widget>[
                   const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      onPressed: () async {
-                        if ((state.parsedAmount ?? 0) <= 0) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Enter the expense amount first.'),
-                            ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: <Widget>[
+                      TextButton(
+                        onPressed: () async {
+                          if ((state.parsedAmount ?? 0) <= 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Enter the expense amount first.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          final result = await showExpenseSplitEditor(
+                            context,
+                            totalAmount: state.parsedAmount ?? 0,
+                            initialDraft: state.splitDraft,
                           );
-                          return;
-                        }
-                        final result = await showExpenseSplitEditor(
-                          context,
-                          totalAmount: state.parsedAmount ?? 0,
-                          initialDraft: state.splitDraft,
-                        );
-                        if (result != null && context.mounted) {
-                          context.read<ExpenseFormBloc>().add(
-                            ExpenseSplitDraftChanged(result),
-                          );
-                        }
-                      },
-                      child: Text(
-                        state.splitDraft == null
-                            ? 'Split Expense'
-                            : 'Edit Split Expense',
+                          if (result != null && context.mounted) {
+                            context.read<ExpenseFormBloc>().add(
+                              ExpenseSplitDraftChanged(result),
+                            );
+                          }
+                        },
+                        child: Text(
+                          state.splitDraft == null
+                              ? 'Split Expense'
+                              : 'Edit Split Expense',
+                        ),
                       ),
-                    ),
+                      TextButton(
+                        onPressed: () async {
+                          if ((state.parsedAmount ?? 0) <= 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Enter the expense amount first.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          if (!state.isBorrowedExpense) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Select the Borrowed category to resolve borrowed amount.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          final result = await showBorrowedResolutionEditor(
+                            context,
+                            repository: context.read<ExpenseRepository>(),
+                            expenseAmount: state.parsedAmount ?? 0,
+                            initialDraft: state.borrowedResolutionDraft,
+                          );
+                          if (result != null && context.mounted) {
+                            context.read<ExpenseFormBloc>().add(
+                              ExpenseBorrowedResolutionChanged(result),
+                            );
+                          }
+                        },
+                        child: Text(
+                          state.borrowedResolutionDraft == null
+                              ? 'Resolve Borrowed'
+                              : 'Edit Resolve Borrowed',
+                        ),
+                      ),
+                    ],
                   ),
                   if (state.splitDraft != null)
                     AppPanel(
@@ -233,6 +267,30 @@ class ExpenseEntryPage extends StatelessWidget {
                         ],
                       ),
                     ),
+                  if (state.borrowedResolutionDraft != null) ...<Widget>[
+                    const SizedBox(height: 12),
+                    AppPanel(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          _SplitSummaryRow(
+                            label: 'Borrowed entry',
+                            value: state
+                                .borrowedResolutionDraft!
+                                .borrowedEntryTitle,
+                          ),
+                          const SizedBox(height: 8),
+                          _SplitSummaryRow(
+                            label: 'Resolve amount',
+                            value: AppConstants.currency(
+                              state.borrowedResolutionDraft!.settledAmount,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
                 if (state.type == 'income') ...<Widget>[
                   const SizedBox(height: 12),
@@ -285,17 +343,19 @@ class ExpenseEntryPage extends StatelessWidget {
                         children: <Widget>[
                           _SplitSummaryRow(
                             label: 'Selected shares',
-                            value: '${state.lentResolutionDraft!.participants.length}',
+                            value:
+                                '${state.lentResolutionDraft!.participants.length}',
                           ),
                           const SizedBox(height: 8),
                           _SplitSummaryRow(
                             label: 'Settlement amount',
                             value: AppConstants.currency(
-                              state.lentResolutionDraft!.participants.fold<double>(
-                                0,
-                                (sum, participant) =>
-                                    sum + participant.pendingAmount,
-                              ),
+                              state.lentResolutionDraft!.participants
+                                  .fold<double>(
+                                    0,
+                                    (sum, participant) =>
+                                        sum + participant.pendingAmount,
+                                  ),
                             ),
                           ),
                         ],
@@ -303,21 +363,21 @@ class ExpenseEntryPage extends StatelessWidget {
                     ),
                 ],
                 const SizedBox(height: 16),
-                AppSelectField<int?>(
-                  label: 'Bank Name (Optional)',
-                  value: state.bankId,
-                  options: bankOptions,
-                  onChanged: (value) => context.read<ExpenseFormBloc>().add(
-                    ExpenseBankChanged(value),
-                  ),
-                ),
-                const SizedBox(height: 16),
                 AppSelectField<String>(
                   label: 'Payment Mode',
                   value: state.paymentMode,
                   options: paymentOptions,
                   onChanged: (value) => context.read<ExpenseFormBloc>().add(
                     ExpensePaymentModeChanged(value),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                AppSelectField<int?>(
+                  label: 'Bank Name (Optional)',
+                  value: state.bankId,
+                  options: bankOptions,
+                  onChanged: (value) => context.read<ExpenseFormBloc>().add(
+                    ExpenseBankChanged(value),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -398,10 +458,7 @@ class ExpenseEntryPage extends StatelessWidget {
 }
 
 class _SplitSummaryRow extends StatelessWidget {
-  const _SplitSummaryRow({
-    required this.label,
-    required this.value,
-  });
+  const _SplitSummaryRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -430,13 +487,11 @@ class _SplitSummaryRow extends StatelessWidget {
 class _TypeRadioCard extends StatelessWidget {
   const _TypeRadioCard({
     required this.label,
-    required this.icon,
     required this.selected,
     required this.onTap,
   });
 
   final String label;
-  final IconData icon;
   final bool selected;
   final VoidCallback onTap;
 
@@ -449,11 +504,13 @@ class _TypeRadioCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: selected
               ? theme.colorScheme.primaryContainer
-              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+              : theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.45,
+                ),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: selected
@@ -461,24 +518,18 @@ class _TypeRadioCard extends StatelessWidget {
                 : theme.colorScheme.outlineVariant,
           ),
         ),
-        child: Row(
-          children: <Widget>[
-            Icon(
-              selected
-                  ? Icons.radio_button_checked_rounded
-                  : Icons.radio_button_off_rounded,
-            ),
-            const SizedBox(width: 8),
-            Icon(icon, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: selected
+                ? theme.colorScheme.onPrimaryContainer
+                : theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

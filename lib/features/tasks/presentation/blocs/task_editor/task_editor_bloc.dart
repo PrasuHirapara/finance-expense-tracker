@@ -156,10 +156,7 @@ class TaskChecklistItemAdded extends TaskEditorEvent {
 }
 
 class TaskChecklistItemChanged extends TaskEditorEvent {
-  const TaskChecklistItemChanged({
-    required this.index,
-    required this.value,
-  });
+  const TaskChecklistItemChanged({required this.index, required this.value});
 
   final int index;
   final String value;

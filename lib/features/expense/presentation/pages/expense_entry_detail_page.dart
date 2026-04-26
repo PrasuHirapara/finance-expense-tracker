@@ -455,6 +455,8 @@ class _ResolutionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final participantNames = _formatParticipantNames(item.participants);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -473,6 +475,7 @@ class _ResolutionCard extends StatelessWidget {
             label: 'Amount',
             value: AppConstants.currency(item.amount),
           ),
+          _DetailLine(label: 'Participants', value: participantNames),
           _DetailLine(
             label: 'Date',
             value: AppConstants.shortDateFormat.format(item.date),
@@ -492,5 +495,22 @@ class _ResolutionCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatParticipantNames(List<ExpenseSplitParticipant> participants) {
+    final names = participants
+        .map((participant) => participant.name.trim())
+        .where((name) => name.isNotEmpty)
+        .toList(growable: false);
+    if (names.isEmpty) {
+      return '-';
+    }
+    if (names.length == 1) {
+      return names.first;
+    }
+    if (names.length == 2) {
+      return '${names.first} and ${names.last}';
+    }
+    return '${names.sublist(0, names.length - 1).join(', ')}, and ${names.last}';
   }
 }

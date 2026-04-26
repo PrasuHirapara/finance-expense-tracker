@@ -189,9 +189,9 @@ class _UserSettingsInfoPageState extends State<UserSettingsInfoPage> {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign out canceled.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Sign out canceled.')));
     } catch (error) {
       if (!context.mounted) {
         return;

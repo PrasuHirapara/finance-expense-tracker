@@ -165,8 +165,7 @@ class AddEntryFormCubit extends Cubit<AddEntryFormState> {
   void setAmount(String value) => emit(state.copyWith(amountInput: value));
   void setCategory(int? value) =>
       emit(state.copyWith(selectedCategoryId: value));
-  void setPaymentMode(String value) =>
-      emit(state.copyWith(paymentMode: value));
+  void setPaymentMode(String value) => emit(state.copyWith(paymentMode: value));
   void setDate(DateTime value) => emit(state.copyWith(date: value));
   void setNotes(String value) => emit(state.copyWith(notes: value));
   void setCounterparty(String value) =>

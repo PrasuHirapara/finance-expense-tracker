@@ -75,9 +75,7 @@ class CategoriesCubit extends Cubit<CategoriesState> {
     required int colorValue,
     required int iconCodePoint,
   }) async {
-    emit(
-      state.copyWith(status: CategoriesStatus.saving, errorMessage: null),
-    );
+    emit(state.copyWith(status: CategoriesStatus.saving, errorMessage: null));
     try {
       await _repository.addCategory(
         name: name,

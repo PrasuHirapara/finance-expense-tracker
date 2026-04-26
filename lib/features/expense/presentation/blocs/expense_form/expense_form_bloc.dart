@@ -290,9 +290,7 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
             : state.copyWith(bankId: event.value),
       ),
     );
-    on<ExpensePaymentModeChanged>(
-      (event, emit) => emit(state.copyWith(paymentMode: event.value)),
-    );
+    on<ExpensePaymentModeChanged>(_onPaymentModeChanged);
     on<ExpenseDateChanged>(
       (event, emit) => emit(state.copyWith(date: event.value)),
     );
@@ -361,14 +359,34 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
         categoryId:
             event.existingExpense?.category.id ??
             (categories.isEmpty ? null : categories.first.id),
-        bankId: event.existingExpense?.bank?.id,
         paymentMode: event.existingExpense?.paymentMode ?? state.paymentMode,
         date: event.existingExpense?.date ?? state.date,
         notes: event.existingExpense?.notes ?? state.notes,
         counterparty: event.existingExpense?.counterparty ?? state.counterparty,
+        bankId: _resolveBankSelection(
+          explicitBankId: event.existingExpense?.bank?.id,
+          paymentMode: event.existingExpense?.paymentMode ?? state.paymentMode,
+          banks: banks,
+        ),
         splitDraft: splitDraft,
         clearLentResolutionDraft: true,
         clearBorrowedResolutionDraft: true,
+      ),
+    );
+  }
+
+  void _onPaymentModeChanged(
+    ExpensePaymentModeChanged event,
+    Emitter<ExpenseFormState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        paymentMode: event.value,
+        bankId: _resolveBankSelection(
+          explicitBankId: state.bankId,
+          paymentMode: event.value,
+          banks: state.banks,
+        ),
       ),
     );
   }
@@ -486,11 +504,31 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
     if (amount == null) {
       return state.amount;
     }
-    return amount == amount.roundToDouble()
-        ? amount.toStringAsFixed(0)
-        : amount.toString();
+    return amount.toStringAsFixed(2);
   }
 
   bool _matchesAmount(double left, double right) =>
       (left - right).abs() <= 0.01;
+
+  int? _resolveBankSelection({
+    required int? explicitBankId,
+    required String paymentMode,
+    required List<BankName> banks,
+  }) {
+    if (explicitBankId != null &&
+        banks.any((bank) => bank.id == explicitBankId)) {
+      return explicitBankId;
+    }
+    if (_shouldAutoSelectBank(paymentMode) && banks.isNotEmpty) {
+      return banks.first.id;
+    }
+    return explicitBankId;
+  }
+
+  bool _shouldAutoSelectBank(String paymentMode) {
+    return paymentMode == 'UPI' ||
+        paymentMode == 'Debit Card' ||
+        paymentMode == 'Credit Card' ||
+        paymentMode == 'Bank Transfer';
+  }
 }

@@ -48,25 +48,27 @@ class DashboardCubit extends Cubit<DashboardState> {
   StreamSubscription<DashboardSnapshot>? _snapshotSubscription;
 
   void initialize() {
-    _snapshotSubscription ??= _repository.watchDashboardSnapshot(DateTime.now()).listen(
-      (snapshot) {
-        emit(
-          state.copyWith(
-            status: DashboardStatus.ready,
-            snapshot: snapshot,
-            errorMessage: null,
-          ),
+    _snapshotSubscription ??= _repository
+        .watchDashboardSnapshot(DateTime.now())
+        .listen(
+          (snapshot) {
+            emit(
+              state.copyWith(
+                status: DashboardStatus.ready,
+                snapshot: snapshot,
+                errorMessage: null,
+              ),
+            );
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            emit(
+              state.copyWith(
+                status: DashboardStatus.failure,
+                errorMessage: error.toString(),
+              ),
+            );
+          },
         );
-      },
-      onError: (Object error, StackTrace stackTrace) {
-        emit(
-          state.copyWith(
-            status: DashboardStatus.failure,
-            errorMessage: error.toString(),
-          ),
-        );
-      },
-    );
   }
 
   @override

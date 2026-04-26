@@ -212,6 +212,7 @@ class CloudSyncService {
       folderName: folderName,
     );
   }
+
   void _ensureEnabled(AppPreferences settings) {
     if (!settings.cloudSync.enabled) {
       throw const CloudSyncDisabledException(

@@ -19,7 +19,8 @@ class TaskAnalyticsPage extends StatelessWidget {
       body: BlocBuilder<TaskAnalyticsBloc, TaskAnalyticsState>(
         builder: (context, state) {
           final analytics = state.analytics;
-          if (state.status == TaskAnalyticsStatus.failure && analytics == null) {
+          if (state.status == TaskAnalyticsStatus.failure &&
+              analytics == null) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -104,9 +105,7 @@ class TaskAnalyticsPage extends StatelessWidget {
                       Text(
                         _trendDescription(analytics),
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -138,8 +137,8 @@ class TaskAnalyticsPage extends StatelessWidget {
                                         .map(
                                           (item) => TrendPoint(
                                             period: item.date,
-                                            amount:
-                                                item.completedCount.toDouble(),
+                                            amount: item.completedCount
+                                                .toDouble(),
                                             label: item.label,
                                           ),
                                         )
@@ -265,10 +264,7 @@ class TaskAnalyticsPage extends StatelessWidget {
     return availableWidth < 420 ? 52 : 58;
   }
 
-  double _trendChartWidth(
-    double availableWidth,
-    TaskAnalyticsData analytics,
-  ) {
+  double _trendChartWidth(double availableWidth, TaskAnalyticsData analytics) {
     final pointWidth = _usesMonthlyTrendLabels(analytics) ? 56.0 : 30.0;
     return math.max(
       availableWidth,

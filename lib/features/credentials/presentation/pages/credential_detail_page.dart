@@ -41,9 +41,7 @@ class _CredentialDetailPageState extends State<CredentialDetailPage> {
     final credential = _credential;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(credential?.title ?? 'Credential'),
-      ),
+      appBar: AppBar(title: Text(credential?.title ?? 'Credential')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : credential == null
@@ -95,7 +93,9 @@ class _CredentialDetailPageState extends State<CredentialDetailPage> {
                               children: <Widget>[
                                 Text(
                                   field.keyLabel,
-                                  style: Theme.of(context).textTheme.titleMedium,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                 ),
                                 const SizedBox(height: 6),
                                 SelectableText(field.value),
@@ -205,7 +205,9 @@ class _CredentialDetailPageState extends State<CredentialDetailPage> {
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Unable to decrypt this credential with the provided authentication.'),
+          content: Text(
+            'Unable to decrypt this credential with the provided authentication.',
+          ),
         ),
       );
       Navigator.of(context).pop();
@@ -281,7 +283,9 @@ class _CredentialBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.65,
+        ),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(

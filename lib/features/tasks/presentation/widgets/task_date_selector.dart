@@ -73,10 +73,7 @@ class _TaskDateSelectorState extends State<TaskDateSelector> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               width: _itemWidth,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
               decoration: BoxDecoration(
                 color: selected
                     ? theme.colorScheme.primaryContainer
@@ -123,7 +120,8 @@ class _TaskDateSelectorState extends State<TaskDateSelector> {
     final today = DateTime.now();
     return List<DateTime>.generate(
       15,
-      (index) => today.subtract(const Duration(days: 7)).add(Duration(days: index)),
+      (index) =>
+          today.subtract(const Duration(days: 7)).add(Duration(days: index)),
     );
   }
 
@@ -132,7 +130,9 @@ class _TaskDateSelectorState extends State<TaskDateSelector> {
       return;
     }
 
-    final targetIndex = _dates.indexWhere((date) => _isSameDate(date, targetDate));
+    final targetIndex = _dates.indexWhere(
+      (date) => _isSameDate(date, targetDate),
+    );
     if (targetIndex == -1) {
       return;
     }

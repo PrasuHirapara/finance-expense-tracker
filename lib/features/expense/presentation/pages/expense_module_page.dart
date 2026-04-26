@@ -12,6 +12,7 @@ import '../../data/repositories/expense_repository.dart';
 import '../../domain/models/expense_models.dart';
 import '../blocs/bank/bank_bloc.dart';
 import '../blocs/expense/expense_bloc.dart';
+import '../utils/expense_search_utils.dart';
 
 class ExpenseModulePage extends StatefulWidget {
   const ExpenseModulePage({super.key});
@@ -21,14 +22,16 @@ class ExpenseModulePage extends StatefulWidget {
 }
 
 class _ExpenseModulePageState extends State<ExpenseModulePage> {
+  static const int _initialVisibleDateGroups = 10;
+
   _ExpenseSummaryFilter _activeSummaryFilter = _ExpenseSummaryFilter.net;
   final TextEditingController _searchController = TextEditingController();
   DateTime? _expandedDate;
+  int _visibleDateGroupCount = _initialVisibleDateGroups;
 
   @override
   void initState() {
     super.initState();
-    context.read<ExpenseBloc>().add(const ExpenseSubscriptionRequested());
     context.read<BankBloc>().add(const BanksSubscriptionRequested());
   }
 
@@ -66,8 +69,12 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
               for (final entry in dashboard.entries) entry.id: entry,
             };
             final groupedEntries = _groupEntries(filteredEntries);
+            final visibleGroupedEntries =
+                Map<DateTime, List<ExpenseRecord>>.fromEntries(
+                  groupedEntries.entries.take(_visibleDateGroupCount),
+                );
             final expandedDate =
-                groupedEntries.keys.any((date) => date == _expandedDate)
+                visibleGroupedEntries.keys.any((date) => date == _expandedDate)
                 ? _expandedDate
                 : null;
             final summaryCards = <_SummaryCardData>[
@@ -208,6 +215,8 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                               setState(() {
                                 _activeSummaryFilter =
                                     _ExpenseSummaryFilter.net;
+                                _visibleDateGroupCount =
+                                    _initialVisibleDateGroups;
                               });
                             },
                           ),
@@ -228,6 +237,8 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                                     onTap: () {
                                       setState(() {
                                         _activeSummaryFilter = item.filter;
+                                        _visibleDateGroupCount =
+                                            _initialVisibleDateGroups;
                                       });
                                     },
                                   ),
@@ -246,7 +257,9 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                             'Search by date, title, description, or amount',
                         prefixIcon: Icon(Icons.search_rounded),
                       ),
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) => setState(() {
+                        _visibleDateGroupCount = _initialVisibleDateGroups;
+                      }),
                     ),
                     const SizedBox(height: 18),
                     AppPanel(
@@ -265,7 +278,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                                 onPressed: () => Navigator.of(
                                   context,
                                 ).pushNamed(AppRoutes.expenseEntries),
-                                child: const Text('Show More'),
+                                child: const Text('All Entries'),
                               ),
                             ],
                           ),
@@ -281,7 +294,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                               ),
                             )
                           else
-                            ...groupedEntries.entries.map(
+                            ...visibleGroupedEntries.entries.map(
                               (group) => Padding(
                                 padding: const EdgeInsets.only(top: 12),
                                 child: _DateTransactionGroup(
@@ -316,6 +329,19 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                                     _deleteEntry(context, entry);
                                   },
                                 ),
+                              ),
+                            ),
+                          if (groupedEntries.length >
+                              visibleGroupedEntries.length)
+                            Align(
+                              alignment: Alignment.center,
+                              child: TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _visibleDateGroupCount += 10;
+                                  });
+                                },
+                                child: const Text('Show more'),
                               ),
                             ),
                         ],
@@ -357,6 +383,9 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
     }
 
     final searchDateFormat = DateFormat('dd-MM-yyyy');
+    if (matchesEquivalentDateQuery(entry.date, normalizedQuery)) {
+      return true;
+    }
     final searchableValues = <String>[
       entry.title,
       entry.notes,
@@ -369,6 +398,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
       entry.amount.toString(),
       AppConstants.shortDateFormat.format(entry.date),
       searchDateFormat.format(entry.date),
+      ...equivalentDateSearchTerms(entry.date),
     ].map((value) => value.toLowerCase());
 
     return searchableValues.any((value) => value.contains(normalizedQuery));

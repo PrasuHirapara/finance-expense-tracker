@@ -25,10 +25,7 @@ class CredentialSecurityService {
   }
 
   Future<void> setEncryptionKey(String encryptionKey) {
-    return _storage.write(
-      key: _encryptionKeyStorageKey,
-      value: encryptionKey,
-    );
+    return _storage.write(key: _encryptionKeyStorageKey, value: encryptionKey);
   }
 
   Future<String?> readEncryptionKey() {
@@ -75,9 +72,7 @@ class CredentialSecurityService {
     }
   }
 
-  Future<bool> authenticateWithBiometrics({
-    required String reason,
-  }) async {
+  Future<bool> authenticateWithBiometrics({required String reason}) async {
     try {
       if (!await canUseBiometrics()) {
         return false;
@@ -95,9 +90,7 @@ class CredentialSecurityService {
       );
     } on PlatformException catch (error) {
       if (kDebugMode) {
-        debugPrint(
-          'Credential biometric authentication failed: ${error.code}',
-        );
+        debugPrint('Credential biometric authentication failed: ${error.code}');
       }
       if (error.code == auth_error.notAvailable ||
           error.code == auth_error.notEnrolled ||

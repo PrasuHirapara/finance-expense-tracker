@@ -13,7 +13,10 @@ class CredentialEditorArgs {
 }
 
 class CredentialEditorPage extends StatefulWidget {
-  const CredentialEditorPage({super.key, this.args = const CredentialEditorArgs()});
+  const CredentialEditorPage({
+    super.key,
+    this.args = const CredentialEditorArgs(),
+  });
 
   final CredentialEditorArgs args;
 
@@ -37,7 +40,8 @@ class _CredentialEditorPageState extends State<CredentialEditorPage> {
       text: widget.args.credential?.title ?? '',
     );
     _expiryDate = widget.args.credential?.expiryDate;
-    final existingFields = widget.args.credential?.fields ?? const <CredentialField>[];
+    final existingFields =
+        widget.args.credential?.fields ?? const <CredentialField>[];
     _fieldControllers = existingFields.isEmpty
         ? <_FieldRowController>[_FieldRowController.empty()]
         : existingFields
@@ -95,9 +99,7 @@ class _CredentialEditorPageState extends State<CredentialEditorPage> {
                 InkWell(
                   onTap: _pickExpiryDate,
                   child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Expiry Date',
-                    ),
+                    decoration: const InputDecoration(labelText: 'Expiry Date'),
                     child: Text(
                       _expiryDate == null
                           ? 'No expiry date'
@@ -178,8 +180,9 @@ class _CredentialEditorPageState extends State<CredentialEditorPage> {
               controller: row.keyController,
               decoration: InputDecoration(
                 labelText: 'Key',
-                errorText:
-                    hasValidationError ? 'Both key and value are required' : null,
+                errorText: hasValidationError
+                    ? 'Both key and value are required'
+                    : null,
               ),
               onChanged: (_) {
                 if (_showValidation) {

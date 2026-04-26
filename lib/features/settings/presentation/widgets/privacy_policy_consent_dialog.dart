@@ -74,10 +74,7 @@ class PrivacyPolicyConsentDialog extends StatelessWidget {
             onPressed: onViewFullPolicy,
             child: const Text('View Full Policy'),
           ),
-          FilledButton(
-            onPressed: onAccept,
-            child: const Text('Accept'),
-          ),
+          FilledButton(onPressed: onAccept, child: const Text('Accept')),
         ],
       ),
     );
@@ -85,10 +82,7 @@ class PrivacyPolicyConsentDialog extends StatelessWidget {
 }
 
 class _ConsentPoint extends StatelessWidget {
-  const _ConsentPoint({
-    required this.title,
-    required this.body,
-  });
+  const _ConsentPoint({required this.title, required this.body});
 
   final String title;
   final String body;

@@ -149,10 +149,7 @@ class TermsConditionsPage extends StatelessWidget {
 }
 
 class _TermsSection extends StatelessWidget {
-  const _TermsSection({
-    required this.title,
-    required this.children,
-  });
+  const _TermsSection({required this.title, required this.children});
 
   final String title;
   final List<Widget> children;
@@ -192,9 +189,7 @@ class _TermsParagraph extends StatelessWidget {
 }
 
 class _TermsBulletList extends StatelessWidget {
-  const _TermsBulletList({
-    required this.items,
-  });
+  const _TermsBulletList({required this.items});
 
   final List<String> items;
 

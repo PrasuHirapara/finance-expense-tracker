@@ -10,10 +10,7 @@ const Object _exportUnset = Object();
 enum ExportStatus { initial, loading, success, failure }
 
 class ExportState extends Equatable {
-  const ExportState({
-    this.status = ExportStatus.initial,
-    this.errorMessage,
-  });
+  const ExportState({this.status = ExportStatus.initial, this.errorMessage});
 
   final ExportStatus status;
   final String? errorMessage;

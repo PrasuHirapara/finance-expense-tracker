@@ -86,7 +86,8 @@ class TasksModulePage extends StatelessWidget {
                             children: <Widget>[
                               _TaskBadge(label: task.category),
                               _TaskBadge(label: 'Priority ${task.priority}'),
-                              if (task.isDaily) const _TaskBadge(label: 'Daily'),
+                              if (task.isDaily)
+                                const _TaskBadge(label: 'Daily'),
                               if (task.checklist.isNotEmpty)
                                 _TaskBadge(
                                   label:

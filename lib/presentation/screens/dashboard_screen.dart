@@ -22,7 +22,8 @@ class DashboardScreen extends StatelessWidget {
           DashboardCubit(context.read<FinanceRepository>())..initialize(),
       child: BlocBuilder<DashboardCubit, DashboardState>(
         builder: (context, state) {
-          if (state.status == DashboardStatus.loading || state.snapshot == null) {
+          if (state.status == DashboardStatus.loading ||
+              state.snapshot == null) {
             return const Center(child: CircularProgressIndicator());
           }
 

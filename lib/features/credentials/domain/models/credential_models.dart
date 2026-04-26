@@ -38,10 +38,7 @@ List<CredentialField> withoutCredentialMetadataFields(
 }
 
 class CredentialField extends Equatable {
-  const CredentialField({
-    required this.keyLabel,
-    required this.value,
-  });
+  const CredentialField({required this.keyLabel, required this.value});
 
   final String keyLabel;
   final String value;

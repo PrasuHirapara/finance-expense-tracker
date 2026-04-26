@@ -283,7 +283,8 @@ class EncryptedCloudPayload extends Equatable {
       keyFormatVersion: json['keyFormatVersion'] is int
           ? json['keyFormatVersion'] as int
           : 1,
-      algorithm: json['algorithm'] as String? ??
+      algorithm:
+          json['algorithm'] as String? ??
           CloudSyncProtocol.encryptedPayloadAlgorithm,
       encryptedPayload: json['encryptedPayload'] as String? ?? '',
       saltBase64: json['saltBase64'] as String? ?? '',

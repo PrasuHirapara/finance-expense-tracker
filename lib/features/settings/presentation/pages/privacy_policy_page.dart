@@ -183,10 +183,7 @@ class PrivacyPolicyPage extends StatelessWidget {
 }
 
 class _PolicySection extends StatelessWidget {
-  const _PolicySection({
-    required this.title,
-    required this.children,
-  });
+  const _PolicySection({required this.title, required this.children});
 
   final String title;
   final List<Widget> children;
@@ -226,9 +223,7 @@ class _PolicyParagraph extends StatelessWidget {
 }
 
 class _PolicyBulletList extends StatelessWidget {
-  const _PolicyBulletList({
-    required this.items,
-  });
+  const _PolicyBulletList({required this.items});
 
   final List<String> items;
 

@@ -46,7 +46,9 @@ class _CategoriesView extends StatelessWidget {
               : state.status == CategoriesStatus.failure &&
                     state.categories.isEmpty
               ? Center(
-                  child: Text(state.errorMessage ?? 'Unable to load categories.'),
+                  child: Text(
+                    state.errorMessage ?? 'Unable to load categories.',
+                  ),
                 )
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
@@ -206,11 +208,13 @@ class _CategoriesView extends StatelessWidget {
                               }
 
                               try {
-                                await context.read<CategoriesCubit>().addCategory(
-                                  name: name,
-                                  colorValue: selectedColor,
-                                  iconCodePoint: selectedIcon.codePoint,
-                                );
+                                await context
+                                    .read<CategoriesCubit>()
+                                    .addCategory(
+                                      name: name,
+                                      colorValue: selectedColor,
+                                      iconCodePoint: selectedIcon.codePoint,
+                                    );
                                 if (context.mounted) {
                                   Navigator.of(context).pop();
                                   ScaffoldMessenger.of(context).showSnackBar(

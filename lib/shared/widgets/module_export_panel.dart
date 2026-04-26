@@ -16,10 +16,7 @@ class ModuleExportPanel extends StatefulWidget {
 
   final String title;
   final String? description;
-  final Future<String> Function(
-    DateTimeRange range,
-    ModuleExportFormat format,
-  )
+  final Future<String> Function(DateTimeRange range, ModuleExportFormat format)
   onExport;
 
   @override
@@ -133,19 +130,31 @@ class _ModuleExportPanelState extends State<ModuleExportPanel> {
               if (isWide) {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: children
-                      .expand((child) => <Widget>[child, const SizedBox(width: 12)])
-                      .toList()
-                    ..removeLast(),
+                  children:
+                      children
+                          .expand(
+                            (child) => <Widget>[
+                              child,
+                              const SizedBox(width: 12),
+                            ],
+                          )
+                          .toList()
+                        ..removeLast(),
                 );
               }
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: children
-                    .expand((child) => <Widget>[child, const SizedBox(height: 12)])
-                    .toList()
-                  ..removeLast(),
+                children:
+                    children
+                        .expand(
+                          (child) => <Widget>[
+                            child,
+                            const SizedBox(height: 12),
+                          ],
+                        )
+                        .toList()
+                      ..removeLast(),
               );
             },
           ),
@@ -199,9 +208,7 @@ class _ModuleExportPanelState extends State<ModuleExportPanel> {
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(
-        SnackBar(content: Text('Export failed: $error')),
-      );
+      messenger.showSnackBar(SnackBar(content: Text('Export failed: $error')));
     } finally {
       if (mounted) {
         setState(() {

@@ -17,7 +17,10 @@ class ExpenseEntriesPage extends StatefulWidget {
 }
 
 class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
+  static const int _entriesPerPage = 10;
+
   ExpenseEntryFilter _filter = const ExpenseEntryFilter();
+  int _currentPage = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +63,7 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                               onPressed: () {
                                 setState(() {
                                   _filter = const ExpenseEntryFilter();
+                                  _currentPage = 1;
                                 });
                               },
                               child: const Text('Clear'),
@@ -89,6 +93,7 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                                     _filter = _filter.copyWith(
                                       fromDate: picked,
                                     );
+                                    _currentPage = 1;
                                   });
                                 }
                               },
@@ -108,6 +113,7 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                                 if (picked != null) {
                                   setState(() {
                                     _filter = _filter.copyWith(toDate: picked);
+                                    _currentPage = 1;
                                   });
                                 }
                               },
@@ -133,6 +139,7 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                           onChanged: (value) {
                             setState(() {
                               _filter = _filter.copyWith(bankId: value);
+                              _currentPage = 1;
                             });
                           },
                         ),
@@ -155,6 +162,7 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                           onChanged: (value) {
                             setState(() {
                               _filter = _filter.copyWith(categoryId: value);
+                              _currentPage = 1;
                             });
                           },
                         ),
@@ -179,6 +187,7 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                           onChanged: (value) {
                             setState(() {
                               _filter = _filter.copyWith(flow: value);
+                              _currentPage = 1;
                             });
                           },
                         ),
@@ -196,7 +205,7 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                       ),
                     )
                   else
-                    ...entries.map((entry) {
+                    ..._buildPagedEntries(entries).map((entry) {
                       final actionEntry = _resolveActionEntry(entry, entryById);
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
@@ -327,6 +336,18 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
                         ),
                       );
                     }),
+                  if (entries.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 4),
+                    _PaginationControls(
+                      currentPage: _currentPage,
+                      totalPages: _totalPages(entries.length),
+                      onPageSelected: (page) {
+                        setState(() {
+                          _currentPage = page;
+                        });
+                      },
+                    ),
+                  ],
                 ],
               );
             },
@@ -395,6 +416,28 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
         context,
       ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
+  }
+
+  List<ExpenseRecord> _buildPagedEntries(List<ExpenseRecord> entries) {
+    final totalPages = _totalPages(entries.length);
+    final currentPage = _currentPage.clamp(1, totalPages);
+    if (currentPage != _currentPage) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _currentPage = currentPage;
+        });
+      });
+    }
+    final startIndex = (currentPage - 1) * _entriesPerPage;
+    final endIndex = (startIndex + _entriesPerPage).clamp(0, entries.length);
+    return entries.sublist(startIndex, endIndex);
+  }
+
+  int _totalPages(int totalEntries) {
+    return totalEntries == 0 ? 1 : ((totalEntries - 1) ~/ _entriesPerPage) + 1;
   }
 }
 
@@ -540,5 +583,87 @@ class _SplitSummaryLine extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _PaginationControls extends StatelessWidget {
+  const _PaginationControls({
+    required this.currentPage,
+    required this.totalPages,
+    required this.onPageSelected,
+  });
+
+  final int currentPage;
+  final int totalPages;
+  final ValueChanged<int> onPageSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        TextButton.icon(
+          onPressed: currentPage > 1
+              ? () => onPageSelected(currentPage - 1)
+              : null,
+          icon: const Icon(Icons.chevron_left_rounded),
+          label: const Text('Prev'),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List<Widget>.generate(totalPages, (index) {
+                final page = index + 1;
+                final isSelected = page == currentPage;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 1),
+                  child: TextButton(
+                    onPressed: () => onPageSelected(page),
+                    style: TextButton.styleFrom(
+                      minimumSize: Size(_pageButtonWidth(page), 36),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: _pageButtonHorizontalPadding(page),
+                        vertical: 8,
+                      ),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      foregroundColor: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                      textStyle: Theme.of(context).textTheme.titleSmall
+                          ?.copyWith(
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                    ),
+                    child: Text('$page'),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ),
+        TextButton.icon(
+          onPressed: currentPage < totalPages
+              ? () => onPageSelected(currentPage + 1)
+              : null,
+          icon: const Icon(Icons.chevron_right_rounded),
+          label: const Text('Next'),
+        ),
+      ],
+    );
+  }
+
+  double _pageButtonWidth(int page) {
+    final digits = page.toString().length;
+    return 18 + (digits * 10);
+  }
+
+  double _pageButtonHorizontalPadding(int page) {
+    final digits = page.toString().length;
+    final padding = 9 - (digits * 1.5);
+    return padding < 3 ? 3 : padding;
   }
 }

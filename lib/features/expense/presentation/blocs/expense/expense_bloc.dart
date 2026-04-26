@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../../core/services/app_settings_repository.dart';
 import '../../../data/repositories/expense_repository.dart';
 import '../../../domain/models/expense_models.dart';
 
@@ -72,6 +73,10 @@ class ExpenseBankFilterChanged extends ExpenseEvent {
   List<Object?> get props => <Object?>[bankId];
 }
 
+class ExpenseRestoreRequested extends ExpenseEvent {
+  const ExpenseRestoreRequested();
+}
+
 class _ExpenseDashboardUpdated extends ExpenseEvent {
   const _ExpenseDashboardUpdated(this.dashboard);
 
@@ -82,13 +87,16 @@ class _ExpenseDashboardUpdated extends ExpenseEvent {
 }
 
 class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
-  ExpenseBloc(this._repository) : super(const ExpenseState()) {
+  ExpenseBloc(this._repository, this._settingsRepository)
+    : super(const ExpenseState()) {
     on<ExpenseSubscriptionRequested>(_onSubscriptionRequested);
     on<ExpenseBankFilterChanged>(_onBankFilterChanged);
+    on<ExpenseRestoreRequested>(_onRestoreRequested);
     on<_ExpenseDashboardUpdated>(_onDashboardUpdated);
   }
 
   final ExpenseRepository _repository;
+  final AppSettingsRepository _settingsRepository;
   StreamSubscription<ExpenseDashboardData>? _subscription;
 
   Future<void> _onSubscriptionRequested(
@@ -110,11 +118,28 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
         .listen((dashboard) => add(_ExpenseDashboardUpdated(dashboard)));
   }
 
-  void _onBankFilterChanged(
+  Future<void> _onBankFilterChanged(
     ExpenseBankFilterChanged event,
     Emitter<ExpenseState> emit,
-  ) {
+  ) async {
+    await _settingsRepository.updateSelectedExpenseBankId(event.bankId);
     add(ExpenseSubscriptionRequested(bankId: event.bankId));
+  }
+
+  Future<void> _onRestoreRequested(
+    ExpenseRestoreRequested event,
+    Emitter<ExpenseState> emit,
+  ) async {
+    final settings = await _settingsRepository.getSettings();
+    final savedBankId = settings.selectedExpenseBankId;
+    final banks = await _repository.watchBanks().first;
+    final restoredBankId = banks.any((bank) => bank.id == savedBankId)
+        ? savedBankId
+        : null;
+    if (savedBankId != restoredBankId) {
+      await _settingsRepository.updateSelectedExpenseBankId(restoredBankId);
+    }
+    add(ExpenseSubscriptionRequested(bankId: restoredBankId));
   }
 
   void _onDashboardUpdated(

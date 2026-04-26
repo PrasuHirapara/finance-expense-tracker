@@ -233,7 +233,9 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
             ),
             const SizedBox(height: 16),
             StreamBuilder<ReminderSettings>(
-              stream: context.read<ReminderSettingsRepository>().watchSettings(),
+              stream: context
+                  .read<ReminderSettingsRepository>()
+                  .watchSettings(),
               builder: (context, reminderSnapshot) {
                 final reminderSettings =
                     reminderSnapshot.data ?? const ReminderSettings();
@@ -241,8 +243,9 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.42),
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.42,
+                    ),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: Column(
@@ -309,9 +312,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            enabled
-                ? 'Cloud Sync enabled.'
-                : 'Cloud Sync disabled.',
+            enabled ? 'Cloud Sync enabled.' : 'Cloud Sync disabled.',
           ),
         ),
       );

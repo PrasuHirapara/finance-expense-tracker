@@ -82,12 +82,7 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
 
     _isRefreshing = true;
     if (showLoading && state.report == null) {
-      emit(
-        state.copyWith(
-          status: AnalyticsStatus.loading,
-          errorMessage: null,
-        ),
-      );
+      emit(state.copyWith(status: AnalyticsStatus.loading, errorMessage: null));
     }
 
     try {

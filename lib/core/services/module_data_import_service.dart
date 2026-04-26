@@ -126,7 +126,9 @@ class ModuleDataImportService {
     ]);
     referenceSheet.appendRow(<CellValue?>[
       TextCellValue('Entry ID'),
-      TextCellValue('Optional. Used automatically by app-generated exports to preserve split metadata.'),
+      TextCellValue(
+        'Optional. Used automatically by app-generated exports to preserve split metadata.',
+      ),
     ]);
     referenceSheet.appendRow(<CellValue?>[
       TextCellValue('Title'),
@@ -558,7 +560,9 @@ class ModuleDataImportService {
       if (value.isEmpty) {
         rowErrors.add('Value is required.');
       }
-      final parsedExpiryDate = expiryText.isEmpty ? null : _parseDate(expiryCell);
+      final parsedExpiryDate = expiryText.isEmpty
+          ? null
+          : _parseDate(expiryCell);
       if (expiryText.isNotEmpty && parsedExpiryDate == null) {
         rowErrors.add(
           'Expiry Date must be a valid Excel date or text date like yyyy-MM-dd.',
@@ -783,12 +787,16 @@ class ModuleDataImportService {
       if (_isBlankRow(row, headerMap.values)) {
         continue;
       }
-      final sourceId = _parseOptionalInt(_cellAt(row, headerMap['splitRecordId']));
+      final sourceId = _parseOptionalInt(
+        _cellAt(row, headerMap['splitRecordId']),
+      );
       final totalAmount = _parseAmount(_cellAt(row, headerMap['totalAmount']));
       if (sourceId == null || totalAmount == null) {
         throw ModuleImportException(
           'The Split Records sheet contains invalid data.',
-          <String>['Row ${rowIndex + 1}: Split Record ID and Total Amount are required.'],
+          <String>[
+            'Row ${rowIndex + 1}: Split Record ID and Total Amount are required.',
+          ],
         );
       }
       rows.add(
@@ -802,7 +810,9 @@ class ModuleDataImportService {
           ),
           totalAmount: totalAmount,
           createdAt:
-              DateTime.tryParse(_cellText(_cellAt(row, headerMap['createdAt']))) ??
+              DateTime.tryParse(
+                _cellText(_cellAt(row, headerMap['createdAt'])),
+              ) ??
               DateTime.now(),
         ),
       );
@@ -839,11 +849,15 @@ class ModuleDataImportService {
       if (_isBlankRow(row, headerMap.values)) {
         continue;
       }
-      final sourceId = _parseOptionalInt(_cellAt(row, headerMap['participantId']));
+      final sourceId = _parseOptionalInt(
+        _cellAt(row, headerMap['participantId']),
+      );
       final sourceSplitRecordId = _parseOptionalInt(
         _cellAt(row, headerMap['splitRecordId']),
       );
-      final participantName = _cellText(_cellAt(row, headerMap['participantName']));
+      final participantName = _cellText(
+        _cellAt(row, headerMap['participantName']),
+      );
       final amount = _parseAmount(_cellAt(row, headerMap['amount']));
       final percentage = _parseAmount(_cellAt(row, headerMap['percentage']));
       if (sourceId == null ||
@@ -868,9 +882,12 @@ class ModuleDataImportService {
           isSelf: _parseBool(_cellAt(row, headerMap['isSelf'])),
           settledAmount:
               _parseAmount(_cellAt(row, headerMap['settledAmount'])) ?? 0,
-          sortOrder: _parseOptionalInt(_cellAt(row, headerMap['sortOrder'])) ?? 0,
+          sortOrder:
+              _parseOptionalInt(_cellAt(row, headerMap['sortOrder'])) ?? 0,
           createdAt:
-              DateTime.tryParse(_cellText(_cellAt(row, headerMap['createdAt']))) ??
+              DateTime.tryParse(
+                _cellText(_cellAt(row, headerMap['createdAt'])),
+              ) ??
               DateTime.now(),
         ),
       );
@@ -907,7 +924,9 @@ class ModuleDataImportService {
       if (_isBlankRow(row, headerMap.values)) {
         continue;
       }
-      final sourceId = _parseOptionalInt(_cellAt(row, headerMap['settlementId']));
+      final sourceId = _parseOptionalInt(
+        _cellAt(row, headerMap['settlementId']),
+      );
       final sourceSplitRecordId = _parseOptionalInt(
         _cellAt(row, headerMap['splitRecordId']),
       );
@@ -917,7 +936,9 @@ class ModuleDataImportService {
       final sourceIncomeEntryId = _parseOptionalInt(
         _cellAt(row, headerMap['incomeEntryId']),
       );
-      final settledAmount = _parseAmount(_cellAt(row, headerMap['settledAmount']));
+      final settledAmount = _parseAmount(
+        _cellAt(row, headerMap['settledAmount']),
+      );
       if (sourceId == null ||
           sourceSplitRecordId == null ||
           sourceSplitParticipantId == null ||
@@ -938,7 +959,9 @@ class ModuleDataImportService {
           sourceIncomeEntryId: sourceIncomeEntryId,
           settledAmount: settledAmount,
           createdAt:
-              DateTime.tryParse(_cellText(_cellAt(row, headerMap['createdAt']))) ??
+              DateTime.tryParse(
+                _cellText(_cellAt(row, headerMap['createdAt'])),
+              ) ??
               DateTime.now(),
         ),
       );
@@ -951,10 +974,7 @@ class ModuleDataImportService {
       headerRow: sheet.row(0),
       aliases: const <String, List<String>>{
         'settlementId': <String>['settlement id', 'settlementid'],
-        'borrowedEntryId': <String>[
-          'borrowed entry id',
-          'borrowedentryid',
-        ],
+        'borrowedEntryId': <String>['borrowed entry id', 'borrowedentryid'],
         'expenseEntryId': <String>['expense entry id', 'expenseentryid'],
         'settledAmount': <String>['settled amount', 'settledamount'],
         'createdAt': <String>['created at', 'createdat'],
@@ -973,14 +993,18 @@ class ModuleDataImportService {
       if (_isBlankRow(row, headerMap.values)) {
         continue;
       }
-      final sourceId = _parseOptionalInt(_cellAt(row, headerMap['settlementId']));
+      final sourceId = _parseOptionalInt(
+        _cellAt(row, headerMap['settlementId']),
+      );
       final sourceBorrowedEntryId = _parseOptionalInt(
         _cellAt(row, headerMap['borrowedEntryId']),
       );
       final sourceExpenseEntryId = _parseOptionalInt(
         _cellAt(row, headerMap['expenseEntryId']),
       );
-      final settledAmount = _parseAmount(_cellAt(row, headerMap['settledAmount']));
+      final settledAmount = _parseAmount(
+        _cellAt(row, headerMap['settledAmount']),
+      );
       if (sourceId == null ||
           sourceBorrowedEntryId == null ||
           sourceExpenseEntryId == null ||
@@ -999,7 +1023,9 @@ class ModuleDataImportService {
           sourceExpenseEntryId: sourceExpenseEntryId,
           settledAmount: settledAmount,
           createdAt:
-              DateTime.tryParse(_cellText(_cellAt(row, headerMap['createdAt']))) ??
+              DateTime.tryParse(
+                _cellText(_cellAt(row, headerMap['createdAt'])),
+              ) ??
               DateTime.now(),
         ),
       );
@@ -1021,14 +1047,16 @@ class ModuleDataImportService {
       final lentEntryId = record.sourceLentEntryId == null
           ? null
           : entryIdMap[record.sourceLentEntryId!];
-      final insertedId = await _database.into(_database.dbSplitRecords).insert(
-        DbSplitRecordsCompanion.insert(
-          expenseEntryId: Value(expenseEntryId),
-          lentEntryId: Value(lentEntryId),
-          totalAmount: record.totalAmount,
-          createdAt: Value(record.createdAt),
-        ),
-      );
+      final insertedId = await _database
+          .into(_database.dbSplitRecords)
+          .insert(
+            DbSplitRecordsCompanion.insert(
+              expenseEntryId: Value(expenseEntryId),
+              lentEntryId: Value(lentEntryId),
+              totalAmount: record.totalAmount,
+              createdAt: Value(record.createdAt),
+            ),
+          );
       splitRecordIdMap[record.sourceId] = insertedId;
     }
 
@@ -1074,15 +1102,17 @@ class ModuleDataImportService {
           ],
         );
       }
-      await _database.into(_database.dbLentSettlements).insert(
-        DbLentSettlementsCompanion.insert(
-          splitRecordId: splitRecordId,
-          splitParticipantId: splitParticipantId,
-          incomeEntryId: incomeEntryId,
-          settledAmount: settlement.settledAmount,
-          createdAt: Value(settlement.createdAt),
-        ),
-      );
+      await _database
+          .into(_database.dbLentSettlements)
+          .insert(
+            DbLentSettlementsCompanion.insert(
+              splitRecordId: splitRecordId,
+              splitParticipantId: splitParticipantId,
+              incomeEntryId: incomeEntryId,
+              settledAmount: settlement.settledAmount,
+              createdAt: Value(settlement.createdAt),
+            ),
+          );
     }
 
     for (final settlement in bundle.borrowedSettlements) {
@@ -1096,14 +1126,16 @@ class ModuleDataImportService {
           ],
         );
       }
-      await _database.into(_database.dbBorrowedSettlements).insert(
-        DbBorrowedSettlementsCompanion.insert(
-          borrowedEntryId: borrowedEntryId,
-          expenseEntryId: expenseEntryId,
-          settledAmount: settlement.settledAmount,
-          createdAt: Value(settlement.createdAt),
-        ),
-      );
+      await _database
+          .into(_database.dbBorrowedSettlements)
+          .insert(
+            DbBorrowedSettlementsCompanion.insert(
+              borrowedEntryId: borrowedEntryId,
+              expenseEntryId: expenseEntryId,
+              settledAmount: settlement.settledAmount,
+              createdAt: Value(settlement.createdAt),
+            ),
+          );
     }
   }
 
@@ -1112,10 +1144,7 @@ class ModuleDataImportService {
     required _ExpenseSplitImportBundle splitBundle,
   }) {
     if (!splitBundle.hasData) {
-      return _NormalizedExpenseImportData(
-        rows: rows,
-        splitBundle: splitBundle,
-      );
+      return _NormalizedExpenseImportData(rows: rows, splitBundle: splitBundle);
     }
 
     final legacyManagedLentEntryIds = splitBundle.splitRecords
@@ -1143,7 +1172,9 @@ class ModuleDataImportService {
           final sourceEntryId = row.sourceEntryId;
           if (sourceEntryId != null &&
               totalAmountByExpenseEntryId.containsKey(sourceEntryId)) {
-            return row.copyWith(amount: totalAmountByExpenseEntryId[sourceEntryId]!);
+            return row.copyWith(
+              amount: totalAmountByExpenseEntryId[sourceEntryId]!,
+            );
           }
           return row;
         })
@@ -1153,8 +1184,9 @@ class ModuleDataImportService {
       splitRecords: splitBundle.splitRecords
           .map(
             (record) => record.copyWith(
-              sourceLentEntryId:
-                  record.sourceExpenseEntryId != null ? null : record.sourceLentEntryId,
+              sourceLentEntryId: record.sourceExpenseEntryId != null
+                  ? null
+                  : record.sourceLentEntryId,
             ),
           )
           .toList(growable: false),
@@ -1286,7 +1318,7 @@ class ModuleDataImportService {
       case DoubleCellValue value:
         return value.value;
       default:
-        final text = _cellText(cell).replaceAll(',', '');
+        final text = _cellText(cell).replaceAll(',', '').replaceAll('%', '');
         return double.tryParse(text);
     }
   }

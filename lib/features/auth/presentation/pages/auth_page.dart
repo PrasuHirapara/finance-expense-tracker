@@ -410,9 +410,7 @@ class _AuthPageState extends State<AuthPage> {
         context: context,
         title: 'Signing in',
         statusText: 'Connecting to your Google account...',
-        task: (token) => authService.signInWithGoogle(
-          cancellationToken: token,
-        ),
+        task: (token) => authService.signInWithGoogle(cancellationToken: token),
       );
       await _handleAuthSuccess();
     } on AppTaskCancelledException {

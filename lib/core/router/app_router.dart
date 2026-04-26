@@ -70,9 +70,8 @@ class AppRouter {
       case AppRoutes.credentialEditor:
         final args = settings.arguments as CredentialEditorArgs?;
         return MaterialPageRoute<void>(
-          builder: (context) => CredentialEditorPage(
-            args: args ?? const CredentialEditorArgs(),
-          ),
+          builder: (context) =>
+              CredentialEditorPage(args: args ?? const CredentialEditorArgs()),
         );
       case AppRoutes.credentialDetail:
         final args = settings.arguments as CredentialDetailArgs;

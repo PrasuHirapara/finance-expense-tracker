@@ -180,13 +180,15 @@ class CredentialService {
         cancellationToken?.throwIfCancelled();
         final normalizedSecret = field.value.trim();
         if (normalizedSecret.isNotEmpty) {
-          passwordUsage.putIfAbsent(normalizedSecret, () => <_PasswordUsage>[]).add(
-            _PasswordUsage(
-              credentialId: credential.id,
-              credentialTitle: credential.title,
-              fieldLabel: field.keyLabel,
-            ),
-          );
+          passwordUsage
+              .putIfAbsent(normalizedSecret, () => <_PasswordUsage>[])
+              .add(
+                _PasswordUsage(
+                  credentialId: credential.id,
+                  credentialTitle: credential.title,
+                  fieldLabel: field.keyLabel,
+                ),
+              );
         }
       }
       await cancellableUiYield(cancellationToken);

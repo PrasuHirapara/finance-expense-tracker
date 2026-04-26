@@ -751,9 +751,10 @@ class ExpenseRepository {
     final borrowedSettlements =
         await _groupBorrowedSettlementsByBorrowedEntryIds(entryIds);
     final borrowedResolutionExpenseIds =
-        (await _loadBorrowedSettlementsByExpenseEntryIds(
-          entryIds,
-        )).map((settlement) => settlement.expenseEntryId).whereType<int>().toSet();
+        (await _loadBorrowedSettlementsByExpenseEntryIds(entryIds))
+            .map((settlement) => settlement.expenseEntryId)
+            .whereType<int>()
+            .toSet();
     final participantsByRecordId = await _loadParticipantsByRecordIds(
       splitRecordIds,
     );

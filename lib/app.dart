@@ -171,9 +171,10 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
                 create: (_) => ModuleNavigationBloc(),
               ),
               BlocProvider<ExpenseBloc>(
-                create: (context) =>
-                    ExpenseBloc(context.read<ExpenseRepository>())
-                      ..add(const ExpenseSubscriptionRequested()),
+                create: (context) => ExpenseBloc(
+                  context.read<ExpenseRepository>(),
+                  context.read<AppSettingsRepository>(),
+                )..add(const ExpenseRestoreRequested()),
               ),
               BlocProvider<BankBloc>(
                 create: (context) =>

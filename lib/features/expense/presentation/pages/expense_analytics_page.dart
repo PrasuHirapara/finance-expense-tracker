@@ -356,7 +356,8 @@ class ExpenseAnalyticsPage extends StatelessWidget {
     }
 
     final textTheme = Theme.of(context).textTheme;
-    if (_usesYearlyTrendLabels(analytics) || _usesWeeklyTrendLabels(analytics)) {
+    if (_usesYearlyTrendLabels(analytics) ||
+        _usesWeeklyTrendLabels(analytics)) {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[

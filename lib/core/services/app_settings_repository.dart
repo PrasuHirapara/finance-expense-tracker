@@ -86,6 +86,11 @@ class AppSettingsRepository {
     );
   }
 
+  Future<void> updateSelectedExpenseBankId(int? bankId) async {
+    final settings = await getSettings();
+    await _commit(settings.copyWith(selectedExpenseBankId: bankId));
+  }
+
   Future<Map<String, dynamic>> exportForCloud() async {
     final settings = await getSettings();
     return _toCloudJson(settings);
@@ -140,6 +145,7 @@ class AppSettingsRepository {
           settings.credentialExpiryNotificationEnabled,
       'exportDirectoryPath': settings.exportDirectoryPath,
       'acceptedPrivacyPolicyVersion': settings.acceptedPrivacyPolicyVersion,
+      'selectedExpenseBankId': settings.selectedExpenseBankId,
       'cloudSync': _cloudSyncToJson(settings.cloudSync),
     };
   }
@@ -152,6 +158,7 @@ class AppSettingsRepository {
           settings.credentialExpiryNotificationEnabled,
       'exportDirectoryPath': settings.exportDirectoryPath,
       'acceptedPrivacyPolicyVersion': settings.acceptedPrivacyPolicyVersion,
+      'selectedExpenseBankId': settings.selectedExpenseBankId,
       'cloudSync': _cloudSyncToCloudJson(settings.cloudSync),
     };
   }
@@ -176,6 +183,7 @@ class AppSettingsRepository {
       acceptedPrivacyPolicyVersion: _stringFromJson(
         json['acceptedPrivacyPolicyVersion'],
       ),
+      selectedExpenseBankId: _intFromJson(json['selectedExpenseBankId']),
       cloudSync: _cloudSyncFromJson(json['cloudSync']),
     );
   }
@@ -209,6 +217,9 @@ class AppSettingsRepository {
           json.containsKey('acceptedPrivacyPolicyVersion')
           ? _stringFromJson(json['acceptedPrivacyPolicyVersion'])
           : fallback.acceptedPrivacyPolicyVersion,
+      selectedExpenseBankId: json.containsKey('selectedExpenseBankId')
+          ? _intFromJson(json['selectedExpenseBankId'])
+          : fallback.selectedExpenseBankId,
       cloudSync: fallback.cloudSync.copyWith(
         enabled: restoredCloudSync.enabled,
         syncCredentials: restoredCloudSync.syncCredentials,
@@ -234,6 +245,10 @@ class AppSettingsRepository {
 
   String? _stringFromJson(Object? value) {
     return value is String && value.trim().isNotEmpty ? value.trim() : null;
+  }
+
+  int? _intFromJson(Object? value) {
+    return value is num ? value.toInt() : null;
   }
 
   Map<String, dynamic> _cloudSyncToJson(CloudSyncPreferences preferences) {

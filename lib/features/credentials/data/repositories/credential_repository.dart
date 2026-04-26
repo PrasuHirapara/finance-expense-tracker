@@ -32,10 +32,9 @@ class CredentialRepository {
   }
 
   Future<CredentialRecord?> loadCredential(int id) async {
-    final row =
-        await (_database.select(_database.dbCredentials)
-              ..where((table) => table.id.equals(id)))
-            .getSingleOrNull();
+    final row = await (_database.select(
+      _database.dbCredentials,
+    )..where((table) => table.id.equals(id))).getSingleOrNull();
     return row == null ? null : _mapRecord(row);
   }
 
@@ -44,16 +43,18 @@ class CredentialRepository {
     required EncryptedCredentialPayload payload,
   }) {
     final now = DateTime.now();
-    return _database.into(_database.dbCredentials).insert(
-      DbCredentialsCompanion.insert(
-        title: title.trim(),
-        encryptedPayload: payload.encryptedPayload,
-        saltBase64: payload.saltBase64,
-        nonceBase64: payload.nonceBase64,
-        createdAt: Value(now),
-        updatedAt: Value(now),
-      ),
-    );
+    return _database
+        .into(_database.dbCredentials)
+        .insert(
+          DbCredentialsCompanion.insert(
+            title: title.trim(),
+            encryptedPayload: payload.encryptedPayload,
+            saltBase64: payload.saltBase64,
+            nonceBase64: payload.nonceBase64,
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
   }
 
   Future<void> updateCredential({

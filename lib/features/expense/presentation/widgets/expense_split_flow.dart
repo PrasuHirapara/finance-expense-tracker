@@ -5,6 +5,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/app_select_field.dart';
 import '../../data/repositories/expense_repository.dart';
 import '../../domain/models/expense_models.dart';
+import '../utils/expense_search_utils.dart';
 
 Future<ExpenseSplitDraft?> showExpenseSplitEditor(
   BuildContext context, {
@@ -110,26 +111,30 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
     required int count,
   }) {
     final participants = <ExpenseSplitParticipant>[];
-    var remaining = totalAmount;
-    var remainingPercent = 100.0;
+    final normalizedTotal = _roundValue(totalAmount);
+    final totalMinorUnits = _toMinorUnits(normalizedTotal);
+    final baseMinorUnits = count == 0 ? 0 : totalMinorUnits ~/ count;
+    final remainderMinorUnits = count == 0 ? 0 : totalMinorUnits % count;
+    var assignedPercentage = 0.0;
     for (var index = 0; index < count; index++) {
       final isLast = index == count - 1;
-      final percentage = isLast ? remainingPercent : 100 / count;
-      final amount = isLast ? remaining : (totalAmount * percentage / 100);
+      final amount = _fromMinorUnits(
+        baseMinorUnits + (index >= count - remainderMinorUnits ? 1 : 0),
+      );
+      final percentage = isLast
+          ? _roundValue(100 - assignedPercentage)
+          : _roundValue((amount / normalizedTotal) * 100);
+      assignedPercentage = _roundValue(assignedPercentage + percentage);
       participants.add(
         ExpenseSplitParticipant(
           name: index == 0 ? 'Me' : 'Participant ${index + 1}',
-          amount: double.parse(amount.toStringAsFixed(2)),
-          percentage: double.parse(percentage.toStringAsFixed(2)),
+          amount: amount,
+          percentage: percentage,
           isSelf: index == 0,
-          settledAmount: index == 0
-              ? double.parse(amount.toStringAsFixed(2))
-              : 0,
+          settledAmount: index == 0 ? amount : 0,
           sortOrder: index,
         ),
       );
-      remaining -= amount;
-      remainingPercent -= percentage;
     }
     return participants;
   }
@@ -201,22 +206,9 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
         ? 0.0
         : (amount / widget.totalAmount) * 100;
     _syncing = true;
-    controller.percentageController.text = _formatNumber(percentage);
-    _syncing = false;
-    setState(() {});
-  }
-
-  void _onPercentageChanged(
-    _SplitParticipantController controller,
-    String value,
-  ) {
-    if (_syncing) {
-      return;
-    }
-    final percentage = _parseValue(value);
-    final amount = widget.totalAmount * percentage / 100;
-    _syncing = true;
-    controller.amountController.text = _formatNumber(amount);
+    controller.percentageController.text = _formatNumber(
+      _roundValue(percentage),
+    );
     _syncing = false;
     setState(() {});
   }
@@ -227,7 +219,9 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
       final item = _participants[index];
       final name = item.nameController.text.trim();
       final amount = _parseValue(item.amountController.text);
-      final percentage = _parseValue(item.percentageController.text);
+      final percentage = widget.totalAmount <= 0
+          ? 0.0
+          : _roundValue((amount / widget.totalAmount) * 100);
       if (name.isEmpty) {
         _showError('Enter a name for every participant.');
         return null;
@@ -236,12 +230,12 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
         ExpenseSplitParticipant(
           id: item.id,
           name: name,
-          amount: double.parse(amount.toStringAsFixed(2)),
-          percentage: double.parse(percentage.toStringAsFixed(2)),
+          amount: _roundValue(amount),
+          percentage: _roundValue(percentage),
           isSelf: item.isSelf,
           settledAmount: item.isSelf
-              ? double.parse(amount.toStringAsFixed(2))
-              : item.settledAmount.clamp(0, amount).toDouble(),
+              ? _roundValue(amount)
+              : _roundValue(item.settledAmount.clamp(0, amount).toDouble()),
           sortOrder: index,
         ),
       );
@@ -260,7 +254,7 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
       return null;
     }
     if ((totalPercentage - 100).abs() > 0.01) {
-      _showError('Participant percentages must total 100%.');
+      _showError('Participant amounts must exactly match the expense amount.');
       return null;
     }
 
@@ -268,7 +262,7 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
       recordId: widget.initialDraft?.recordId,
       expenseEntryId: widget.initialDraft?.expenseEntryId,
       lentEntryId: widget.initialDraft?.lentEntryId,
-      totalAmount: double.parse(widget.totalAmount.toStringAsFixed(2)),
+      totalAmount: _roundValue(widget.totalAmount),
       participants: participants,
     );
   }
@@ -279,25 +273,22 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  double _parseValue(String value) => double.tryParse(value) ?? 0;
+  double _parseValue(String value) =>
+      double.tryParse(value.replaceAll('%', '').trim()) ?? 0;
 
-  String _formatNumber(double value) {
-    final rounded = double.parse(value.toStringAsFixed(2));
-    return rounded == rounded.roundToDouble()
-        ? rounded.toStringAsFixed(0)
-        : rounded.toStringAsFixed(2);
-  }
+  String _formatNumber(double value) => _roundValue(value).toStringAsFixed(2);
+
+  double _roundValue(double value) => double.parse(value.toStringAsFixed(2));
+
+  int _toMinorUnits(double value) => (_roundValue(value) * 100).round();
+
+  double _fromMinorUnits(int value) => value / 100;
 
   @override
   Widget build(BuildContext context) {
     final amountTotal = _participants.fold<double>(
       0,
       (sum, item) => sum + (double.tryParse(item.amountController.text) ?? 0),
-    );
-    final percentageTotal = _participants.fold<double>(
-      0,
-      (sum, item) =>
-          sum + (double.tryParse(item.percentageController.text) ?? 0),
     );
 
     return Scaffold(
@@ -372,44 +363,19 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: TextField(
-                              controller: participant.amountController,
-                              enabled: !_locked,
-                              inputFormatters: _decimalInputFormatters,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              decoration: const InputDecoration(
-                                labelText: 'Amount',
-                                prefixText: 'Rs ',
-                              ),
-                              onChanged: (value) =>
-                                  _onAmountChanged(participant, value),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: participant.percentageController,
-                              enabled: !_locked,
-                              inputFormatters: _decimalInputFormatters,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              decoration: const InputDecoration(
-                                labelText: 'Percentage',
-                                suffixText: '%',
-                              ),
-                              onChanged: (value) =>
-                                  _onPercentageChanged(participant, value),
-                            ),
-                          ),
-                        ],
+                      TextField(
+                        controller: participant.amountController,
+                        enabled: !_locked,
+                        inputFormatters: _decimalInputFormatters,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Amount',
+                          prefixText: 'Rs ',
+                        ),
+                        onChanged: (value) =>
+                            _onAmountChanged(participant, value),
                       ),
                     ],
                   ),
@@ -431,9 +397,6 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
             child: ListTile(
               title: Text(
                 'Amount total: Rs ${_formatNumber(amountTotal)} / ${_formatNumber(widget.totalAmount)}',
-              ),
-              subtitle: Text(
-                'Percentage total: ${_formatNumber(percentageTotal)}%',
               ),
             ),
           ),
@@ -459,16 +422,172 @@ class _LentResolutionPage extends StatefulWidget {
 }
 
 class _LentResolutionPageState extends State<_LentResolutionPage> {
+  static const int _initialVisibleCandidates = 5;
+
   late final Future<List<LentResolutionCandidate>> _future = widget.repository
       .loadResolvableLentEntries();
   final TextEditingController _searchController = TextEditingController();
-  LentResolutionCandidate? _selected;
-  final Set<String> _selectedKeys = <String>{};
+  int _visibleCandidateCount = _initialVisibleCandidates;
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  String _participantKey(ExpenseSplitParticipant participant) {
+    return participant.id?.toString() ??
+        '${participant.sortOrder}:${participant.name}:${participant.amount.toStringAsFixed(2)}';
+  }
+
+  Future<void> _openCandidate(LentResolutionCandidate candidate) async {
+    final initialSelectedKeys =
+        widget.initialDraft?.lentEntryId == candidate.entry.id
+        ? widget.initialDraft!.participants.map(_participantKey).toSet()
+        : const <String>{};
+    final draft = await Navigator.of(context).push<LentResolutionDraft>(
+      MaterialPageRoute<LentResolutionDraft>(
+        builder: (_) => _LentParticipantSelectionPage(
+          candidate: candidate,
+          incomeAmount: widget.incomeAmount,
+          initialSelectedKeys: initialSelectedKeys,
+        ),
+        fullscreenDialog: true,
+      ),
+    );
+    if (draft != null && mounted) {
+      Navigator.of(context).pop(draft);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Resolve Lent')),
+      body: FutureBuilder<List<LentResolutionCandidate>>(
+        future: _future,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final all = snapshot.data!;
+          final query = _searchController.text.trim().toLowerCase();
+          final filtered = all
+              .where((candidate) {
+                if (query.isEmpty) {
+                  return true;
+                }
+                if (matchesEquivalentDateQuery(candidate.entry.date, query)) {
+                  return true;
+                }
+                return <String>[
+                  candidate.entry.title,
+                  candidate.entry.counterparty ?? '',
+                  ...candidate.splitDraft.participants.map((item) => item.name),
+                  ...equivalentDateSearchTerms(candidate.entry.date),
+                ].any((value) => value.toLowerCase().contains(query));
+              })
+              .toList(growable: false);
+          final visible = filtered
+              .take(_visibleCandidateCount)
+              .toList(growable: false);
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            children: <Widget>[
+              TextField(
+                controller: _searchController,
+                decoration: const InputDecoration(
+                  labelText: 'Search lent entries',
+                  prefixIcon: Icon(Icons.search_rounded),
+                ),
+                onChanged: (_) => setState(() {
+                  _visibleCandidateCount = _initialVisibleCandidates;
+                }),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                child: ListTile(
+                  title: Text(
+                    'Income amount: ${AppConstants.currency(widget.incomeAmount)}',
+                  ),
+                  subtitle: const Text(
+                    'Select a transaction to choose participant shares on the next screen.',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (filtered.isEmpty)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(14),
+                    child: Text('No lent entries match this search.'),
+                  ),
+                ),
+              ...visible.map((candidate) {
+                final participantNames = candidate.splitDraft.participants
+                    .where((participant) => !participant.isSelf)
+                    .map((participant) => participant.name)
+                    .join(', ');
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Card(
+                    child: ListTile(
+                      onTap: () => _openCandidate(candidate),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      title: Text(candidate.entry.title),
+                      subtitle: Text(
+                        '${AppConstants.shortDateFormat.format(candidate.entry.date)} | Pending ${AppConstants.currency(candidate.splitDraft.pendingLentAmount)}${participantNames.isEmpty ? '' : ' | $participantNames'}',
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              if (filtered.length > visible.length)
+                Align(
+                  alignment: Alignment.center,
+                  child: TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _visibleCandidateCount += 5;
+                      });
+                    },
+                    child: const Text('Show more'),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _LentParticipantSelectionPage extends StatefulWidget {
+  const _LentParticipantSelectionPage({
+    required this.candidate,
+    required this.incomeAmount,
+    required this.initialSelectedKeys,
+  });
+
+  final LentResolutionCandidate candidate;
+  final double incomeAmount;
+  final Set<String> initialSelectedKeys;
+
+  @override
+  State<_LentParticipantSelectionPage> createState() =>
+      _LentParticipantSelectionPageState();
+}
+
+class _LentParticipantSelectionPageState
+    extends State<_LentParticipantSelectionPage> {
+  late final Set<String> _selectedKeys = <String>{
+    ...widget.initialSelectedKeys,
+  };
+
+  String _participantKey(ExpenseSplitParticipant participant) {
+    return participant.id?.toString() ??
+        '${participant.sortOrder}:${participant.name}:${participant.amount.toStringAsFixed(2)}';
   }
 
   void _toggleParticipant(ExpenseSplitParticipant participant, bool settled) {
@@ -485,207 +604,143 @@ class _LentResolutionPageState extends State<_LentResolutionPage> {
     });
   }
 
-  String _participantKey(ExpenseSplitParticipant participant) {
-    return participant.id?.toString() ??
-        '${participant.sortOrder}:${participant.name}:${participant.amount.toStringAsFixed(2)}';
+  String _formatParticipantNames(List<ExpenseSplitParticipant> participants) {
+    final names = participants
+        .where((participant) => !participant.isSelf)
+        .map((participant) => participant.name.trim())
+        .where((name) => name.isNotEmpty)
+        .toList(growable: false);
+    if (names.isEmpty) {
+      return '-';
+    }
+    if (names.length == 1) {
+      return names.first;
+    }
+    if (names.length == 2) {
+      return '${names.first} and ${names.last}';
+    }
+    return '${names.sublist(0, names.length - 1).join(', ')}, and ${names.last}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final selectedParticipants = widget.candidate.splitDraft.participants
+        .where(
+          (participant) => _selectedKeys.contains(_participantKey(participant)),
+        )
+        .toList(growable: false);
+    final selectedTotal = selectedParticipants.fold<double>(
+      0,
+      (sum, participant) => sum + participant.pendingAmount,
+    );
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Resolve Lent'),
+        title: const Text('Participant Shares'),
         actions: <Widget>[
           TextButton(
-            onPressed: _selected == null
-                ? null
-                : () {
-                    final participants = _selected!.splitDraft.participants
-                        .where(
-                          (participant) => _selectedKeys.contains(
-                            _participantKey(participant),
-                          ),
-                        )
-                        .toList(growable: false);
-                    final total = participants.fold<double>(
-                      0,
-                      (sum, participant) => sum + participant.pendingAmount,
-                    );
-                    if ((total - widget.incomeAmount).abs() > 0.01) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Selected shares must exactly match the income amount.',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                    Navigator.of(context).pop(
-                      LentResolutionDraft(
-                        lentEntryId: _selected!.entry.id,
-                        participants: participants,
-                      ),
-                    );
-                  },
+            onPressed: () {
+              if ((selectedTotal - widget.incomeAmount).abs() > 0.01) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Selected shares must exactly match the income amount.',
+                    ),
+                  ),
+                );
+                return;
+              }
+              Navigator.of(context).pop(
+                LentResolutionDraft(
+                  lentEntryId: widget.candidate.entry.id,
+                  participants: selectedParticipants,
+                ),
+              );
+            },
             child: const Text('Apply'),
           ),
         ],
       ),
-      body: FutureBuilder<List<LentResolutionCandidate>>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final all = snapshot.data!;
-          final filtered = all
-              .where((candidate) {
-                final query = _searchController.text.trim().toLowerCase();
-                if (query.isEmpty) {
-                  return true;
-                }
-                return <String>[
-                  candidate.entry.title,
-                  candidate.entry.counterparty ?? '',
-                  ...candidate.splitDraft.participants.map((item) => item.name),
-                ].any((value) => value.toLowerCase().contains(query));
-              })
-              .toList(growable: false);
-
-          if (_selected == null &&
-              widget.initialDraft != null &&
-              all.isNotEmpty) {
-            for (final candidate in all) {
-              if (candidate.entry.id == widget.initialDraft!.lentEntryId) {
-                _selected = candidate;
-                for (final participant in widget.initialDraft!.participants) {
-                  _selectedKeys.add(_participantKey(participant));
-                }
-                break;
-              }
-            }
-          }
-
-          final selectedTotal =
-              _selected?.splitDraft.participants
-                  .where(
-                    (participant) =>
-                        _selectedKeys.contains(_participantKey(participant)),
-                  )
-                  .fold<double>(
-                    0,
-                    (sum, participant) => sum + participant.pendingAmount,
-                  ) ??
-              0;
-
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            children: <Widget>[
-              TextField(
-                controller: _searchController,
-                decoration: const InputDecoration(
-                  labelText: 'Search lent entries',
-                  prefixIcon: Icon(Icons.search_rounded),
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 16),
-              Card(
-                child: ListTile(
-                  title: Text(
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        children: <Widget>[
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    widget.candidate.entry.title,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Participants: ${_formatParticipantNames(widget.candidate.splitDraft.participants)}',
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Date: ${AppConstants.shortDateFormat.format(widget.candidate.entry.date)}',
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
                     'Income amount: ${AppConstants.currency(widget.incomeAmount)}',
                   ),
-                  subtitle: Text(
+                  const SizedBox(height: 4),
+                  Text(
                     'Selected total: ${AppConstants.currency(selectedTotal)}',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...widget.candidate.splitDraft.participants.map((participant) {
+            final value = participant.isSelf || participant.isSettled
+                ? 'Settled'
+                : _selectedKeys.contains(_participantKey(participant))
+                ? 'Settled'
+                : 'Unsettled';
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(participant.name),
+                      const SizedBox(height: 8),
+                      Text(
+                        participant.isSelf
+                            ? 'My share: ${AppConstants.currency(participant.amount)}'
+                            : 'Pending amount: ${AppConstants.currency(participant.pendingAmount)}',
+                      ),
+                      const SizedBox(height: 12),
+                      AppSelectField<String>(
+                        label: 'Settlement Status',
+                        value: value,
+                        enabled: !participant.isSelf && !participant.isSettled,
+                        options: const <AppSelectOption<String>>[
+                          AppSelectOption<String>(
+                            value: 'Unsettled',
+                            label: 'Unsettled',
+                          ),
+                          AppSelectOption<String>(
+                            value: 'Settled',
+                            label: 'Settled',
+                          ),
+                        ],
+                        onChanged: (next) =>
+                            _toggleParticipant(participant, next == 'Settled'),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              ...filtered.map((candidate) {
-                final isSelected = _selected?.entry.id == candidate.entry.id;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Card(
-                    child: ListTile(
-                      onTap: () {
-                        setState(() {
-                          _selected = candidate;
-                          _selectedKeys.clear();
-                        });
-                      },
-                      leading: Icon(
-                        isSelected
-                            ? Icons.radio_button_checked_rounded
-                            : Icons.radio_button_off_rounded,
-                      ),
-                      title: Text(candidate.entry.title),
-                      subtitle: Text(
-                        '${AppConstants.shortDateFormat.format(candidate.entry.date)} | Pending ${AppConstants.currency(candidate.splitDraft.pendingLentAmount)}',
-                      ),
-                    ),
-                  ),
-                );
-              }),
-              if (_selected != null) ...<Widget>[
-                const SizedBox(height: 16),
-                Text(
-                  'Participant Shares',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                ..._selected!.splitDraft.participants.map((participant) {
-                  final value = participant.isSelf || participant.isSettled
-                      ? 'Settled'
-                      : _selectedKeys.contains(_participantKey(participant))
-                      ? 'Settled'
-                      : 'Unsettled';
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(participant.name),
-                            const SizedBox(height: 8),
-                            Text(
-                              participant.isSelf
-                                  ? 'My share: ${AppConstants.currency(participant.amount)}'
-                                  : 'Pending amount: ${AppConstants.currency(participant.pendingAmount)}',
-                            ),
-                            const SizedBox(height: 12),
-                            AppSelectField<String>(
-                              label: 'Settlement Status',
-                              value: value,
-                              enabled:
-                                  !participant.isSelf && !participant.isSettled,
-                              options: const <AppSelectOption<String>>[
-                                AppSelectOption<String>(
-                                  value: 'Unsettled',
-                                  label: 'Unsettled',
-                                ),
-                                AppSelectOption<String>(
-                                  value: 'Settled',
-                                  label: 'Settled',
-                                ),
-                              ],
-                              onChanged: (next) => _toggleParticipant(
-                                participant,
-                                next == 'Settled',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ],
-          );
-        },
+            );
+          }),
+        ],
       ),
     );
   }
@@ -708,145 +763,43 @@ class _BorrowedResolutionPage extends StatefulWidget {
 }
 
 class _BorrowedResolutionPageState extends State<_BorrowedResolutionPage> {
+  static const int _initialVisibleCandidates = 5;
+
   late final Future<List<BorrowedResolutionCandidate>> _future = widget
       .repository
       .loadResolvableBorrowedEntries();
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _settledAmountController =
-      TextEditingController();
-  BorrowedResolutionCandidate? _selected;
-  bool _syncingSettledAmount = false;
+  int _visibleCandidateCount = _initialVisibleCandidates;
 
   @override
   void dispose() {
     _searchController.dispose();
-    _settledAmountController.dispose();
     super.dispose();
   }
 
-  void _seedInitialSelection(List<BorrowedResolutionCandidate> candidates) {
-    final initialDraft = widget.initialDraft;
-    if (_selected != null || initialDraft == null) {
-      return;
-    }
-    for (final candidate in candidates) {
-      if (candidate.entry.id == initialDraft.borrowedEntryId) {
-        _selected = candidate;
-        _setSettledAmount(
-          initialDraft.settledAmount <= _maxAllowedAmountFor(candidate)
-              ? initialDraft.settledAmount
-              : _maxAllowedAmountFor(candidate),
-        );
-        return;
-      }
-    }
-  }
-
-  double _selectedAmount() =>
-      double.tryParse(_settledAmountController.text) ?? 0;
-
-  double _maxAllowedAmountFor(BorrowedResolutionCandidate candidate) {
-    return widget.expenseAmount <= candidate.pendingAmount
-        ? widget.expenseAmount
-        : candidate.pendingAmount;
-  }
-
-  void _setSettledAmount(double amount) {
-    _syncingSettledAmount = true;
-    _settledAmountController.text = _formatNumber(amount);
-    _settledAmountController.selection = TextSelection.collapsed(
-      offset: _settledAmountController.text.length,
+  Future<void> _openCandidate(BorrowedResolutionCandidate candidate) async {
+    final draft = await Navigator.of(context).push<BorrowedResolutionDraft>(
+      MaterialPageRoute<BorrowedResolutionDraft>(
+        builder: (_) => _BorrowedResolutionSelectionPage(
+          candidate: candidate,
+          expenseAmount: widget.expenseAmount,
+          initialAmount:
+              widget.initialDraft?.borrowedEntryId == candidate.entry.id
+              ? widget.initialDraft!.settledAmount
+              : null,
+        ),
+        fullscreenDialog: true,
+      ),
     );
-    _syncingSettledAmount = false;
-  }
-
-  void _handleSettledAmountChanged(String value) {
-    if (_syncingSettledAmount || _selected == null) {
-      return;
+    if (draft != null && mounted) {
+      Navigator.of(context).pop(draft);
     }
-    final amount = double.tryParse(value);
-    if (amount == null) {
-      return;
-    }
-    final maxAllowed = _maxAllowedAmountFor(_selected!);
-    if (amount > maxAllowed + 0.005) {
-      _setSettledAmount(maxAllowed);
-    }
-  }
-
-  String? _resolveAmountErrorText() {
-    if (_selected == null || _settledAmountController.text.trim().isEmpty) {
-      return null;
-    }
-    final amount = _selectedAmount();
-    if (amount <= 0) {
-      return 'Enter a valid amount.';
-    }
-    if (amount > widget.expenseAmount + 0.005) {
-      return 'Amount cannot exceed the entered expense amount.';
-    }
-    if (amount > _selected!.pendingAmount + 0.005) {
-      return 'Amount cannot exceed the pending borrowed amount.';
-    }
-    if ((amount - widget.expenseAmount).abs() > 0.01) {
-      return 'Resolve amount must exactly match the expense amount.';
-    }
-    return null;
-  }
-
-  String _formatNumber(double value) {
-    final rounded = double.parse(value.toStringAsFixed(2));
-    return rounded == rounded.roundToDouble()
-        ? rounded.toStringAsFixed(0)
-        : rounded.toStringAsFixed(2);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Resolve Borrowed'),
-        actions: <Widget>[
-          TextButton(
-            onPressed: _selected == null
-                ? null
-                : () {
-                    final selectedAmount = _selectedAmount();
-                    if ((selectedAmount - widget.expenseAmount).abs() > 0.01) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Resolved borrowed amount must exactly match the expense amount.',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                    if (selectedAmount <= 0 ||
-                        selectedAmount > _selected!.pendingAmount + 0.01) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Resolved borrowed amount cannot exceed the pending amount.',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                    Navigator.of(context).pop(
-                      BorrowedResolutionDraft(
-                        borrowedEntryId: _selected!.entry.id,
-                        borrowedEntryTitle: _selected!.entry.title,
-                        settledAmount: double.parse(
-                          selectedAmount.toStringAsFixed(2),
-                        ),
-                      ),
-                    );
-                  },
-            child: const Text('Apply'),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Resolve Borrowed')),
       body: FutureBuilder<List<BorrowedResolutionCandidate>>(
         future: _future,
         builder: (context, snapshot) {
@@ -854,18 +807,19 @@ class _BorrowedResolutionPageState extends State<_BorrowedResolutionPage> {
             return const Center(child: CircularProgressIndicator());
           }
           final all = snapshot.data!;
-          _seedInitialSelection(all);
           final query = _searchController.text.trim().toLowerCase();
           final filtered = all
               .where((candidate) {
                 final matchesAmount =
                     candidate.pendingAmount + 0.005 >= widget.expenseAmount ||
-                    candidate.entry.id ==
-                        widget.initialDraft?.borrowedEntryId;
+                    candidate.entry.id == widget.initialDraft?.borrowedEntryId;
                 if (!matchesAmount) {
                   return false;
                 }
                 if (query.isEmpty) {
+                  return true;
+                }
+                if (matchesEquivalentDateQuery(candidate.entry.date, query)) {
                   return true;
                 }
                 return <String>[
@@ -873,8 +827,12 @@ class _BorrowedResolutionPageState extends State<_BorrowedResolutionPage> {
                   candidate.entry.counterparty ?? '',
                   candidate.entry.notes,
                   candidate.entry.category.name,
+                  ...equivalentDateSearchTerms(candidate.entry.date),
                 ].any((value) => value.toLowerCase().contains(query));
               })
+              .toList(growable: false);
+          final visible = filtered
+              .take(_visibleCandidateCount)
               .toList(growable: false);
 
           return ListView(
@@ -886,7 +844,9 @@ class _BorrowedResolutionPageState extends State<_BorrowedResolutionPage> {
                   labelText: 'Search borrowed entries',
                   prefixIcon: Icon(Icons.search_rounded),
                 ),
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) => setState(() {
+                  _visibleCandidateCount = _initialVisibleCandidates;
+                }),
               ),
               const SizedBox(height: 16),
               Card(
@@ -894,10 +854,8 @@ class _BorrowedResolutionPageState extends State<_BorrowedResolutionPage> {
                   title: Text(
                     'Expense amount: ${AppConstants.currency(widget.expenseAmount)}',
                   ),
-                  subtitle: Text(
-                    _selected == null
-                        ? 'Select one borrowed entry with enough pending amount to resolve.'
-                        : 'Pending borrowed: ${AppConstants.currency(_selected!.pendingAmount)}',
+                  subtitle: const Text(
+                    'Select a borrowed entry to continue on the next screen.',
                   ),
                 ),
               ),
@@ -911,23 +869,13 @@ class _BorrowedResolutionPageState extends State<_BorrowedResolutionPage> {
                     ),
                   ),
                 ),
-              ...filtered.map((candidate) {
-                final isSelected = _selected?.entry.id == candidate.entry.id;
+              ...visible.map((candidate) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Card(
                     child: ListTile(
-                      onTap: () {
-                        setState(() {
-                          _selected = candidate;
-                          _setSettledAmount(_maxAllowedAmountFor(candidate));
-                        });
-                      },
-                      leading: Icon(
-                        isSelected
-                            ? Icons.radio_button_checked_rounded
-                            : Icons.radio_button_off_rounded,
-                      ),
+                      onTap: () => _openCandidate(candidate),
+                      trailing: const Icon(Icons.chevron_right_rounded),
                       title: Text(candidate.entry.title),
                       subtitle: Text(
                         '${AppConstants.shortDateFormat.format(candidate.entry.date)} | Pending ${AppConstants.currency(candidate.pendingAmount)}',
@@ -936,48 +884,211 @@ class _BorrowedResolutionPageState extends State<_BorrowedResolutionPage> {
                   ),
                 );
               }),
-              if (_selected != null) ...<Widget>[
-                const SizedBox(height: 16),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          _selected!.entry.title,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Pending amount: ${AppConstants.currency(_selected!.pendingAmount)}',
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _settledAmountController,
-                          inputFormatters: _ExpenseSplitEditorPageState
-                              ._decimalInputFormatters,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: 'Resolve amount',
-                            prefixText: 'Rs ',
-                            errorText: _resolveAmountErrorText(),
-                          ),
-                          onChanged: (value) {
-                            _handleSettledAmountChanged(value);
-                            setState(() {});
-                          },
-                        ),
-                      ],
-                    ),
+              if (filtered.length > visible.length)
+                Align(
+                  alignment: Alignment.center,
+                  child: TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _visibleCandidateCount += 5;
+                      });
+                    },
+                    child: const Text('Show more'),
                   ),
                 ),
-              ],
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _BorrowedResolutionSelectionPage extends StatefulWidget {
+  const _BorrowedResolutionSelectionPage({
+    required this.candidate,
+    required this.expenseAmount,
+    this.initialAmount,
+  });
+
+  final BorrowedResolutionCandidate candidate;
+  final double expenseAmount;
+  final double? initialAmount;
+
+  @override
+  State<_BorrowedResolutionSelectionPage> createState() =>
+      _BorrowedResolutionSelectionPageState();
+}
+
+class _BorrowedResolutionSelectionPageState
+    extends State<_BorrowedResolutionSelectionPage> {
+  final TextEditingController _settledAmountController =
+      TextEditingController();
+  bool _syncingSettledAmount = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialAmount = widget.initialAmount ?? _maxAllowedAmount;
+    _setSettledAmount(
+      initialAmount <= _maxAllowedAmount ? initialAmount : _maxAllowedAmount,
+    );
+  }
+
+  @override
+  void dispose() {
+    _settledAmountController.dispose();
+    super.dispose();
+  }
+
+  double get _maxAllowedAmount {
+    return widget.expenseAmount <= widget.candidate.pendingAmount
+        ? widget.expenseAmount
+        : widget.candidate.pendingAmount;
+  }
+
+  double _selectedAmount() =>
+      double.tryParse(_settledAmountController.text) ?? 0;
+
+  void _setSettledAmount(double amount) {
+    _syncingSettledAmount = true;
+    _settledAmountController.text = amount.toStringAsFixed(2);
+    _settledAmountController.selection = TextSelection.collapsed(
+      offset: _settledAmountController.text.length,
+    );
+    _syncingSettledAmount = false;
+  }
+
+  void _handleSettledAmountChanged(String value) {
+    if (_syncingSettledAmount) {
+      return;
+    }
+    final amount = double.tryParse(value);
+    if (amount == null) {
+      return;
+    }
+    if (amount > _maxAllowedAmount + 0.005) {
+      _setSettledAmount(_maxAllowedAmount);
+    }
+  }
+
+  String? _resolveAmountErrorText() {
+    if (_settledAmountController.text.trim().isEmpty) {
+      return null;
+    }
+    final amount = _selectedAmount();
+    if (amount <= 0) {
+      return 'Enter a valid amount.';
+    }
+    if (amount > widget.expenseAmount + 0.005) {
+      return 'Amount cannot exceed the entered expense amount.';
+    }
+    if (amount > widget.candidate.pendingAmount + 0.005) {
+      return 'Amount cannot exceed the pending borrowed amount.';
+    }
+    if ((amount - widget.expenseAmount).abs() > 0.01) {
+      return 'Resolve amount must exactly match the expense amount.';
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Resolve Borrowed'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () {
+              final selectedAmount = _selectedAmount();
+              if ((selectedAmount - widget.expenseAmount).abs() > 0.01) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Resolved borrowed amount must exactly match the expense amount.',
+                    ),
+                  ),
+                );
+                return;
+              }
+              if (selectedAmount <= 0 ||
+                  selectedAmount > widget.candidate.pendingAmount + 0.01) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Resolved borrowed amount cannot exceed the pending amount.',
+                    ),
+                  ),
+                );
+                return;
+              }
+              Navigator.of(context).pop(
+                BorrowedResolutionDraft(
+                  borrowedEntryId: widget.candidate.entry.id,
+                  borrowedEntryTitle: widget.candidate.entry.title,
+                  settledAmount: double.parse(
+                    selectedAmount.toStringAsFixed(2),
+                  ),
+                ),
+              );
+            },
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        children: <Widget>[
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    widget.candidate.entry.title,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Date: ${AppConstants.shortDateFormat.format(widget.candidate.entry.date)}',
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Pending amount: ${AppConstants.currency(widget.candidate.pendingAmount)}',
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Expense amount: ${AppConstants.currency(widget.expenseAmount)}',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: TextField(
+                controller: _settledAmountController,
+                inputFormatters:
+                    _ExpenseSplitEditorPageState._decimalInputFormatters,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Resolve amount',
+                  prefixText: 'Rs ',
+                  errorText: _resolveAmountErrorText(),
+                ),
+                onChanged: (value) {
+                  _handleSettledAmountChanged(value);
+                  setState(() {});
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1004,14 +1115,10 @@ class _SplitParticipantController {
       sortOrder: participant.sortOrder,
       nameController: TextEditingController(text: participant.name),
       amountController: TextEditingController(
-        text: participant.amount == participant.amount.roundToDouble()
-            ? participant.amount.toStringAsFixed(0)
-            : participant.amount.toStringAsFixed(2),
+        text: participant.amount.toStringAsFixed(2),
       ),
       percentageController: TextEditingController(
-        text: participant.percentage == participant.percentage.roundToDouble()
-            ? participant.percentage.toStringAsFixed(0)
-            : participant.percentage.toStringAsFixed(2),
+        text: participant.percentage.toStringAsFixed(2),
       ),
     );
   }

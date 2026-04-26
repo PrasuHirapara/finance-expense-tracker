@@ -51,16 +51,18 @@ class TaskRepository {
   Future<List<TaskItem>> loadTasksBetween(DateTime start, DateTime end) async {
     await ensureDailyTasksThroughDate(end);
     final rows =
-        await (_database.select(_database.dbTasks)..where(
-              (table) =>
-                  table.taskDate.isBiggerOrEqualValue(start.startOfDay) &
-                  table.taskDate.isSmallerOrEqualValue(end.endOfDay),
-            )..orderBy([
-              (table) => OrderingTerm.desc(table.taskDate),
-              (table) => OrderingTerm.asc(table.isCompleted),
-              (table) => OrderingTerm.desc(table.priority),
-              (table) => OrderingTerm.asc(table.createdAt),
-            ]))
+        await (_database.select(_database.dbTasks)
+              ..where(
+                (table) =>
+                    table.taskDate.isBiggerOrEqualValue(start.startOfDay) &
+                    table.taskDate.isSmallerOrEqualValue(end.endOfDay),
+              )
+              ..orderBy([
+                (table) => OrderingTerm.desc(table.taskDate),
+                (table) => OrderingTerm.asc(table.isCompleted),
+                (table) => OrderingTerm.desc(table.priority),
+                (table) => OrderingTerm.asc(table.createdAt),
+              ]))
             .get();
 
     return rows
@@ -164,10 +166,9 @@ class TaskRepository {
     required int index,
     required bool isCompleted,
   }) async {
-    final row =
-        await (_database.select(_database.dbTasks)
-              ..where((table) => table.id.equals(taskId)))
-            .getSingleOrNull();
+    final row = await (_database.select(
+      _database.dbTasks,
+    )..where((table) => table.id.equals(taskId))).getSingleOrNull();
     if (row == null) {
       return;
     }
@@ -187,18 +188,18 @@ class TaskRepository {
         )
         .toList(growable: false);
 
-    await (_database.update(_database.dbTasks)
-          ..where((table) => table.id.equals(taskId)))
-        .write(
-          DbTasksCompanion(
-            description: Value(
-              _encodeTaskContent(
-                description: content.description,
-                checklist: updatedChecklist,
-              ),
-            ),
+    await (_database.update(
+      _database.dbTasks,
+    )..where((table) => table.id.equals(taskId))).write(
+      DbTasksCompanion(
+        description: Value(
+          _encodeTaskContent(
+            description: content.description,
+            checklist: updatedChecklist,
           ),
-        );
+        ),
+      ),
+    );
   }
 
   Future<void> ensureDailyTasksThroughDate(DateTime selectedDate) async {
@@ -280,7 +281,9 @@ class TaskRepository {
         )
         .toList(growable: false);
 
-    final completedCount = tasksInRange.where((task) => task.isCompleted).length;
+    final completedCount = tasksInRange
+        .where((task) => task.isCompleted)
+        .length;
     final pendingCount = tasksInRange.length - completedCount;
 
     final priorityMap = <int, int>{for (var i = 1; i <= 5; i++) i: 0};
@@ -438,22 +441,21 @@ class TaskRepository {
     }
 
     try {
-      final payload = jsonDecode(rawDescription.substring(_taskContentPrefix.length))
-          as Map<String, dynamic>;
+      final payload =
+          jsonDecode(rawDescription.substring(_taskContentPrefix.length))
+              as Map<String, dynamic>;
       final description = payload['description'] as String? ?? '';
-      final checklist = (payload['checklist'] as List<dynamic>? ?? const <dynamic>[])
-          .whereType<Map>()
-          .map(
-            (item) => TaskChecklistItem.fromJson(
-              item.map((key, value) => MapEntry(key.toString(), value)),
-            ),
-          )
-          .where((item) => item.title.trim().isNotEmpty)
-          .toList(growable: false);
-      return _TaskStoredContent(
-        description: description,
-        checklist: checklist,
-      );
+      final checklist =
+          (payload['checklist'] as List<dynamic>? ?? const <dynamic>[])
+              .whereType<Map>()
+              .map(
+                (item) => TaskChecklistItem.fromJson(
+                  item.map((key, value) => MapEntry(key.toString(), value)),
+                ),
+              )
+              .where((item) => item.title.trim().isNotEmpty)
+              .toList(growable: false);
+      return _TaskStoredContent(description: description, checklist: checklist);
     } catch (_) {
       return _TaskStoredContent(
         description: rawDescription,
@@ -480,21 +482,18 @@ class TaskRepository {
       return description;
     }
 
-    return '$_taskContentPrefix${jsonEncode(<String, dynamic>{
-          'description': description,
-          'checklist': normalizedChecklist.map((item) => item.toJson()).toList(growable: false),
-        })}';
+    return '$_taskContentPrefix${jsonEncode(<String, dynamic>{'description': description, 'checklist': normalizedChecklist.map((item) => item.toJson()).toList(growable: false)})}';
   }
 
-  _TaskDateRange _resolveRange(TaskAnalyticsWindow window, DateTime anchorDate) {
+  _TaskDateRange _resolveRange(
+    TaskAnalyticsWindow window,
+    DateTime anchorDate,
+  ) {
     switch (window) {
       case TaskAnalyticsWindow.weekly:
         return _TaskDateRange(anchorDate.startOfWeek, anchorDate.endOfWeek);
       case TaskAnalyticsWindow.monthly:
-        return _TaskDateRange(
-          anchorDate.startOfMonth,
-          anchorDate.endOfMonth,
-        );
+        return _TaskDateRange(anchorDate.startOfMonth, anchorDate.endOfMonth);
       case TaskAnalyticsWindow.yearly:
         return _TaskDateRange(anchorDate.startOfYear, anchorDate.endOfYear);
     }

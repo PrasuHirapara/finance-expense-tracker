@@ -143,8 +143,7 @@ class NotificationService {
       await _notifications.zonedSchedule(
         id: _syncReminderId,
         title: 'Sync your data',
-        body:
-            'Open Daily Use and manually upload a fresh cloud backup today.',
+        body: 'Open Daily Use and manually upload a fresh cloud backup today.',
         scheduledDate: _nextInstanceOf(reminderSettings.syncReminder),
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(

@@ -261,13 +261,15 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
         return;
       }
 
-      final report = await _runBlockingInsightOperation<CredentialSecurityReport>(
-        statusText: 'Reviewing your encrypted credentials...',
-        task: (token) => context.read<CredentialService>().buildSecurityReport(
-          encryptionKey: encryptionKey,
-          cancellationToken: token,
-        ),
-      );
+      final report =
+          await _runBlockingInsightOperation<CredentialSecurityReport>(
+            statusText: 'Reviewing your encrypted credentials...',
+            task: (token) =>
+                context.read<CredentialService>().buildSecurityReport(
+                  encryptionKey: encryptionKey,
+                  cancellationToken: token,
+                ),
+          );
       if (!mounted) {
         return;
       }
@@ -279,9 +281,9 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Security check canceled.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Security check canceled.')));
     } finally {
       if (mounted) {
         setState(() {
@@ -369,7 +371,7 @@ class _CredentialListCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Encrypted data hidden until authentication.',
+            'Encrypted data hidden until authenticated.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),

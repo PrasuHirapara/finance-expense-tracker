@@ -1,5 +1,12 @@
 import 'package:equatable/equatable.dart';
 
+double _roundExpenseValue(double value) =>
+    double.parse(value.toStringAsFixed(2));
+
+extension _RoundedDoubleValue on double {
+  double letRound() => _roundExpenseValue(this);
+}
+
 class ExpenseCategory extends Equatable {
   const ExpenseCategory({
     required this.id,
@@ -46,7 +53,7 @@ class ExpenseSplitParticipant extends Equatable {
   final double settledAmount;
   final int sortOrder;
 
-  double get pendingAmount => amount - settledAmount;
+  double get pendingAmount => _roundExpenseValue(amount - settledAmount);
   bool get isSettled => pendingAmount <= 0.005;
   bool get hasSettlement => settledAmount > 0.005;
 
@@ -99,15 +106,18 @@ class ExpenseSplitDraft extends Equatable {
 
   double get selfAmount => participants
       .where((participant) => participant.isSelf)
-      .fold<double>(0, (sum, participant) => sum + participant.amount);
+      .fold<double>(0, (sum, participant) => sum + participant.amount)
+      .letRound();
 
   double get othersAmount => participants
       .where((participant) => !participant.isSelf)
-      .fold<double>(0, (sum, participant) => sum + participant.amount);
+      .fold<double>(0, (sum, participant) => sum + participant.amount)
+      .letRound();
 
   double get pendingLentAmount => participants
       .where((participant) => !participant.isSelf)
-      .fold<double>(0, (sum, participant) => sum + participant.pendingAmount);
+      .fold<double>(0, (sum, participant) => sum + participant.pendingAmount)
+      .letRound();
 
   bool get hasLentParticipants =>
       participants.any((participant) => !participant.isSelf);
@@ -319,16 +329,16 @@ class ExpenseRecord extends Equatable {
       return 0;
     }
     if (type == 'lent') {
-      return amount;
+      return _roundExpenseValue(amount);
     }
-    return splitSummary?.pendingLentAmount ?? 0;
+    return _roundExpenseValue(splitSummary?.pendingLentAmount ?? 0);
   }
 
   double get effectiveDebitAmount {
     if (isManagedLentEntry || !isDebit) {
       return 0;
     }
-    return amount;
+    return _roundExpenseValue(amount);
   }
 
   @override
@@ -556,7 +566,7 @@ class ExpenseDashboardData extends Equatable {
   final double totalBorrowed;
   final List<ExpenseRecord> entries;
 
-  double get totalNet => totalCredit - totalDebit;
+  double get totalNet => _roundExpenseValue(totalCredit - totalDebit);
 
   @override
   List<Object?> get props => <Object?>[
@@ -640,7 +650,7 @@ class ExpenseAnalyticsData extends Equatable {
   final List<ExpenseCategoryAnalysis> categoryBreakdown;
   final List<ExpenseAnalyticsPoint> trend;
 
-  double get netFlow => totalCredit - totalDebit;
+  double get netFlow => _roundExpenseValue(totalCredit - totalDebit);
 
   @override
   List<Object?> get props => <Object?>[

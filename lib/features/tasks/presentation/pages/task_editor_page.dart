@@ -49,26 +49,29 @@ class TaskEditorPage extends StatelessWidget {
                   });
                 }
 
-                final categoryOptions = <String>{
-                  ...categories,
-                  if (state.category.trim().isNotEmpty) state.category.trim(),
-                }
-                    .map(
-                      (category) => AppSelectOption<String>(
-                        value: category,
-                        label: category,
-                      ),
-                    )
-                    .toList(growable: false);
+                final categoryOptions =
+                    <String>{
+                          ...categories,
+                          if (state.category.trim().isNotEmpty)
+                            state.category.trim(),
+                        }
+                        .map(
+                          (category) => AppSelectOption<String>(
+                            value: category,
+                            label: category,
+                          ),
+                        )
+                        .toList(growable: false);
 
-                final priorityOptions = List<int>.generate(5, (index) => index + 1)
-                    .map(
-                      (priority) => AppSelectOption<int>(
-                        value: priority,
-                        label: priority.toString(),
-                      ),
-                    )
-                    .toList(growable: false);
+                final priorityOptions =
+                    List<int>.generate(5, (index) => index + 1)
+                        .map(
+                          (priority) => AppSelectOption<int>(
+                            value: priority,
+                            label: priority.toString(),
+                          ),
+                        )
+                        .toList(growable: false);
 
                 return ListView(
                   key: ValueKey<int?>(state.taskId),
@@ -92,7 +95,9 @@ class TaskEditorPage extends StatelessWidget {
                       initialValue: state.description,
                       minLines: 3,
                       maxLines: 4,
-                      decoration: const InputDecoration(labelText: 'Description'),
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                      ),
                       onChanged: (value) => context.read<TaskEditorBloc>().add(
                         TaskDescriptionChanged(value),
                       ),
@@ -205,9 +210,9 @@ class _ChecklistSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.42,
-        ),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(

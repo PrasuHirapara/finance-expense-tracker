@@ -16,10 +16,7 @@ extension TaskAnalyticsWindowX on TaskAnalyticsWindow {
 }
 
 class TaskChecklistItem extends Equatable {
-  const TaskChecklistItem({
-    required this.title,
-    this.isCompleted = false,
-  });
+  const TaskChecklistItem({required this.title, this.isCompleted = false});
 
   final String title;
   final bool isCompleted;
@@ -36,10 +33,7 @@ class TaskChecklistItem extends Equatable {
     );
   }
 
-  TaskChecklistItem copyWith({
-    String? title,
-    bool? isCompleted,
-  }) {
+  TaskChecklistItem copyWith({String? title, bool? isCompleted}) {
     return TaskChecklistItem(
       title: title ?? this.title,
       isCompleted: isCompleted ?? this.isCompleted,

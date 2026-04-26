@@ -4,7 +4,7 @@ class IndianNumberFormatter {
   IndianNumberFormatter._();
 
   static final NumberFormat _fullNumberFormatter = NumberFormat(
-    '#,##,##0.################',
+    '#,##,##0.00',
     'en_IN',
   );
 

@@ -40,9 +40,9 @@ class _AddEntryView extends StatelessWidget {
 
         if (state.status == AddEntryFormStatus.failure &&
             state.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.errorMessage!)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
         }
       },
       builder: (context, formState) {
@@ -86,7 +86,8 @@ class _AddEntryView extends StatelessWidget {
                     const SizedBox(height: 20),
                     TextField(
                       decoration: InputDecoration(
-                        labelText: formState.type.isLiability ||
+                        labelText:
+                            formState.type.isLiability ||
                                 formState.type.isReceivable
                             ? 'Title or purpose'
                             : 'Title',
@@ -118,7 +119,8 @@ class _AddEntryView extends StatelessWidget {
                       initialValue: formState.selectedCategoryId,
                       decoration: InputDecoration(
                         labelText: 'Category',
-                        errorText: formState.showValidation &&
+                        errorText:
+                            formState.showValidation &&
                                 formState.selectedCategoryId == null
                             ? 'Select a category'
                             : null,

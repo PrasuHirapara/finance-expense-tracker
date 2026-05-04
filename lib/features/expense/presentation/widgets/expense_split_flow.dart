@@ -460,6 +460,50 @@ class _LentResolutionPageState extends State<_LentResolutionPage> {
     }
   }
 
+  Future<void> _openSummaryPage(
+    List<LentResolutionCandidate> candidates,
+  ) async {
+    final summaries = _buildLentSummaries(candidates);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => _NameAmountSummaryPage(
+          title: 'Lent Data',
+          amountLabel: 'Total Lent',
+          emptyMessage: 'No pending lent data found.',
+          summaries: summaries,
+        ),
+      ),
+    );
+  }
+
+  List<_NameAmountSummary> _buildLentSummaries(
+    List<LentResolutionCandidate> candidates,
+  ) {
+    final totals = <String, double>{};
+    for (final candidate in candidates) {
+      for (final participant in candidate.splitDraft.participants) {
+        if (participant.isSelf || participant.pendingAmount <= 0.005) {
+          continue;
+        }
+        final name = participant.name.trim().isEmpty
+            ? 'Participant'
+            : participant.name.trim();
+        totals.update(
+          name,
+          (value) => value + participant.pendingAmount,
+          ifAbsent: () => participant.pendingAmount,
+        );
+      }
+    }
+    final summaries = totals.entries
+        .map(
+          (entry) => _NameAmountSummary(name: entry.key, amount: entry.value),
+        )
+        .toList(growable: false);
+    summaries.sort((a, b) => b.amount.compareTo(a.amount));
+    return summaries;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -543,17 +587,24 @@ class _LentResolutionPageState extends State<_LentResolutionPage> {
                   ),
                 );
               }),
-              if (filtered.length > visible.length)
-                Align(
-                  alignment: Alignment.center,
-                  child: TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _visibleCandidateCount += 5;
-                      });
-                    },
-                    child: const Text('Show more'),
-                  ),
+              if (filtered.isNotEmpty)
+                Row(
+                  children: <Widget>[
+                    TextButton(
+                      onPressed: () => _openSummaryPage(filtered),
+                      child: const Text('Show Data'),
+                    ),
+                    const Spacer(),
+                    if (filtered.length > visible.length)
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _visibleCandidateCount += 5;
+                          });
+                        },
+                        child: const Text('Show more'),
+                      ),
+                  ],
                 ),
             ],
           );
@@ -796,6 +847,46 @@ class _BorrowedResolutionPageState extends State<_BorrowedResolutionPage> {
     }
   }
 
+  Future<void> _openSummaryPage(
+    List<BorrowedResolutionCandidate> candidates,
+  ) async {
+    final summaries = _buildBorrowedSummaries(candidates);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => _NameAmountSummaryPage(
+          title: 'Borrowed Data',
+          amountLabel: 'Total Borrowed',
+          emptyMessage: 'No pending borrowed data found.',
+          summaries: summaries,
+        ),
+      ),
+    );
+  }
+
+  List<_NameAmountSummary> _buildBorrowedSummaries(
+    List<BorrowedResolutionCandidate> candidates,
+  ) {
+    final totals = <String, double>{};
+    for (final candidate in candidates) {
+      final name = candidate.entry.counterparty?.trim().isNotEmpty == true
+          ? candidate.entry.counterparty!.trim()
+          : candidate.entry.title.trim();
+      final normalizedName = name.isEmpty ? 'Unknown' : name;
+      totals.update(
+        normalizedName,
+        (value) => value + candidate.pendingAmount,
+        ifAbsent: () => candidate.pendingAmount,
+      );
+    }
+    final summaries = totals.entries
+        .map(
+          (entry) => _NameAmountSummary(name: entry.key, amount: entry.value),
+        )
+        .toList(growable: false);
+    summaries.sort((a, b) => b.amount.compareTo(a.amount));
+    return summaries;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -884,17 +975,24 @@ class _BorrowedResolutionPageState extends State<_BorrowedResolutionPage> {
                   ),
                 );
               }),
-              if (filtered.length > visible.length)
-                Align(
-                  alignment: Alignment.center,
-                  child: TextButton(
-                    onPressed: () {
-                      setState(() {
-                        _visibleCandidateCount += 5;
-                      });
-                    },
-                    child: const Text('Show more'),
-                  ),
+              if (filtered.isNotEmpty)
+                Row(
+                  children: <Widget>[
+                    TextButton(
+                      onPressed: () => _openSummaryPage(filtered),
+                      child: const Text('Show Data'),
+                    ),
+                    const Spacer(),
+                    if (filtered.length > visible.length)
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _visibleCandidateCount += 5;
+                          });
+                        },
+                        child: const Text('Show more'),
+                      ),
+                  ],
                 ),
             ],
           );
@@ -1090,6 +1188,63 @@ class _BorrowedResolutionSelectionPageState
           ),
         ],
       ),
+    );
+  }
+}
+
+class _NameAmountSummary {
+  const _NameAmountSummary({required this.name, required this.amount});
+
+  final String name;
+  final double amount;
+}
+
+class _NameAmountSummaryPage extends StatelessWidget {
+  const _NameAmountSummaryPage({
+    required this.title,
+    required this.amountLabel,
+    required this.emptyMessage,
+    required this.summaries,
+  });
+
+  final String title;
+  final String amountLabel;
+  final String emptyMessage;
+  final List<_NameAmountSummary> summaries;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: summaries.isEmpty
+          ? Center(child: Text(emptyMessage))
+          : ListView.separated(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              itemCount: summaries.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                final summary = summaries[index];
+                return Card(
+                  child: ListTile(
+                    title: Text(summary.name),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: <Widget>[
+                        Text(
+                          AppConstants.currency(summary.amount),
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(
+                          amountLabel,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }

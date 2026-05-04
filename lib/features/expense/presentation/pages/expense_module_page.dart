@@ -23,11 +23,13 @@ class ExpenseModulePage extends StatefulWidget {
 
 class _ExpenseModulePageState extends State<ExpenseModulePage> {
   static const int _initialVisibleDateGroups = 10;
+  static const int _cashFilterValue = -1;
 
   _ExpenseSummaryFilter _activeSummaryFilter = _ExpenseSummaryFilter.net;
   final TextEditingController _searchController = TextEditingController();
   DateTime? _expandedDate;
   int _visibleDateGroupCount = _initialVisibleDateGroups;
+  bool _showCashEntries = false;
 
   @override
   void initState() {
@@ -57,7 +59,13 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
               );
             }
 
-            final filteredEntries = dashboard.entries
+            final activeEntries = _showCashEntries
+                ? dashboard.entries
+                      .where((entry) => entry.bank == null)
+                      .toList(growable: false)
+                : dashboard.entries;
+            final summary = _buildSummary(activeEntries);
+            final filteredEntries = activeEntries
                 .where(
                   (entry) => _matchesSummaryFilter(entry, _activeSummaryFilter),
                 )
@@ -66,7 +74,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                 )
                 .toList(growable: false);
             final entryById = <int, ExpenseRecord>{
-              for (final entry in dashboard.entries) entry.id: entry,
+              for (final entry in activeEntries) entry.id: entry,
             };
             final groupedEntries = _groupEntries(filteredEntries);
             final visibleGroupedEntries =
@@ -81,7 +89,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
               _SummaryCardData(
                 label: 'Total Credit',
                 value: IndianNumberFormatter.formatCompactCurrency(
-                  dashboard.totalCredit,
+                  summary.totalCredit,
                 ),
                 color: const Color(0xFF1F8B4C),
                 filter: _ExpenseSummaryFilter.credit,
@@ -89,7 +97,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
               _SummaryCardData(
                 label: 'Total Debit',
                 value: IndianNumberFormatter.formatCompactCurrency(
-                  dashboard.totalDebit,
+                  summary.totalDebit,
                 ),
                 color: const Color(0xFFC0392B),
                 filter: _ExpenseSummaryFilter.debit,
@@ -97,7 +105,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
               _SummaryCardData(
                 label: 'Total Lent',
                 value: IndianNumberFormatter.formatCompactCurrency(
-                  dashboard.totalLent,
+                  summary.totalLent,
                 ),
                 color: const Color(0xFF8E44AD),
                 filter: _ExpenseSummaryFilter.lent,
@@ -105,7 +113,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
               _SummaryCardData(
                 label: 'Total Borrowed',
                 value: IndianNumberFormatter.formatCompactCurrency(
-                  dashboard.totalBorrowed,
+                  summary.totalBorrowed,
                 ),
                 color: const Color(0xFF16A085),
                 filter: _ExpenseSummaryFilter.borrowed,
@@ -117,7 +125,9 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                 onRefresh: () async {
                   context.read<ExpenseBloc>().add(
                     ExpenseSubscriptionRequested(
-                      bankId: expenseState.selectedBankId,
+                      bankId: _showCashEntries
+                          ? null
+                          : expenseState.selectedBankId,
                     ),
                   );
                 },
@@ -152,11 +162,17 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                         Expanded(
                           child: AppSelectField<int?>(
                             label: 'Filter by bank',
-                            value: expenseState.selectedBankId,
+                            value: _showCashEntries
+                                ? _cashFilterValue
+                                : expenseState.selectedBankId,
                             options: <AppSelectOption<int?>>[
                               const AppSelectOption<int?>(
                                 value: null,
                                 label: 'All Banks',
+                              ),
+                              const AppSelectOption<int?>(
+                                value: _cashFilterValue,
+                                label: 'Cash',
                               ),
                               ...bankState.banks.map(
                                 (bank) => AppSelectOption<int?>(
@@ -166,6 +182,22 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                               ),
                             ],
                             onChanged: (value) {
+                              if (value == _cashFilterValue) {
+                                setState(() {
+                                  _showCashEntries = true;
+                                  _visibleDateGroupCount =
+                                      _initialVisibleDateGroups;
+                                });
+                                context.read<ExpenseBloc>().add(
+                                  const ExpenseBankFilterChanged(null),
+                                );
+                                return;
+                              }
+                              setState(() {
+                                _showCashEntries = false;
+                                _visibleDateGroupCount =
+                                    _initialVisibleDateGroups;
+                              });
                               context.read<ExpenseBloc>().add(
                                 ExpenseBankFilterChanged(value),
                               );
@@ -206,7 +238,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                           const SizedBox(height: 16),
                           _NetSummaryRow(
                             value: IndianNumberFormatter.formatCompactCurrency(
-                              dashboard.totalNet,
+                              summary.totalNet,
                             ),
                             selected:
                                 _activeSummaryFilter ==
@@ -414,6 +446,30 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
           .add(entry);
     }
     return grouped;
+  }
+
+  ExpenseDashboardData _buildSummary(List<ExpenseRecord> entries) {
+    return ExpenseDashboardData(
+      totalCredit: entries
+          .where((entry) => entry.isCredit)
+          .fold<double>(0, (sum, entry) => sum + entry.amount),
+      totalDebit: entries.fold<double>(
+        0,
+        (sum, entry) => sum + entry.effectiveDebitAmount,
+      ),
+      totalLent: entries.fold<double>(
+        0,
+        (sum, entry) => sum + entry.effectiveLentAmount,
+      ),
+      totalBorrowed: entries
+          .where((entry) => entry.type == 'borrowed')
+          .fold<double>(
+            0,
+            (sum, entry) =>
+                sum + (entry.borrowedSummary?.pendingAmount ?? entry.amount),
+          ),
+      entries: entries,
+    );
   }
 
   Future<void> _deleteEntry(BuildContext context, ExpenseRecord entry) async {

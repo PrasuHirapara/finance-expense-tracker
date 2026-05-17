@@ -6,7 +6,10 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/models/app_preferences.dart';
 import '../../../../core/models/cloud_sync_models.dart';
+import '../../../../core/services/android_battery_optimization_service.dart';
 import '../../../../core/services/app_settings_repository.dart';
+import '../../../../core/services/auto_backup_scheduler_service.dart';
+import '../../../../core/services/cloud_backup_service.dart';
 import '../../../../core/services/cancellable_task.dart';
 import '../../../../core/services/cloud_sync_service.dart';
 import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
@@ -39,6 +42,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
   bool _isRestoring = false;
   bool _isToggling = false;
   bool _isUpdatingCredentialSync = false;
+  bool _isUpdatingAutoBackup = false;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +59,9 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
         final canToggleCloudSync =
             authService.isAvailable &&
             (hasFirebaseAccount || cloudSync.enabled);
+        final canToggleAutoBackup =
+            authService.isAvailable &&
+            (canUseCloudSync || cloudSync.autoBackupEnabled);
 
         final content = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,6 +118,110 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
               ),
               const SizedBox(height: 16),
             ],
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.42,
+                ),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Column(
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              'Enable Auto Backup',
+                              style: theme.textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              canUseCloudSync
+                                  ? 'Automatically upload a cloud backup once a day.'
+                                  : cloudSync.enabled
+                                  ? 'Sign in to Firebase before enabling automatic backups.'
+                                  : 'Turn on Cloud Sync before enabling automatic backups.',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: cloudSync.autoBackupEnabled,
+                        onChanged: _isUpdatingAutoBackup || !canToggleAutoBackup
+                            ? null
+                            : (value) => _toggleAutoBackup(context, value),
+                      ),
+                    ],
+                  ),
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeInOut,
+                    alignment: Alignment.topCenter,
+                    child: cloudSync.autoBackupEnabled
+                        ? Column(
+                            children: <Widget>[
+                              const SizedBox(height: 12),
+                              InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: _isUpdatingAutoBackup || !canUseCloudSync
+                                    ? null
+                                    : () => _pickAutoBackupTime(
+                                        context,
+                                        initialTime: cloudSync.autoBackupTime,
+                                      ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 2,
+                                    vertical: 10,
+                                  ),
+                                  child: Row(
+                                    children: <Widget>[
+                                      Expanded(
+                                        child: Text(
+                                          'Backup Time',
+                                          style: theme.textTheme.bodyLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                      ),
+                                      Text(
+                                        _formatBackupTime(
+                                          context,
+                                          cloudSync.autoBackupTime,
+                                        ),
+                                        style: theme.textTheme.bodyLarge
+                                            ?.copyWith(
+                                              color: theme.colorScheme.primary,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Icon(
+                                        Icons.chevron_right_rounded,
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -302,11 +413,15 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
   }
 
   Future<void> _toggleCloudSync(BuildContext context, bool enabled) async {
+    final cloudSyncService = context.read<CloudSyncService>();
+    final autoBackupSchedulerService = context
+        .read<AutoBackupSchedulerService>();
     setState(() {
       _isToggling = true;
     });
     try {
-      await context.read<CloudSyncService>().setCloudSyncEnabled(enabled);
+      await cloudSyncService.setCloudSyncEnabled(enabled);
+      await autoBackupSchedulerService.reconcileScheduledBackup();
       if (!context.mounted) {
         return;
       }
@@ -493,6 +608,15 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     );
   }
 
+  String _formatBackupTime(BuildContext context, AppBackupTime backupTime) {
+    final localizations = MaterialLocalizations.of(context);
+    return localizations.formatTimeOfDay(
+      backupTime.toTimeOfDay(),
+      alwaysUse24HourFormat:
+          MediaQuery.maybeOf(context)?.alwaysUse24HourFormat ?? false,
+    );
+  }
+
   String _formatDateTime(DateTime? value) {
     if (value == null) {
       return 'Not available';
@@ -503,9 +627,186 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
   String _statusSummary(CloudSyncPreferences preferences) {
     final parts = <String>[
       'Data: ${preferences.syncCredentials ? 'Full backup enabled' : 'App data backup without credentials'}',
-      'Mode: manual sync only',
+      'Mode: ${preferences.autoBackupEnabled ? 'automatic daily and manual sync' : 'manual sync only'}',
     ];
     return parts.join(' | ');
+  }
+
+  Future<void> _toggleAutoBackup(BuildContext context, bool enabled) async {
+    setState(() {
+      _isUpdatingAutoBackup = true;
+    });
+    try {
+      await context.read<AutoBackupSchedulerService>().setAutoBackupEnabled(
+        enabled,
+      );
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: enabled ? 'Auto Backup enabled.' : 'Auto Backup disabled.',
+      );
+      if (enabled) {
+        await _maybeShowBatteryOptimizationDialog(context);
+      } else {
+        await _maybeShowRestoreBatteryOptimizationDialog(context);
+      }
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: 'Unable to update Auto Backup: $error',
+        type: AppSnackBarType.error,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingAutoBackup = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _pickAutoBackupTime(
+    BuildContext context, {
+    required AppBackupTime initialTime,
+  }) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final materialLocalizations = MaterialLocalizations.of(context);
+    final alwaysUse24HourFormat =
+        MediaQuery.maybeOf(context)?.alwaysUse24HourFormat ?? false;
+    final selectedTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime.toTimeOfDay(),
+    );
+
+    if (selectedTime == null) {
+      return;
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    final backupTime = AppBackupTime.fromTimeOfDay(selectedTime);
+    final autoBackupSchedulerService = context
+        .read<AutoBackupSchedulerService>();
+    final formattedTime = materialLocalizations.formatTimeOfDay(
+      selectedTime,
+      alwaysUse24HourFormat: alwaysUse24HourFormat,
+    );
+
+    setState(() {
+      _isUpdatingAutoBackup = true;
+    });
+    try {
+      await autoBackupSchedulerService.updateAutoBackupTime(backupTime);
+      if (!context.mounted) {
+        return;
+      }
+      scaffoldMessenger.showSnackBar(
+        buildAppSnackBar(
+          context,
+          message: 'Auto Backup time set for $formattedTime.',
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      scaffoldMessenger.showSnackBar(
+        buildAppSnackBar(
+          context,
+          message: 'Unable to update Auto Backup time: $error',
+          type: AppSnackBarType.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingAutoBackup = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _maybeShowBatteryOptimizationDialog(BuildContext context) async {
+    final batteryOptimizationService = context
+        .read<AndroidBatteryOptimizationService>();
+    if (!batteryOptimizationService.isSupported) {
+      return;
+    }
+    final isEnabled = await batteryOptimizationService
+        .isBatteryOptimizationEnabled();
+    if (!isEnabled || !context.mounted) {
+      return;
+    }
+
+    final openSettings = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Improve Backup Reliability?'),
+        content: const Text(
+          'Android battery optimization can delay background backups. Disabling it for Daily Use can make automatic backups more reliable.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Later'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+
+    if (openSettings == true) {
+      await batteryOptimizationService.openBatteryOptimizationSettings();
+    }
+  }
+
+  Future<void> _maybeShowRestoreBatteryOptimizationDialog(
+    BuildContext context,
+  ) async {
+    final batteryOptimizationService = context
+        .read<AndroidBatteryOptimizationService>();
+    if (!batteryOptimizationService.isSupported) {
+      return;
+    }
+    final isIgnoringOptimization = await batteryOptimizationService
+        .isIgnoringBatteryOptimization();
+    if (!isIgnoringOptimization || !context.mounted) {
+      return;
+    }
+
+    final openSettings = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Restore Normal Battery Use?'),
+        content: const Text(
+          'Auto Backup is off. Android does not let Daily Use re-enable battery optimization directly, but you can open app settings and set battery usage back to Optimized or Default.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Later'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+
+    if (openSettings == true) {
+      await batteryOptimizationService.openAppBatterySettings();
+    }
   }
 
   Future<void> _pickSyncReminderTime(
@@ -743,10 +1044,10 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
   }
 
   Future<void> _performCloudUpload({String? credentialEncryptionKey}) async {
-    final cloudSyncService = context.read<CloudSyncService>();
+    final cloudBackupService = context.read<CloudBackupService>();
     await _runBlockingOperation<void>(
       statusText: 'Syncing your data with Firebase...',
-      task: (token) => cloudSyncService.uploadDataToCloud(
+      task: (token) => cloudBackupService.runBackup(
         credentialEncryptionKey: credentialEncryptionKey,
         cancellationToken: token,
       ),

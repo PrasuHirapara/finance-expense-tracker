@@ -135,7 +135,9 @@ class ExpenseBloc extends Bloc<ExpenseEvent, ExpenseState> {
     final banks = await _repository.watchBanks().first;
     final restoredBankId = banks.any((bank) => bank.id == savedBankId)
         ? savedBankId
-        : null;
+        : banks.isEmpty
+        ? null
+        : banks.first.id;
     if (savedBankId != restoredBankId) {
       await _settingsRepository.updateSelectedExpenseBankId(restoredBankId);
     }

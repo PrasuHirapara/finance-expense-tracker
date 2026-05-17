@@ -12,10 +12,13 @@ import '../../features/expense/data/repositories/expense_repository.dart';
 import '../../features/tasks/data/repositories/task_category_repository.dart';
 import '../../features/tasks/data/repositories/task_repository.dart';
 import '../models/app_preferences.dart';
+import '../services/android_battery_optimization_service.dart';
 import '../services/app_data_reset_service.dart';
 import '../services/app_preferences_effects_service.dart';
 import '../services/app_settings_repository.dart';
+import '../services/auto_backup_scheduler_service.dart';
 import '../services/cloud_backup_crypto_service.dart';
+import '../services/cloud_backup_service.dart';
 import '../services/cloud_sync_payload_service.dart';
 import '../services/cloud_sync_security_service.dart';
 import '../services/cloud_sync_service.dart';
@@ -53,6 +56,9 @@ class AppSession {
     required this.cloudSyncSecurityService,
     required this.appPreferencesEffectsService,
     required this.cloudSyncService,
+    required this.cloudBackupService,
+    required this.autoBackupSchedulerService,
+    required this.androidBatteryOptimizationService,
     required this.appDataResetService,
   });
 
@@ -122,6 +128,14 @@ class AppSession {
       credentialSecurityService: credentialSecurityService,
       appPreferencesEffectsService: appPreferencesEffectsService,
     );
+    final cloudBackupService = CloudBackupService(
+      cloudSyncService: cloudSyncService,
+    );
+    final autoBackupSchedulerService = AutoBackupSchedulerService(
+      appSettingsRepository: appSettingsRepository,
+    );
+    final androidBatteryOptimizationService =
+        AndroidBatteryOptimizationService();
     final appDataResetService = AppDataResetService(
       credentialService: credentialService,
       expenseRepository: expenseRepository,
@@ -156,6 +170,9 @@ class AppSession {
       cloudSyncSecurityService: cloudSyncSecurityService,
       appPreferencesEffectsService: appPreferencesEffectsService,
       cloudSyncService: cloudSyncService,
+      cloudBackupService: cloudBackupService,
+      autoBackupSchedulerService: autoBackupSchedulerService,
+      androidBatteryOptimizationService: androidBatteryOptimizationService,
       appDataResetService: appDataResetService,
     );
   }
@@ -182,6 +199,9 @@ class AppSession {
   final CloudSyncSecurityService cloudSyncSecurityService;
   final AppPreferencesEffectsService appPreferencesEffectsService;
   final CloudSyncService cloudSyncService;
+  final CloudBackupService cloudBackupService;
+  final AutoBackupSchedulerService autoBackupSchedulerService;
+  final AndroidBatteryOptimizationService androidBatteryOptimizationService;
   final AppDataResetService appDataResetService;
 
   Future<AppPreferences> bootstrap() async {
@@ -190,6 +210,7 @@ class AppSession {
     await taskCategoryRepository.ensureSeeded();
     await notificationService.initialize();
     await appPreferencesEffectsService.apply(appPreferences);
+    await autoBackupSchedulerService.reconcileScheduledBackup();
     return appPreferences;
   }
 

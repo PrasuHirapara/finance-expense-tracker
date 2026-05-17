@@ -10,6 +10,9 @@ import 'core/models/app_preferences.dart';
 import 'core/router/app_router.dart';
 import 'core/services/app_data_reset_service.dart';
 import 'core/services/app_settings_repository.dart';
+import 'core/services/android_battery_optimization_service.dart';
+import 'core/services/auto_backup_scheduler_service.dart';
+import 'core/services/cloud_backup_service.dart';
 import 'core/services/cloud_sync_service.dart';
 import 'core/services/firebase_cloud_sync_auth_service.dart';
 import 'core/services/file_launcher_service.dart';
@@ -108,6 +111,15 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
         ),
         RepositoryProvider<CloudSyncService>.value(
           value: _session.cloudSyncService,
+        ),
+        RepositoryProvider<CloudBackupService>.value(
+          value: _session.cloudBackupService,
+        ),
+        RepositoryProvider<AutoBackupSchedulerService>.value(
+          value: _session.autoBackupSchedulerService,
+        ),
+        RepositoryProvider<AndroidBatteryOptimizationService>.value(
+          value: _session.androidBatteryOptimizationService,
         ),
         RepositoryProvider<AppDataResetService>.value(
           value: _session.appDataResetService,

@@ -2,10 +2,56 @@ import 'package:flutter/material.dart';
 
 enum AppModule { credential, expense, tasks, settings }
 
+class AppBackupTime {
+  const AppBackupTime({required this.hour, required this.minute});
+
+  static const AppBackupTime defaultAutoBackup = AppBackupTime(
+    hour: 7,
+    minute: 0,
+  );
+
+  final int hour;
+  final int minute;
+
+  TimeOfDay toTimeOfDay() => TimeOfDay(hour: hour, minute: minute);
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'hour': hour,
+    'minute': minute,
+  };
+
+  static AppBackupTime fromTimeOfDay(TimeOfDay time) {
+    return AppBackupTime(hour: time.hour, minute: time.minute);
+  }
+
+  static AppBackupTime fromJson(
+    Object? json, {
+    required AppBackupTime fallback,
+  }) {
+    if (json is! Map) {
+      return fallback;
+    }
+
+    final hour = json['hour'];
+    final minute = json['minute'];
+    if (hour is! int || minute is! int) {
+      return fallback;
+    }
+
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      return fallback;
+    }
+
+    return AppBackupTime(hour: hour, minute: minute);
+  }
+}
+
 class CloudSyncPreferences {
   const CloudSyncPreferences({
     this.enabled = false,
     this.syncCredentials = true,
+    this.autoBackupEnabled = false,
+    this.autoBackupTime = AppBackupTime.defaultAutoBackup,
     this.lastSuccessfulSyncAt,
     this.lastRestoreAt,
     this.lastSyncedAccountEmail,
@@ -14,6 +60,8 @@ class CloudSyncPreferences {
 
   final bool enabled;
   final bool syncCredentials;
+  final bool autoBackupEnabled;
+  final AppBackupTime autoBackupTime;
   final DateTime? lastSuccessfulSyncAt;
   final DateTime? lastRestoreAt;
   final String? lastSyncedAccountEmail;
@@ -22,6 +70,8 @@ class CloudSyncPreferences {
   CloudSyncPreferences copyWith({
     bool? enabled,
     bool? syncCredentials,
+    bool? autoBackupEnabled,
+    AppBackupTime? autoBackupTime,
     Object? lastSuccessfulSyncAt = _appPreferenceUnset,
     Object? lastRestoreAt = _appPreferenceUnset,
     Object? lastSyncedAccountEmail = _appPreferenceUnset,
@@ -30,6 +80,8 @@ class CloudSyncPreferences {
     return CloudSyncPreferences(
       enabled: enabled ?? this.enabled,
       syncCredentials: syncCredentials ?? this.syncCredentials,
+      autoBackupEnabled: autoBackupEnabled ?? this.autoBackupEnabled,
+      autoBackupTime: autoBackupTime ?? this.autoBackupTime,
       lastSuccessfulSyncAt: identical(lastSuccessfulSyncAt, _appPreferenceUnset)
           ? this.lastSuccessfulSyncAt
           : lastSuccessfulSyncAt as DateTime?,

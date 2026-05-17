@@ -9,8 +9,8 @@ class AppConstants {
   static const String appName = 'Daily Use';
 
   static const List<String> paymentModes = <String>[
-    'Cash',
     'UPI',
+    'Cash',
     'Debit Card',
     'Credit Card',
     'Bank Transfer',

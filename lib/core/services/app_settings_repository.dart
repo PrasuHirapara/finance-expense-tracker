@@ -255,6 +255,8 @@ class AppSettingsRepository {
     return <String, dynamic>{
       'enabled': preferences.enabled,
       'syncCredentials': preferences.syncCredentials,
+      'autoBackupEnabled': preferences.autoBackupEnabled,
+      'autoBackupTime': preferences.autoBackupTime.toJson(),
       'lastSuccessfulSyncAt': preferences.lastSuccessfulSyncAt
           ?.toIso8601String(),
       'lastRestoreAt': preferences.lastRestoreAt?.toIso8601String(),
@@ -281,6 +283,13 @@ class AppSettingsRepository {
       syncCredentials: value['syncCredentials'] is bool
           ? value['syncCredentials'] as bool
           : true,
+      autoBackupEnabled: value['autoBackupEnabled'] is bool
+          ? value['autoBackupEnabled'] as bool
+          : false,
+      autoBackupTime: AppBackupTime.fromJson(
+        value['autoBackupTime'],
+        fallback: AppBackupTime.defaultAutoBackup,
+      ),
       lastSuccessfulSyncAt: _dateTimeFromJson(value['lastSuccessfulSyncAt']),
       lastRestoreAt: _dateTimeFromJson(value['lastRestoreAt']),
       lastSyncedAccountEmail: value['lastSyncedAccountEmail'] is String

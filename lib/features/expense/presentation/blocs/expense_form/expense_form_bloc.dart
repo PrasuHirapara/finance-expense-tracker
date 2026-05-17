@@ -14,7 +14,7 @@ class ExpenseFormState extends Equatable {
     this.amount = '',
     this.categoryId,
     this.bankId,
-    this.paymentMode = 'Cash',
+    this.paymentMode = 'UPI',
     this.date,
     this.notes = '',
     this.counterparty = '',

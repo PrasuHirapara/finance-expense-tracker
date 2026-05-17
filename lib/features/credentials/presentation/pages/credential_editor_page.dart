@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../data/services/credential_service.dart';
 import '../../domain/models/credential_models.dart';
 
@@ -287,8 +288,10 @@ class _CredentialEditorPageState extends State<CredentialEditorPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to save credential: $error')),
+      showAppSnackBar(
+        context,
+        message: 'Unable to save credential: $error',
+        type: AppSnackBarType.error,
       );
       setState(() {
         _isSaving = false;

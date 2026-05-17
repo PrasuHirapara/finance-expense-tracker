@@ -15,6 +15,7 @@ import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
 import '../../../../core/services/firebase_runtime_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
 import '../../../auth/presentation/pages/auth_page.dart';
 import '../widgets/cloud_sync_settings_section.dart';
@@ -182,23 +183,28 @@ class _UserSettingsInfoPageState extends State<UserSettingsInfoPage> {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Firebase account signed out.')),
+      showAppSnackBar(
+        context,
+        message: 'Firebase account signed out.',
       );
     } on AppTaskCancelledException {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      showAppSnackBar(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Sign out canceled.')));
+        message: 'Sign out canceled.',
+        type: AppSnackBarType.warning,
+      );
     } catch (error) {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      showAppSnackBar(
         context,
-      ).showSnackBar(SnackBar(content: Text('Unable to sign out: $error')));
+        message: 'Unable to sign out: $error',
+        type: AppSnackBarType.error,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -238,15 +244,18 @@ class _UserSettingsInfoPageState extends State<UserSettingsInfoPage> {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      showAppSnackBar(
         context,
-      ).showSnackBar(const SnackBar(content: Text('All app data deleted.')));
+        message: 'All app data deleted.',
+      );
     } catch (error) {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to delete all data: $error')),
+      showAppSnackBar(
+        context,
+        message: 'Unable to delete all data: $error',
+        type: AppSnackBarType.error,
       );
     }
   }
@@ -471,12 +480,11 @@ class _AppSettingsInfoPageState extends State<AppSettingsInfoPage> {
     }
 
     messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          enabled
-              ? 'App notifications enabled.'
-              : 'App notifications disabled.',
-        ),
+      buildAppSnackBar(
+        context,
+        message: enabled
+            ? 'App notifications enabled.'
+            : 'App notifications disabled.',
       ),
     );
   }

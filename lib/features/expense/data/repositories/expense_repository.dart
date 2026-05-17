@@ -212,6 +212,10 @@ class ExpenseRepository {
 
   Future<void> addExpense(ExpenseDraft draft) async {
     await _database.transaction(() async {
+      if (draft.selfTransferDraft != null) {
+        await _insertSelfTransfer(draft);
+        return;
+      }
       if (draft.type == 'expense' && draft.splitDraft != null) {
         await _upsertSplitExpense(draft: draft);
         return;
@@ -243,6 +247,9 @@ class ExpenseRepository {
     required ExpenseDraft draft,
   }) async {
     await _database.transaction(() async {
+      if (draft.selfTransferDraft != null) {
+        throw StateError('Self transfer entries can only be created.');
+      }
       final existingSplit = await _findSplitRecordByEntryId(id);
       if (draft.type == 'expense' && draft.splitDraft != null) {
         await _upsertSplitExpense(
@@ -1641,6 +1648,9 @@ class ExpenseRepository {
     required double amount,
     required String type,
     String? counterparty,
+    String? paymentMode,
+    int? bankId,
+    bool useExplicitBankId = false,
   }) {
     return _database.insertEntry(
       DbFinanceEntriesCompanion.insert(
@@ -1648,14 +1658,41 @@ class ExpenseRepository {
         amount: _roundMoney(amount),
         type: type,
         categoryId: draft.categoryId,
-        bankId: Value(draft.bankId),
+        bankId: Value(useExplicitBankId ? bankId : draft.bankId),
         entryDate: draft.date,
-        paymentMode: draft.paymentMode,
+        paymentMode: paymentMode ?? draft.paymentMode,
         notes: Value(draft.notes.trim()),
         counterparty: Value(
           counterparty ?? _normalizeCounterparty(draft.counterparty),
         ),
       ),
+    );
+  }
+
+  Future<void> _insertSelfTransfer(ExpenseDraft draft) async {
+    final transfer = draft.selfTransferDraft!;
+    final sourceBankId = transfer.sourcePaymentMode == 'Cash'
+        ? null
+        : draft.bankId;
+    final recipientPaymentMode = transfer.recipientBankId == null
+        ? 'Cash'
+        : 'Bank Transfer';
+
+    await _insertFinanceEntry(
+      draft: draft,
+      amount: draft.amount,
+      type: 'expense',
+      paymentMode: transfer.sourcePaymentMode,
+      bankId: sourceBankId,
+      useExplicitBankId: true,
+    );
+    await _insertFinanceEntry(
+      draft: draft,
+      amount: draft.amount,
+      type: 'income',
+      paymentMode: recipientPaymentMode,
+      bankId: transfer.recipientBankId,
+      useExplicitBankId: true,
     );
   }
 

@@ -11,6 +11,7 @@ import '../../domain/entities/export_payload.dart';
 import '../../domain/repositories/export_repository.dart';
 import '../../domain/repositories/finance_repository.dart';
 import '../../shared/widgets/download_result_snackbar.dart';
+import '../../shared/widgets/app_snackbar.dart';
 import '../controllers/analytics_controller.dart';
 import '../controllers/export_controller.dart';
 import '../widgets/charts/borrowed_lent_bar_chart.dart';
@@ -169,13 +170,12 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
+      showAppSnackBar(
+        context,
+        message:
             context.read<ExportCubit>().state.errorMessage ??
-                'Unable to export CSV.',
-          ),
-        ),
+            'Unable to export CSV.',
+        type: AppSnackBarType.error,
       );
     }
   }
@@ -209,13 +209,12 @@ class _AnalyticsViewState extends State<_AnalyticsView> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
+      showAppSnackBar(
+        context,
+        message:
             context.read<ExportCubit>().state.errorMessage ??
-                'Unable to export PDF.',
-          ),
-        ),
+            'Unable to export PDF.',
+        type: AppSnackBarType.error,
       );
     }
   }

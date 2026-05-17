@@ -14,6 +14,7 @@ import '../../../../core/services/firebase_runtime_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/reminder_settings_repository.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
 import '../../../credentials/data/services/credential_service.dart';
 import '../../../credentials/presentation/widgets/credential_key_entry_dialog.dart';
@@ -309,19 +310,18 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            enabled ? 'Cloud Sync enabled.' : 'Cloud Sync disabled.',
-          ),
-        ),
+      showAppSnackBar(
+        context,
+        message: enabled ? 'Cloud Sync enabled.' : 'Cloud Sync disabled.',
       );
     } catch (error) {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to update Cloud Sync: $error')),
+      showAppSnackBar(
+        context,
+        message: 'Unable to update Cloud Sync: $error',
+        type: AppSnackBarType.error,
       );
     } finally {
       if (mounted) {
@@ -344,7 +344,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
         return;
       }
       messenger.showSnackBar(
-        const SnackBar(content: Text('Cloud backup completed.')),
+        buildAppSnackBar(context, message: 'Cloud backup completed.'),
       );
     } on CloudCredentialEncryptionKeyRequiredException {
       if (!mounted) {
@@ -355,7 +355,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
         return;
       }
       messenger.showSnackBar(
-        const SnackBar(content: Text('Cloud backup completed.')),
+        buildAppSnackBar(context, message: 'Cloud backup completed.'),
       );
     } on CloudCredentialEncryptionKeyInvalidException {
       if (!mounted) {
@@ -366,21 +366,29 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
         return;
       }
       messenger.showSnackBar(
-        const SnackBar(content: Text('Cloud backup completed.')),
+        buildAppSnackBar(context, message: 'Cloud backup completed.'),
       );
     } on AppTaskCancelledException {
       if (!mounted) {
         return;
       }
       messenger.showSnackBar(
-        const SnackBar(content: Text('Cloud backup canceled.')),
+        buildAppSnackBar(
+          context,
+          message: 'Cloud backup canceled.',
+          type: AppSnackBarType.warning,
+        ),
       );
     } catch (error) {
       if (!mounted) {
         return;
       }
       messenger.showSnackBar(
-        SnackBar(content: Text('Cloud sync failed: $error')),
+        buildAppSnackBar(
+          context,
+          message: 'Cloud sync failed: $error',
+          type: AppSnackBarType.error,
+        ),
       );
     } finally {
       if (mounted) {
@@ -443,20 +451,30 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
         return;
       }
       messenger.showSnackBar(
-        const SnackBar(content: Text('Cloud restore completed.')),
+        buildAppSnackBar(context, message: 'Cloud restore completed.'),
       );
     } on AppTaskCancelledException {
       if (!mounted) {
         return;
       }
       messenger.showSnackBar(
-        const SnackBar(content: Text('Cloud restore canceled.')),
+        buildAppSnackBar(
+          context,
+          message: 'Cloud restore canceled.',
+          type: AppSnackBarType.warning,
+        ),
       );
     } catch (error) {
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(SnackBar(content: Text('Restore failed: $error')));
+      messenger.showSnackBar(
+        buildAppSnackBar(
+          context,
+          message: 'Restore failed: $error',
+          type: AppSnackBarType.error,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -530,7 +548,10 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     }
 
     scaffoldMessenger.showSnackBar(
-      SnackBar(content: Text('Sync reminder set for $formattedTime.')),
+      buildAppSnackBar(
+        context,
+        message: 'Sync reminder set for $formattedTime.',
+      ),
     );
   }
 
@@ -569,23 +590,21 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            enabled
-                ? 'Credential cloud backup enabled. Your next sync will include encrypted credential data.'
-                : 'Credential cloud backup disabled. Existing Firebase credential backup deleted.',
-          ),
-        ),
+      showAppSnackBar(
+        context,
+        message: enabled
+            ? 'Credential cloud backup enabled. Your next sync will include encrypted credential data.'
+            : 'Credential cloud backup disabled. Existing Firebase credential backup deleted.',
+        type: enabled ? AppSnackBarType.info : AppSnackBarType.warning,
       );
     } catch (error) {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Unable to update credential cloud backup: $error'),
-        ),
+      showAppSnackBar(
+        context,
+        message: 'Unable to update credential cloud backup: $error',
+        type: AppSnackBarType.error,
       );
     } finally {
       if (mounted) {
@@ -628,10 +647,11 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
         return false;
       }
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'That encryption key could not unlock the local credential records.',
-          ),
+        buildAppSnackBar(
+          context,
+          message:
+              'That encryption key could not unlock the local credential records.',
+          type: AppSnackBarType.error,
         ),
       );
       return false;

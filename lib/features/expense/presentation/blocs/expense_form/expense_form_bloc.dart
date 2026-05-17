@@ -23,6 +23,7 @@ class ExpenseFormState extends Equatable {
     this.splitDraft,
     this.lentResolutionDraft,
     this.borrowedResolutionDraft,
+    this.selfTransferDraft,
     this.showValidation = false,
     this.errorMessage,
   });
@@ -43,6 +44,7 @@ class ExpenseFormState extends Equatable {
   final ExpenseSplitDraft? splitDraft;
   final LentResolutionDraft? lentResolutionDraft;
   final BorrowedResolutionDraft? borrowedResolutionDraft;
+  final SelfTransferDraft? selfTransferDraft;
   final bool showValidation;
   final String? errorMessage;
 
@@ -64,11 +66,13 @@ class ExpenseFormState extends Equatable {
   bool get canConfigureSplit => type == 'expense' && (parsedAmount ?? 0) > 0;
   bool get canResolveLent => isLentIncome && (parsedAmount ?? 0) > 0;
   bool get canResolveBorrowed => isBorrowedExpense && (parsedAmount ?? 0) > 0;
+  bool get isSelfTransfer => paymentMode == 'Self Transfer';
   bool get isValid =>
       title.trim().isNotEmpty &&
       (parsedAmount ?? 0) > 0 &&
       categoryId != null &&
-      date != null;
+      date != null &&
+      (!isSelfTransfer || selfTransferDraft != null);
   bool get isEditing => expenseId != null;
 
   ExpenseFormState copyWith({
@@ -93,6 +97,8 @@ class ExpenseFormState extends Equatable {
     bool clearLentResolutionDraft = false,
     BorrowedResolutionDraft? borrowedResolutionDraft,
     bool clearBorrowedResolutionDraft = false,
+    SelfTransferDraft? selfTransferDraft,
+    bool clearSelfTransferDraft = false,
     bool? showValidation,
     String? errorMessage,
   }) {
@@ -117,6 +123,9 @@ class ExpenseFormState extends Equatable {
       borrowedResolutionDraft: clearBorrowedResolutionDraft
           ? null
           : borrowedResolutionDraft ?? this.borrowedResolutionDraft,
+      selfTransferDraft: clearSelfTransferDraft
+          ? null
+          : selfTransferDraft ?? this.selfTransferDraft,
       showValidation: showValidation ?? this.showValidation,
       errorMessage: errorMessage,
     );
@@ -140,6 +149,7 @@ class ExpenseFormState extends Equatable {
     splitDraft,
     lentResolutionDraft,
     borrowedResolutionDraft,
+    selfTransferDraft,
     showValidation,
     errorMessage,
   ];
@@ -257,6 +267,15 @@ class ExpenseBorrowedResolutionChanged extends ExpenseFormEvent {
   List<Object?> get props => <Object?>[value];
 }
 
+class ExpenseSelfTransferDraftChanged extends ExpenseFormEvent {
+  const ExpenseSelfTransferDraftChanged(this.value);
+
+  final SelfTransferDraft value;
+
+  @override
+  List<Object?> get props => <Object?>[value];
+}
+
 class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
   ExpenseFormBloc(this._repository)
     : super(
@@ -328,6 +347,7 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
               ),
       ),
     );
+    on<ExpenseSelfTransferDraftChanged>(_onSelfTransferDraftChanged);
     on<ExpenseSubmitted>(_onSubmitted);
   }
 
@@ -371,6 +391,7 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
         splitDraft: splitDraft,
         clearLentResolutionDraft: true,
         clearBorrowedResolutionDraft: true,
+        clearSelfTransferDraft: true,
       ),
     );
   }
@@ -382,9 +403,31 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
     emit(
       state.copyWith(
         paymentMode: event.value,
+        clearSelfTransferDraft: event.value != 'Self Transfer',
         bankId: _resolveBankSelection(
           explicitBankId: state.bankId,
           paymentMode: event.value,
+          banks: state.banks,
+        ),
+      ),
+    );
+  }
+
+  void _onSelfTransferDraftChanged(
+    ExpenseSelfTransferDraftChanged event,
+    Emitter<ExpenseFormState> emit,
+  ) {
+    emit(
+      state.copyWith(
+        type: 'expense',
+        paymentMode: 'Self Transfer',
+        selfTransferDraft: event.value,
+        clearSplitDraft: state.splitDraft != null,
+        clearLentResolutionDraft: state.lentResolutionDraft != null,
+        clearBorrowedResolutionDraft: state.borrowedResolutionDraft != null,
+        bankId: _resolveBankSelection(
+          explicitBankId: state.bankId,
+          paymentMode: event.value.sourcePaymentMode,
           banks: state.banks,
         ),
       ),
@@ -476,12 +519,15 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
         counterparty: state.counterparty.trim().isEmpty
             ? null
             : state.counterparty.trim(),
-        splitDraft: splitDraft,
+        splitDraft: state.isSelfTransfer ? null : splitDraft,
         lentResolutionDraft: state.canResolveLent
             ? state.lentResolutionDraft
             : null,
         borrowedResolutionDraft: state.canResolveBorrowed
             ? state.borrowedResolutionDraft
+            : null,
+        selfTransferDraft: state.isSelfTransfer
+            ? state.selfTransferDraft
             : null,
       );
       if (state.isEditing) {

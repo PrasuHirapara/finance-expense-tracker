@@ -14,7 +14,7 @@ class AppConstants {
     'Debit Card',
     'Credit Card',
     'Bank Transfer',
-    'Wallet',
+    'Self Transfer',
   ];
 
   static final DateFormat shortDateFormat = DateFormat('dd MMM yyyy');

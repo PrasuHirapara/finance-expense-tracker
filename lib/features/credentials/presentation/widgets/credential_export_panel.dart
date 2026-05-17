@@ -5,6 +5,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/models/module_export_models.dart';
 import '../../../../core/services/module_data_export_service.dart';
 import '../../../../shared/widgets/app_select_field.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/download_result_snackbar.dart';
 import '../../data/services/credential_service.dart';
 import '../../domain/models/credential_models.dart';
@@ -180,8 +181,10 @@ class _CredentialExportPanelState extends State<CredentialExportPanel> {
     }
 
     if (credentials.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No credentials available to export.')),
+      showAppSnackBar(
+        context,
+        message: 'No credentials available to export.',
+        type: AppSnackBarType.warning,
       );
       return;
     }
@@ -262,9 +265,14 @@ class _CredentialExportPanelState extends State<CredentialExportPanel> {
 
     try {
       final allCredentials = await service.loadCredentials();
+      if (!mounted) {
+        return;
+      }
       if (allCredentials.isEmpty) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('No credentials available to export.')),
+        showAppSnackBar(
+          context,
+          message: 'No credentials available to export.',
+          type: AppSnackBarType.warning,
         );
         return;
       }
@@ -279,10 +287,10 @@ class _CredentialExportPanelState extends State<CredentialExportPanel> {
                 .toList(growable: false);
 
       if (recordsToExport.isEmpty) {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Choose at least one credential to export.'),
-          ),
+        showAppSnackBar(
+          context,
+          message: 'Choose at least one credential to export.',
+          type: AppSnackBarType.warning,
         );
         return;
       }
@@ -329,7 +337,13 @@ class _CredentialExportPanelState extends State<CredentialExportPanel> {
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(SnackBar(content: Text('Export failed: $error')));
+      messenger.showSnackBar(
+        buildAppSnackBar(
+          context,
+          message: 'Export failed: $error',
+          type: AppSnackBarType.error,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {

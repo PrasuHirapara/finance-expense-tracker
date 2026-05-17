@@ -9,6 +9,7 @@ import '../../../../core/models/app_preferences.dart';
 import '../../../../core/services/cancellable_task.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
 import '../../data/services/credential_service.dart';
 import '../../domain/models/credential_models.dart';
@@ -281,9 +282,11 @@ class _CredentialModulePageState extends State<CredentialModulePage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      showAppSnackBar(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Security check canceled.')));
+        message: 'Security check canceled.',
+        type: AppSnackBarType.warning,
+      );
     } finally {
       if (mounted) {
         setState(() {

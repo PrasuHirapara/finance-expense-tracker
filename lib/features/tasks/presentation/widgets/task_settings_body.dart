@@ -8,6 +8,7 @@ import '../../../../core/services/module_data_export_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/reminder_settings_repository.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/module_export_panel.dart';
 import '../../data/repositories/task_category_repository.dart';
 import '../../data/repositories/task_repository.dart';
@@ -274,7 +275,6 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
         .read<ReminderSettingsRepository>();
     final notificationService = context.read<NotificationService>();
     final appSettingsRepository = context.read<AppSettingsRepository>();
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final materialLocalizations = MaterialLocalizations.of(context);
     final alwaysUse24HourFormat =
         MediaQuery.maybeOf(context)?.alwaysUse24HourFormat ?? false;
@@ -301,8 +301,12 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
       await notificationService.cancelDailyReminders();
     }
 
-    scaffoldMessenger.showSnackBar(
-      SnackBar(content: Text('Task reminder set for $formattedTime.')),
+    if (!context.mounted) {
+      return;
+    }
+    showAppSnackBar(
+      context,
+      message: 'Task reminder set for $formattedTime.',
     );
   }
 
@@ -317,7 +321,6 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
     final appSettingsRepository = context.read<AppSettingsRepository>();
     final taskBloc = context.read<TaskBloc>();
     final cloudSyncService = context.read<CloudSyncService>();
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -356,9 +359,16 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
       await notificationService.cancelDailyReminders();
     }
 
+    if (!context.mounted) {
+      return;
+    }
     taskBloc.add(const TasksSubscriptionRequested());
-    scaffoldMessenger.showSnackBar(
-      SnackBar(content: Text('Task data deleted.${cloudCleanupWarning ?? ''}')),
+    showAppSnackBar(
+      context,
+      message: 'Task data deleted.${cloudCleanupWarning ?? ''}',
+      type: cloudCleanupWarning == null
+          ? AppSnackBarType.info
+          : AppSnackBarType.warning,
     );
   }
 

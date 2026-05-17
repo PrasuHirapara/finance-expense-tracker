@@ -9,6 +9,7 @@ import '../../../../core/services/module_data_export_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/reminder_settings_repository.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/module_export_panel.dart';
 import '../../data/repositories/expense_repository.dart';
 import '../../domain/models/expense_models.dart';
@@ -432,8 +433,11 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
       await notificationService.cancelDailyReminders();
     }
 
+    if (!context.mounted) {
+      return;
+    }
     scaffoldMessenger.showSnackBar(
-      SnackBar(content: Text('Expense reminder set for $formattedTime.')),
+      buildAppSnackBar(context, message: 'Expense reminder set for $formattedTime.'),
     );
   }
 
@@ -485,10 +489,17 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
       await notificationService.cancelDailyReminders();
     }
 
+    if (!context.mounted) {
+      return;
+    }
     expenseBloc.add(const ExpenseSubscriptionRequested());
     scaffoldMessenger.showSnackBar(
-      SnackBar(
-        content: Text('Expense data deleted.${cloudCleanupWarning ?? ''}'),
+      buildAppSnackBar(
+        context,
+        message: 'Expense data deleted.${cloudCleanupWarning ?? ''}',
+        type: cloudCleanupWarning == null
+            ? AppSnackBarType.info
+            : AppSnackBarType.warning,
       ),
     );
   }
@@ -644,10 +655,10 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
                                   trimmedName.toLowerCase(),
                         );
                         if (hasDuplicate) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Category already exists.'),
-                            ),
+                          showAppSnackBar(
+                            context,
+                            message: 'Category already exists.',
+                            type: AppSnackBarType.warning,
                           );
                           return;
                         }
@@ -723,8 +734,10 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
                       bank.name.toLowerCase() == name.toLowerCase(),
                 );
                 if (hasDuplicate) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(content: Text('Bank already exists.')),
+                  showAppSnackBar(
+                    dialogContext,
+                    message: 'Bank already exists.',
+                    type: AppSnackBarType.warning,
                   );
                   return;
                 }

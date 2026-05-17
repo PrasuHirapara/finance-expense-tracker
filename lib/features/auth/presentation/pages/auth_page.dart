@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/services/cancellable_task.dart';
 import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../core/services/firebase_runtime_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
@@ -432,9 +433,13 @@ class _AuthPageState extends State<AuthPage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(
+    showAppSnackBar(
       context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+      message: message,
+      type: message.toLowerCase().contains('unable')
+          ? AppSnackBarType.error
+          : AppSnackBarType.info,
+    );
   }
 
   String _friendlyFirebaseAuthMessage(FirebaseAuthException error) {

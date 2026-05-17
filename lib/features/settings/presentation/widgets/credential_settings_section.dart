@@ -10,6 +10,7 @@ import '../../../../core/services/cloud_sync_service.dart';
 import '../../../../core/services/module_data_import_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
 import '../../../../shared/widgets/download_result_snackbar.dart';
 import '../../../credentials/data/services/credential_service.dart';
@@ -307,7 +308,11 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
         return;
       }
       messenger.showSnackBar(
-        SnackBar(content: Text('Unable to update encryption key: $error')),
+        buildAppSnackBar(
+          context,
+          message: 'Unable to update encryption key: $error',
+          type: AppSnackBarType.error,
+        ),
       );
       return;
     }
@@ -317,10 +322,9 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
     }
 
     messenger.showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Encryption key updated. Cloud backup refreshed if enabled.',
-        ),
+      buildAppSnackBar(
+        context,
+        message: 'Encryption key updated. Cloud backup refreshed if enabled.',
       ),
     );
     await _refresh();
@@ -339,7 +343,6 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
   Future<void> _toggleCredentialExpiryNotification(bool enabled) async {
     final settingsRepository = context.read<AppSettingsRepository>();
     final notificationService = context.read<NotificationService>();
-    final messenger = ScaffoldMessenger.of(context);
     final previousValue = _credentialExpiryNotificationEnabled;
     if (mounted) {
       setState(() {
@@ -370,8 +373,13 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
           _credentialExpiryNotificationEnabled = previousValue;
         });
       }
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Expiry notification setup canceled.')),
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: 'Expiry notification setup canceled.',
+        type: AppSnackBarType.warning,
       );
     } catch (error) {
       await settingsRepository.updateCredentialExpiryNotificationEnabled(
@@ -382,10 +390,13 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
           _credentialExpiryNotificationEnabled = previousValue;
         });
       }
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Unable to update expiry notifications: $error'),
-        ),
+      if (!mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: 'Unable to update expiry notifications: $error',
+        type: AppSnackBarType.error,
       );
     }
   }
@@ -437,12 +448,12 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'All credential data deleted.${cloudCleanupWarning ?? ''}',
-        ),
-      ),
+    showAppSnackBar(
+      context,
+      message: 'All credential data deleted.${cloudCleanupWarning ?? ''}',
+      type: cloudCleanupWarning == null
+          ? AppSnackBarType.info
+          : AppSnackBarType.warning,
     );
   }
 
@@ -467,9 +478,11 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      showAppSnackBar(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+        message: error.message,
+        type: AppSnackBarType.error,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -514,17 +527,17 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(result.message)));
+      showAppSnackBar(context, message: result.message);
     } on ModuleImportException catch (error) {
       if (!mounted) {
         return;
       }
       if (error.errors.isEmpty) {
-        ScaffoldMessenger.of(
+        showAppSnackBar(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+          message: error.message,
+          type: AppSnackBarType.error,
+        );
       } else {
         await _showImportErrors(error);
       }

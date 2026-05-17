@@ -230,6 +230,25 @@ class BorrowedResolutionDraft extends Equatable {
   ];
 }
 
+class SelfTransferDraft extends Equatable {
+  const SelfTransferDraft({
+    required this.sourcePaymentMode,
+    this.recipientBankId,
+    this.recipientName = 'Cash',
+  });
+
+  final String sourcePaymentMode;
+  final int? recipientBankId;
+  final String recipientName;
+
+  @override
+  List<Object?> get props => <Object?>[
+    sourcePaymentMode,
+    recipientBankId,
+    recipientName,
+  ];
+}
+
 class LentResolutionCandidate extends Equatable {
   const LentResolutionCandidate({
     required this.entry,
@@ -468,6 +487,7 @@ class ExpenseDraft extends Equatable {
     this.splitDraft,
     this.lentResolutionDraft,
     this.borrowedResolutionDraft,
+    this.selfTransferDraft,
   });
 
   final String title;
@@ -482,6 +502,7 @@ class ExpenseDraft extends Equatable {
   final ExpenseSplitDraft? splitDraft;
   final LentResolutionDraft? lentResolutionDraft;
   final BorrowedResolutionDraft? borrowedResolutionDraft;
+  final SelfTransferDraft? selfTransferDraft;
 
   @override
   List<Object?> get props => <Object?>[
@@ -497,6 +518,7 @@ class ExpenseDraft extends Equatable {
     splitDraft,
     lentResolutionDraft,
     borrowedResolutionDraft,
+    selfTransferDraft,
   ];
 }
 

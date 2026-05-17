@@ -6,6 +6,7 @@ import '../../../../core/formatters/indian_number_formatter.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_select_field.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../data/repositories/expense_repository.dart';
 import '../../domain/models/expense_models.dart';
 
@@ -405,16 +406,16 @@ class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('"${entry.title}" deleted.')));
+      showAppSnackBar(context, message: '"${entry.title}" deleted.');
     } catch (error) {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      showAppSnackBar(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.toString())));
+        message: error.toString(),
+        type: AppSnackBarType.error,
+      );
     }
   }
 

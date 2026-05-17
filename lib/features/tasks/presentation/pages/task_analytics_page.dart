@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -117,50 +115,37 @@ class TaskAnalyticsPage extends StatelessWidget {
                       else
                         LayoutBuilder(
                           builder: (context, constraints) {
-                            final chartWidth = _trendChartWidth(
-                              constraints.maxWidth,
-                              analytics,
-                            );
                             final chartHeight = _trendChartHeight(
                               constraints.maxWidth,
                             );
 
                             return SizedBox(
                               height: chartHeight,
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: SizedBox(
-                                  width: chartWidth,
-                                  height: chartHeight,
-                                  child: TrendLineChart(
-                                    points: analytics.consistencyTrend
-                                        .map(
-                                          (item) => TrendPoint(
-                                            period: item.date,
-                                            amount: item.completedCount
-                                                .toDouble(),
-                                            label: item.label,
-                                          ),
-                                        )
-                                        .toList(growable: false),
-                                    xAxisTitle: _trendXAxisTitle(analytics),
-                                    yAxisTitle: 'Completed Tasks',
-                                    bottomTitlesReservedSize:
-                                        _trendBottomReservedSize(
-                                          analytics,
-                                          constraints.maxWidth,
-                                        ),
-                                    bottomTitleBuilder:
-                                        (context, point, index) {
-                                          return _buildTrendBottomLabel(
-                                            context,
-                                            analytics,
-                                            point,
-                                            index,
-                                          );
-                                        },
-                                  ),
-                                ),
+                              child: TrendLineChart(
+                                points: analytics.consistencyTrend
+                                    .map(
+                                      (item) => TrendPoint(
+                                        period: item.date,
+                                        amount: item.completedCount.toDouble(),
+                                        label: item.label,
+                                      ),
+                                    )
+                                    .toList(growable: false),
+                                xAxisTitle: _trendXAxisTitle(analytics),
+                                yAxisTitle: 'Completed Tasks',
+                                bottomTitlesReservedSize:
+                                    _trendBottomReservedSize(
+                                      analytics,
+                                      constraints.maxWidth,
+                                    ),
+                                bottomTitleBuilder: (context, point, index) {
+                                  return _buildTrendBottomLabel(
+                                    context,
+                                    analytics,
+                                    point,
+                                    index,
+                                  );
+                                },
                               ),
                             );
                           },
@@ -262,14 +247,6 @@ class TaskAnalyticsPage extends StatelessWidget {
       return 44;
     }
     return availableWidth < 420 ? 52 : 58;
-  }
-
-  double _trendChartWidth(double availableWidth, TaskAnalyticsData analytics) {
-    final pointWidth = _usesMonthlyTrendLabels(analytics) ? 56.0 : 30.0;
-    return math.max(
-      availableWidth,
-      analytics.consistencyTrend.length * pointWidth,
-    );
   }
 
   double _trendChartHeight(double availableWidth) {

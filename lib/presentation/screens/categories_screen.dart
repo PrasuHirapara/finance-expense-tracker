@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../domain/repositories/finance_repository.dart';
+import '../../shared/widgets/app_snackbar.dart';
 import '../controllers/categories_controller.dart';
 import '../widgets/section_card.dart';
 
@@ -217,24 +218,22 @@ class _CategoriesView extends StatelessWidget {
                                     );
                                 if (context.mounted) {
                                   Navigator.of(context).pop();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Category added.'),
-                                    ),
+                                  showAppSnackBar(
+                                    context,
+                                    message: 'Category added.',
                                   );
                                 }
                               } catch (_) {
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
+                                  showAppSnackBar(
+                                    context,
+                                    message:
                                         context
-                                                .read<CategoriesCubit>()
-                                                .state
-                                                .errorMessage ??
-                                            'Unable to add category.',
-                                      ),
-                                    ),
+                                            .read<CategoriesCubit>()
+                                            .state
+                                            .errorMessage ??
+                                        'Unable to add category.',
+                                    type: AppSnackBarType.error,
                                   );
                                 }
                               }

@@ -5,6 +5,7 @@ import '../../core/models/module_export_models.dart';
 import 'app_panel.dart';
 import 'app_select_field.dart';
 import 'download_result_snackbar.dart';
+import 'app_snackbar.dart';
 
 class ModuleExportPanel extends StatefulWidget {
   const ModuleExportPanel({
@@ -185,7 +186,6 @@ class _ModuleExportPanelState extends State<ModuleExportPanel> {
   }
 
   Future<void> _handleExport() async {
-    final messenger = ScaffoldMessenger.of(context);
     final range = _selectedRange == ModuleExportRange.custom
         ? _customRange
         : _selectedRange.resolveRange(DateTime.now());
@@ -208,7 +208,11 @@ class _ModuleExportPanelState extends State<ModuleExportPanel> {
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(SnackBar(content: Text('Export failed: $error')));
+      showAppSnackBar(
+        context,
+        message: 'Export failed: $error',
+        type: AppSnackBarType.error,
+      );
     } finally {
       if (mounted) {
         setState(() {

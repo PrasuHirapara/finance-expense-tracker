@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/services/module_data_import_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/download_result_snackbar.dart';
 
 class ExpenseImportSection extends StatefulWidget {
@@ -84,9 +85,11 @@ class _ExpenseImportSectionState extends State<ExpenseImportSection> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
+      showAppSnackBar(
         context,
-      ).showSnackBar(SnackBar(content: Text(error.message)));
+        message: error.message,
+        type: AppSnackBarType.error,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -118,17 +121,17 @@ class _ExpenseImportSectionState extends State<ExpenseImportSection> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(importResult.message)));
+      showAppSnackBar(context, message: importResult.message);
     } on ModuleImportException catch (error) {
       if (!mounted) {
         return;
       }
       if (error.errors.isEmpty) {
-        ScaffoldMessenger.of(
+        showAppSnackBar(
           context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+          message: error.message,
+          type: AppSnackBarType.error,
+        );
       } else {
         await _showImportErrors(error);
       }

@@ -104,6 +104,11 @@ class TaskRepository {
   }
 
   Future<void> updateTask({required int id, required TaskDraft draft}) async {
+    final existingTask =
+        await (_database.select(_database.dbTasks)
+              ..where((table) => table.id.equals(id)))
+            .getSingleOrNull();
+
     await (_database.update(
       _database.dbTasks,
     )..where((table) => table.id.equals(id))).write(
@@ -122,6 +127,13 @@ class TaskRepository {
         isCompleted: Value(draft.isCompleted),
       ),
     );
+
+    if (existingTask != null && existingTask.isDaily && !draft.isDaily) {
+      await _deleteFutureDailyReferences(
+        sourceTaskId: existingTask.sourceTaskId ?? existingTask.id,
+        afterDate: draft.date,
+      );
+    }
   }
 
   Future<void> deleteTask(int id) async {
@@ -262,6 +274,19 @@ class TaskRepository {
         (batch) => batch.insertAll(_database.dbTasks, clones),
       );
     }
+  }
+
+  Future<void> _deleteFutureDailyReferences({
+    required int sourceTaskId,
+    required DateTime afterDate,
+  }) async {
+    final firstFutureDate = afterDate.startOfDay.add(const Duration(days: 1));
+    await (_database.delete(_database.dbTasks)..where(
+          (table) =>
+              table.sourceTaskId.equals(sourceTaskId) &
+              table.taskDate.isBiggerOrEqualValue(firstFutureDate),
+        ))
+        .go();
   }
 
   Future<TaskAnalyticsData> loadAnalytics({

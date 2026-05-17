@@ -157,6 +157,7 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
+        dismissDirection: DismissDirection.horizontal,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );

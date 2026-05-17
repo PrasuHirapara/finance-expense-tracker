@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_constants.dart';
 import '../../domain/entities/transaction_type.dart';
 import '../../domain/repositories/finance_repository.dart';
+import '../../shared/widgets/app_snackbar.dart';
 import '../controllers/add_entry_form_controller.dart';
 
 class AddEntryScreen extends StatelessWidget {
@@ -31,8 +32,9 @@ class _AddEntryView extends StatelessWidget {
       listenWhen: (previous, current) => previous.status != current.status,
       listener: (context, state) {
         if (state.status == AddEntryFormStatus.success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Entry added successfully.')),
+          showAppSnackBar(
+            context,
+            message: 'Entry added successfully.',
           );
           Navigator.of(context).pop(true);
           return;
@@ -40,9 +42,11 @@ class _AddEntryView extends StatelessWidget {
 
         if (state.status == AddEntryFormStatus.failure &&
             state.errorMessage != null) {
-          ScaffoldMessenger.of(
+          showAppSnackBar(
             context,
-          ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+            message: state.errorMessage!,
+            type: AppSnackBarType.error,
+          );
         }
       },
       builder: (context, formState) {

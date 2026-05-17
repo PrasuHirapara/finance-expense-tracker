@@ -20,8 +20,23 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  late final PageController _pageController;
   bool _dialogCheckStarted = false;
   bool _dialogVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(
+      initialPage: _moduleIndex(AppModule.expense),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -38,28 +53,35 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    return BlocBuilder<ModuleNavigationBloc, ModuleNavigationState>(
+    return BlocConsumer<ModuleNavigationBloc, ModuleNavigationState>(
+      listenWhen: (previous, current) => previous.module != current.module,
+      listener: (context, state) {
+        final selectedIndex = _moduleIndex(state.module);
+        if (!_pageController.hasClients) {
+          return;
+        }
+        final currentPage = _pageController.page?.round();
+        if (currentPage == selectedIndex) {
+          return;
+        }
+        _pageController.animateToPage(
+          selectedIndex,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+        );
+      },
       builder: (context, state) {
-        final selectedIndex = switch (state.module) {
-          AppModule.credential => 0,
-          AppModule.expense => 1,
-          AppModule.tasks => 2,
-          AppModule.settings => 3,
-        };
+        final selectedIndex = _moduleIndex(state.module);
 
         void onDestinationSelected(int index) {
           context.read<ModuleNavigationBloc>().add(
-            ModuleSelected(switch (index) {
-              0 => AppModule.credential,
-              1 => AppModule.expense,
-              2 => AppModule.tasks,
-              _ => AppModule.settings,
-            }),
+            ModuleSelected(_moduleForIndex(index)),
           );
         }
 
-        final content = IndexedStack(
-          index: selectedIndex,
+        final content = PageView(
+          controller: _pageController,
+          onPageChanged: onDestinationSelected,
           children: const <Widget>[
             CredentialModulePage(),
             ExpenseModulePage(),
@@ -152,6 +174,24 @@ class _AppShellState extends State<AppShell> {
         );
       },
     );
+  }
+
+  int _moduleIndex(AppModule module) {
+    return switch (module) {
+      AppModule.credential => 0,
+      AppModule.expense => 1,
+      AppModule.tasks => 2,
+      AppModule.settings => 3,
+    };
+  }
+
+  AppModule _moduleForIndex(int index) {
+    return switch (index) {
+      0 => AppModule.credential,
+      1 => AppModule.expense,
+      2 => AppModule.tasks,
+      _ => AppModule.settings,
+    };
   }
 
   Future<void> _showPrivacyDialogIfNeeded() async {

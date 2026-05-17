@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/app_select_field.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../data/repositories/expense_repository.dart';
 import '../../domain/models/expense_models.dart';
 import '../utils/expense_search_utils.dart';
@@ -268,9 +269,7 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    showAppSnackBar(context, message: message, type: AppSnackBarType.error);
   }
 
   double _parseValue(String value) =>
@@ -692,12 +691,11 @@ class _LentParticipantSelectionPageState
           TextButton(
             onPressed: () {
               if ((selectedTotal - widget.incomeAmount).abs() > 0.01) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
+                showAppSnackBar(
+                  context,
+                  message:
                       'Selected shares must exactly match the income amount.',
-                    ),
-                  ),
+                  type: AppSnackBarType.error,
                 );
                 return;
               }
@@ -1100,23 +1098,21 @@ class _BorrowedResolutionSelectionPageState
             onPressed: () {
               final selectedAmount = _selectedAmount();
               if ((selectedAmount - widget.expenseAmount).abs() > 0.01) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
+                showAppSnackBar(
+                  context,
+                  message:
                       'Resolved borrowed amount must exactly match the expense amount.',
-                    ),
-                  ),
+                  type: AppSnackBarType.error,
                 );
                 return;
               }
               if (selectedAmount <= 0 ||
                   selectedAmount > widget.candidate.pendingAmount + 0.01) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
+                showAppSnackBar(
+                  context,
+                  message:
                       'Resolved borrowed amount cannot exceed the pending amount.',
-                    ),
-                  ),
+                  type: AppSnackBarType.error,
                 );
                 return;
               }

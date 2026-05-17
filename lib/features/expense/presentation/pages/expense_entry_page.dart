@@ -5,6 +5,8 @@ import '../../../../core/constants/app_constants.dart';
 import '../../data/repositories/expense_repository.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_select_field.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
+import '../../domain/models/expense_models.dart';
 import '../blocs/expense_form/expense_form_bloc.dart';
 import '../widgets/expense_split_flow.dart';
 
@@ -64,7 +66,12 @@ class ExpenseEntryPage extends StatelessWidget {
               ),
             ];
 
-            final paymentOptions = AppConstants.paymentModes
+            final paymentModes = state.isEditing
+                ? AppConstants.paymentModes
+                      .where((mode) => mode != 'Self Transfer')
+                      .toList(growable: false)
+                : AppConstants.paymentModes;
+            final paymentOptions = paymentModes
                 .map(
                   (mode) => AppSelectOption<String>(value: mode, label: mode),
                 )
@@ -161,7 +168,7 @@ class ExpenseEntryPage extends StatelessWidget {
                     ExpenseCategoryChanged(value),
                   ),
                 ),
-                if (state.type == 'expense') ...<Widget>[
+                if (state.type == 'expense' && !state.isSelfTransfer) ...<Widget>[
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
@@ -170,12 +177,10 @@ class ExpenseEntryPage extends StatelessWidget {
                       TextButton(
                         onPressed: () async {
                           if ((state.parsedAmount ?? 0) <= 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Enter the expense amount first.',
-                                ),
-                              ),
+                            showAppSnackBar(
+                              context,
+                              message: 'Enter the expense amount first.',
+                              type: AppSnackBarType.warning,
                             );
                             return;
                           }
@@ -199,22 +204,19 @@ class ExpenseEntryPage extends StatelessWidget {
                       TextButton(
                         onPressed: () async {
                           if ((state.parsedAmount ?? 0) <= 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Enter the expense amount first.',
-                                ),
-                              ),
+                            showAppSnackBar(
+                              context,
+                              message: 'Enter the expense amount first.',
+                              type: AppSnackBarType.warning,
                             );
                             return;
                           }
                           if (!state.isBorrowedExpense) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
+                            showAppSnackBar(
+                              context,
+                              message:
                                   'Select the Borrowed category to resolve borrowed amount.',
-                                ),
-                              ),
+                              type: AppSnackBarType.warning,
                             );
                             return;
                           }
@@ -299,20 +301,19 @@ class ExpenseEntryPage extends StatelessWidget {
                     child: TextButton(
                       onPressed: () async {
                         if ((state.parsedAmount ?? 0) <= 0) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Enter the income amount first.'),
-                            ),
+                          showAppSnackBar(
+                            context,
+                            message: 'Enter the income amount first.',
+                            type: AppSnackBarType.warning,
                           );
                           return;
                         }
                         if (!state.isLentIncome) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
+                          showAppSnackBar(
+                            context,
+                            message:
                                 'Select the Lent category to resolve lent shares.',
-                              ),
-                            ),
+                            type: AppSnackBarType.warning,
                           );
                           return;
                         }
@@ -367,13 +368,60 @@ class ExpenseEntryPage extends StatelessWidget {
                   label: 'Payment Mode',
                   value: state.paymentMode,
                   options: paymentOptions,
-                  onChanged: (value) => context.read<ExpenseFormBloc>().add(
-                    ExpensePaymentModeChanged(value),
-                  ),
+                  errorText:
+                      state.showValidation &&
+                          state.isSelfTransfer &&
+                          state.selfTransferDraft == null
+                      ? 'Configure self transfer'
+                      : null,
+                  onChanged: (value) async {
+                    if (value != 'Self Transfer') {
+                      context.read<ExpenseFormBloc>().add(
+                        ExpensePaymentModeChanged(value),
+                      );
+                      return;
+                    }
+
+                    final result = await Navigator.of(context).push<SelfTransferDraft>(
+                      MaterialPageRoute<SelfTransferDraft>(
+                        builder: (_) => SelfTransferPage(
+                          banks: state.banks,
+                          initialDraft: state.selfTransferDraft,
+                        ),
+                      ),
+                    );
+                    if (result != null && context.mounted) {
+                      context.read<ExpenseFormBloc>().add(
+                        ExpenseSelfTransferDraftChanged(result),
+                      );
+                    }
+                  },
                 ),
+                if (state.selfTransferDraft != null) ...<Widget>[
+                  const SizedBox(height: 12),
+                  AppPanel(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        _SplitSummaryRow(
+                          label: 'Category',
+                          value: state.selfTransferDraft!.sourcePaymentMode,
+                        ),
+                        const SizedBox(height: 8),
+                        _SplitSummaryRow(
+                          label: 'Recipient',
+                          value: state.selfTransferDraft!.recipientName,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 AppSelectField<int?>(
-                  label: 'Bank Name (Optional)',
+                  label: state.isSelfTransfer
+                      ? 'Source Bank Name (Optional)'
+                      : 'Bank Name (Optional)',
                   value: state.bankId,
                   options: bankOptions,
                   onChanged: (value) => context.read<ExpenseFormBloc>().add(
@@ -454,6 +502,109 @@ class ExpenseEntryPage extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class SelfTransferPage extends StatefulWidget {
+  const SelfTransferPage({
+    super.key,
+    required this.banks,
+    this.initialDraft,
+  });
+
+  final List<BankName> banks;
+  final SelfTransferDraft? initialDraft;
+
+  @override
+  State<SelfTransferPage> createState() => _SelfTransferPageState();
+}
+
+class _SelfTransferPageState extends State<SelfTransferPage> {
+  late String _sourcePaymentMode;
+  late int? _recipientBankId;
+
+  @override
+  void initState() {
+    super.initState();
+    final sourceOptions = _sourcePaymentModes;
+    _sourcePaymentMode =
+        widget.initialDraft?.sourcePaymentMode ?? sourceOptions.first;
+    _recipientBankId = widget.initialDraft?.recipientBankId;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sourceOptions = _sourcePaymentModes
+        .map((mode) => AppSelectOption<String>(value: mode, label: mode))
+        .toList(growable: false);
+    final recipientOptions = <AppSelectOption<int?>>[
+      const AppSelectOption<int?>(value: null, label: 'Cash'),
+      ...widget.banks.map(
+        (bank) => AppSelectOption<int?>(value: bank.id, label: bank.name),
+      ),
+    ];
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Self Transfer')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        children: <Widget>[
+          AppSelectField<String>(
+            label: 'Category',
+            value: _sourcePaymentMode,
+            options: sourceOptions,
+            onChanged: (value) {
+              setState(() {
+                _sourcePaymentMode = value;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          AppSelectField<int?>(
+            label: 'Recipient',
+            value: _recipientBankId,
+            options: recipientOptions,
+            onChanged: (value) {
+              setState(() {
+                _recipientBankId = value;
+              });
+            },
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop(
+                SelfTransferDraft(
+                  sourcePaymentMode: _sourcePaymentMode,
+                  recipientBankId: _recipientBankId,
+                  recipientName: _recipientName,
+                ),
+              );
+            },
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 14),
+              child: Text('Save Transfer'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<String> get _sourcePaymentModes => AppConstants.paymentModes
+      .where((mode) => mode != 'Self Transfer')
+      .toList(growable: false);
+
+  String get _recipientName {
+    if (_recipientBankId == null) {
+      return 'Cash';
+    }
+    for (final bank in widget.banks) {
+      if (bank.id == _recipientBankId) {
+        return bank.name;
+      }
+    }
+    return 'Cash';
   }
 }
 

@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -200,49 +198,38 @@ class ExpenseAnalyticsPage extends StatelessWidget {
                           else
                             LayoutBuilder(
                               builder: (context, constraints) {
-                                final chartWidth = _trendChartWidth(
-                                  constraints.maxWidth,
-                                  analytics,
-                                );
                                 final chartHeight = _trendChartHeight(
                                   constraints.maxWidth,
                                 );
 
                                 return SizedBox(
                                   height: chartHeight,
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: SizedBox(
-                                      width: chartWidth,
-                                      height: chartHeight,
-                                      child: TrendLineChart(
-                                        points: analytics.trend
-                                            .map(
-                                              (item) => TrendPoint(
-                                                period: item.period,
-                                                amount: item.amount,
-                                                label: item.label,
-                                              ),
-                                            )
-                                            .toList(growable: false),
-                                        xAxisTitle: _trendXAxisTitle(analytics),
-                                        yAxisTitle: 'Expense Amount',
-                                        bottomTitlesReservedSize:
-                                            _trendBottomReservedSize(
-                                              analytics,
-                                              constraints.maxWidth,
-                                            ),
-                                        bottomTitleBuilder:
-                                            (context, point, index) {
-                                              return _buildTrendBottomLabel(
-                                                context,
-                                                analytics,
-                                                point,
-                                                index,
-                                              );
-                                            },
-                                      ),
-                                    ),
+                                  child: TrendLineChart(
+                                    points: analytics.trend
+                                        .map(
+                                          (item) => TrendPoint(
+                                            period: item.period,
+                                            amount: item.amount,
+                                            label: item.label,
+                                          ),
+                                        )
+                                        .toList(growable: false),
+                                    xAxisTitle: _trendXAxisTitle(analytics),
+                                    yAxisTitle: 'Expense Amount',
+                                    bottomTitlesReservedSize:
+                                        _trendBottomReservedSize(
+                                          analytics,
+                                          constraints.maxWidth,
+                                        ),
+                                    bottomTitleBuilder:
+                                        (context, point, index) {
+                                          return _buildTrendBottomLabel(
+                                            context,
+                                            analytics,
+                                            point,
+                                            index,
+                                          );
+                                        },
                                   ),
                                 );
                               },
@@ -318,14 +305,6 @@ class ExpenseAnalyticsPage extends StatelessWidget {
       return availableWidth < 420 ? 36 : 40;
     }
     return availableWidth < 420 ? 52 : 58;
-  }
-
-  double _trendChartWidth(
-    double availableWidth,
-    ExpenseAnalyticsData analytics,
-  ) {
-    final pointWidth = _usesYearlyTrendLabels(analytics) ? 56.0 : 30.0;
-    return math.max(availableWidth, analytics.trend.length * pointWidth);
   }
 
   double _trendChartHeight(double availableWidth) {

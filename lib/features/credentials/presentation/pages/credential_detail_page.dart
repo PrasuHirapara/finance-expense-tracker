@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../data/services/credential_service.dart';
 import '../../domain/models/credential_models.dart';
 import '../widgets/credential_auth_dialog.dart';
@@ -104,17 +105,15 @@ class _CredentialDetailPageState extends State<CredentialDetailPage> {
                           ),
                           IconButton(
                             onPressed: () async {
-                              final messenger = ScaffoldMessenger.of(context);
                               await Clipboard.setData(
                                 ClipboardData(text: field.value),
                               );
-                              if (!mounted) {
+                              if (!context.mounted) {
                                 return;
                               }
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  content: Text('${field.keyLabel} copied.'),
-                                ),
+                              showAppSnackBar(
+                                context,
+                                message: '${field.keyLabel} copied.',
                               );
                             },
                             icon: const Icon(Icons.copy_all_rounded),
@@ -203,12 +202,11 @@ class _CredentialDetailPageState extends State<CredentialDetailPage> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
+      showAppSnackBar(
+        context,
+        message:
             'Unable to decrypt this credential with the provided authentication.',
-          ),
-        ),
+        type: AppSnackBarType.error,
       );
       Navigator.of(context).pop();
     }

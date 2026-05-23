@@ -8,7 +8,6 @@ import '../../../../presentation/widgets/charts/category_pie_chart.dart';
 import '../../../../presentation/widgets/charts/trend_line_chart.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_select_field.dart';
-import '../../../../shared/widgets/metric_tile.dart';
 import '../../domain/models/expense_models.dart';
 import '../blocs/bank/bank_bloc.dart';
 import '../blocs/expense_analytics/expense_analytics_bloc.dart';
@@ -89,42 +88,38 @@ class ExpenseAnalyticsPage extends StatelessWidget {
                       crossAxisCount: MediaQuery.of(context).size.width >= 1100
                           ? 4
                           : 2,
-                      childAspectRatio: 1.35,
+                      childAspectRatio: 1.55,
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                       children: <Widget>[
-                        MetricTile(
+                        _ExpenseAnalyticsCard(
                           label: 'Credit',
-                          value: IndianNumberFormatter.formatCompactCurrency(
+                          value: IndianNumberFormatter.formatCompact(
                             analytics.totalCredit,
                           ),
-                          icon: Icons.arrow_circle_up_rounded,
                           color: const Color(0xFF1F8B4C),
                         ),
-                        MetricTile(
+                        _ExpenseAnalyticsCard(
                           label: 'Debit',
-                          value: IndianNumberFormatter.formatCompactCurrency(
+                          value: IndianNumberFormatter.formatCompact(
                             analytics.totalDebit,
                           ),
-                          icon: Icons.arrow_circle_down_rounded,
                           color: const Color(0xFFC0392B),
                         ),
-                        MetricTile(
+                        _ExpenseAnalyticsCard(
                           label: 'Borrowed',
-                          value: IndianNumberFormatter.formatCompactCurrency(
+                          value: IndianNumberFormatter.formatCompact(
                             analytics.totalBorrowed,
                           ),
-                          icon: Icons.account_balance_wallet_rounded,
                           color: const Color(0xFF2E86DE),
                         ),
-                        MetricTile(
+                        _ExpenseAnalyticsCard(
                           label: 'Lent',
-                          value: IndianNumberFormatter.formatCompactCurrency(
+                          value: IndianNumberFormatter.formatCompact(
                             analytics.totalLent,
                           ),
-                          icon: Icons.savings_rounded,
                           color: const Color(0xFF16A085),
                         ),
                       ],
@@ -415,5 +410,51 @@ class ExpenseAnalyticsPage extends StatelessWidget {
         return 'Sun';
     }
     return '';
+  }
+}
+
+class _ExpenseAnalyticsCard extends StatelessWidget {
+  const _ExpenseAnalyticsCard({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AppPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const Spacer(),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

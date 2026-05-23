@@ -1,3 +1,5 @@
+// ignore_for_file: file_names
+
 import 'package:finance_analytics_app/domain/entities/analytics_models.dart';
 import 'package:finance_analytics_app/domain/entities/export_payload.dart';
 import 'package:finance_analytics_app/domain/entities/transaction_type.dart';

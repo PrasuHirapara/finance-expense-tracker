@@ -119,9 +119,9 @@ class _TaskDateSelectorState extends State<TaskDateSelector> {
   List<DateTime> _buildDates() {
     final today = DateTime.now();
     return List<DateTime>.generate(
-      15,
+      10,
       (index) =>
-          today.subtract(const Duration(days: 7)).add(Duration(days: index)),
+          today.subtract(const Duration(days: 9)).add(Duration(days: index)),
     );
   }
 

@@ -62,6 +62,13 @@ class ExpenseDetailArgs {
   final int entryId;
 }
 
+class ExpenseEntriesArgs {
+  const ExpenseEntriesArgs({this.initialDate, this.title});
+
+  final DateTime? initialDate;
+  final String? title;
+}
+
 class AppRouter {
   AppRouter._();
 
@@ -103,8 +110,12 @@ class AppRouter {
           builder: (context) => ExpenseEntryDetailPage(args: args),
         );
       case AppRoutes.expenseEntries:
+        final args = settings.arguments as ExpenseEntriesArgs?;
         return MaterialPageRoute<void>(
-          builder: (context) => const ExpenseEntriesPage(),
+          builder: (context) => ExpenseEntriesPage(
+            initialDate: args?.initialDate,
+            title: args?.title,
+          ),
         );
       case AppRoutes.expenseSettings:
         return MaterialPageRoute<void>(

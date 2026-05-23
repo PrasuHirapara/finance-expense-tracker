@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/extensions/date_time_x.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/history_date_picker_dialog.dart';
+import '../../data/repositories/task_repository.dart';
 import '../blocs/tasks/task_bloc.dart';
 import '../widgets/task_date_selector.dart';
 
@@ -48,11 +52,27 @@ class TasksModulePage extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 18),
-              TaskDateSelector(
-                selectedDate: state.selectedDate,
-                onDateSelected: (date) {
-                  context.read<TaskBloc>().add(TasksDateSelected(date));
-                },
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: TaskDateSelector(
+                      selectedDate: state.selectedDate,
+                      onDateSelected: (date) {
+                        context.read<TaskBloc>().add(TasksDateSelected(date));
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: IconButton.filledTonal(
+                      tooltip: 'Open task history dates',
+                      onPressed: () => _openTaskHistoryPicker(context),
+                      icon: const Icon(Icons.calendar_month_rounded),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 18),
               if (state.tasks.isEmpty)
@@ -193,6 +213,41 @@ class TasksModulePage extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _openTaskHistoryPicker(BuildContext context) async {
+    final repository = context.read<TaskRepository>();
+    final today = DateTime.now().startOfDay;
+    final tasks = await repository.loadAllTasks();
+    final historyDates = tasks
+        .map((task) => task.date.startOfDay)
+        .where((date) => !date.isAfter(today))
+        .toSet();
+
+    if (!context.mounted) {
+      return;
+    }
+
+    if (historyDates.isEmpty) {
+      showAppSnackBar(
+        context,
+        message: 'No task history dates available.',
+        type: AppSnackBarType.warning,
+      );
+      return;
+    }
+
+    final selectedDate = await HistoryDatePickerDialog.pick(
+      context: context,
+      title: 'Task History',
+      dataDates: historyDates,
+    );
+
+    if (selectedDate == null || !context.mounted) {
+      return;
+    }
+
+    context.read<TaskBloc>().add(TasksDateSelected(selectedDate));
   }
 }
 

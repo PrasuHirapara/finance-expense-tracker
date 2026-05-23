@@ -125,11 +125,11 @@ class _PieBody extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final diameter = constraints.biggest.shortestSide;
-          final baseRadius = diameter * 0.38;
-          final activeRadius = diameter * 0.41;
+          final baseRadius = diameter * 0.34;
+          final activeRadius = diameter * 0.37;
 
           return Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(18),
             child: PieChart(
               PieChartData(
                 startDegreeOffset: -90,
@@ -157,18 +157,26 @@ class _PieBody extends StatelessWidget {
                       final item = entry.value;
                       final percentage = item.amount / total * 100;
                       final isSelected = selectedIndex == index;
+                      final showTitle = isSelected || percentage >= 5;
 
                       return PieChartSectionData(
                         value: item.amount,
                         color: Color(item.colorValue),
                         radius: isSelected ? activeRadius : baseRadius,
-                        title: _formatPercentage(percentage),
-                        titlePositionPercentageOffset: 1.18,
+                        title: showTitle ? _formatPercentage(percentage) : '',
+                        titlePositionPercentageOffset: 0.66,
                         titleStyle: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onSurface,
+                          color: theme.colorScheme.onPrimary,
                           fontWeight: isSelected
                               ? FontWeight.w700
                               : FontWeight.w500,
+                          shadows: const <Shadow>[
+                            Shadow(
+                              blurRadius: 3,
+                              color: Color(0x66000000),
+                              offset: Offset(0, 1),
+                            ),
+                          ],
                         ),
                       );
                     })

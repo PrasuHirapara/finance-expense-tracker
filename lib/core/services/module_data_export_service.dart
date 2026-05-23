@@ -24,7 +24,7 @@ class ModuleDataExportService {
   final AppDatabase _database;
 
   Future<String> exportExpenseData({
-    required DateTimeRange range,
+    required DateTimeRange? range,
     required ModuleExportFormat format,
     required List<ExpenseRecord> entries,
   }) {
@@ -41,7 +41,7 @@ class ModuleDataExportService {
   }
 
   Future<String> exportTaskData({
-    required DateTimeRange range,
+    required DateTimeRange? range,
     required ModuleExportFormat format,
     required List<TaskItem> tasks,
   }) {
@@ -64,7 +64,7 @@ class ModuleDataExportService {
   }
 
   Future<String> _exportExpensePdf({
-    required DateTimeRange range,
+    required DateTimeRange? range,
     required List<ExpenseRecord> entries,
   }) async {
     final file = await _buildExportFile(
@@ -346,7 +346,7 @@ class ModuleDataExportService {
   }
 
   Future<String> _exportExpenseExcel({
-    required DateTimeRange range,
+    required DateTimeRange? range,
     required List<ExpenseRecord> entries,
   }) async {
     final file = await _buildExportFile(
@@ -754,7 +754,7 @@ class ModuleDataExportService {
   }
 
   Future<String> _exportTaskPdf({
-    required DateTimeRange range,
+    required DateTimeRange? range,
     required List<TaskItem> tasks,
   }) async {
     final file = await _buildExportFile(
@@ -859,7 +859,7 @@ class ModuleDataExportService {
   }
 
   Future<String> _exportTaskExcel({
-    required DateTimeRange range,
+    required DateTimeRange? range,
     required List<TaskItem> tasks,
   }) async {
     final file = await _buildExportFile(
@@ -1385,7 +1385,10 @@ class ModuleDataExportService {
     return file;
   }
 
-  String _formatRange(DateTimeRange range) {
+  String _formatRange(DateTimeRange? range) {
+    if (range == null) {
+      return 'All';
+    }
     return '${AppConstants.shortDateFormat.format(range.start)} - ${AppConstants.shortDateFormat.format(range.end)}';
   }
 

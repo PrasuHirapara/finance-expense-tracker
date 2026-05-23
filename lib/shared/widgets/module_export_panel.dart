@@ -17,7 +17,7 @@ class ModuleExportPanel extends StatefulWidget {
 
   final String title;
   final String? description;
-  final Future<String> Function(DateTimeRange range, ModuleExportFormat format)
+  final Future<String> Function(DateTimeRange? range, ModuleExportFormat format)
   onExport;
 
   @override
@@ -25,7 +25,7 @@ class ModuleExportPanel extends StatefulWidget {
 }
 
 class _ModuleExportPanelState extends State<ModuleExportPanel> {
-  ModuleExportRange _selectedRange = ModuleExportRange.month;
+  ModuleExportRange _selectedRange = ModuleExportRange.all;
   ModuleExportFormat _selectedFormat = ModuleExportFormat.pdf;
   bool _isExporting = false;
   DateTimeRange _customRange = DateTimeRange(

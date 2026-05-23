@@ -47,14 +47,12 @@ class AppSelectField<T> extends StatelessWidget {
           enabled: enabled,
           labelText: label,
           errorText: errorText,
-          suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded),
+          // Remove dropdown arrow icon for a cleaner look
+          // suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded),
         ),
         child: Row(
           children: <Widget>[
-            if (selectedOption?.leading != null) ...<Widget>[
-              selectedOption!.leading!,
-              const SizedBox(width: 12),
-            ],
+            // Remove leading icon from selected view
             Expanded(
               child: Text(
                 selectedOption?.label ?? hintText ?? 'Select',
@@ -102,20 +100,10 @@ class AppSelectField<T> extends StatelessWidget {
               index,
               PopupMenuItem<int>(
                 value: index,
-                child: Row(
-                  children: <Widget>[
-                    if (option.leading != null) ...<Widget>[
-                      option.leading!,
-                      const SizedBox(width: 12),
-                    ],
-                    Expanded(
-                      child: Text(
-                        option.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  option.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),

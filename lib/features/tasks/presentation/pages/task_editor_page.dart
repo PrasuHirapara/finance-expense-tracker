@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/extensions/date_time_x.dart';
 import '../../../../shared/widgets/app_select_field.dart';
 import '../../data/repositories/task_category_repository.dart';
 import '../blocs/task_editor/task_editor_bloc.dart';
@@ -122,13 +123,20 @@ class TaskEditorPage extends StatelessWidget {
                     const SizedBox(height: 16),
                     InkWell(
                       onTap: () async {
+                        final today = DateTime.now().startOfDay;
+                        final firstTaskDate = today.subtract(
+                          const Duration(days: 9),
+                        );
+                        final initialDate = state.date.startOfDay;
                         final picked = await showDatePicker(
                           context: context,
-                          initialDate: state.date,
-                          firstDate: DateTime(2022),
-                          lastDate: DateTime.now().add(
-                            const Duration(days: 365),
-                          ),
+                          initialDate: initialDate.isBefore(firstTaskDate)
+                              ? firstTaskDate
+                              : initialDate.isAfter(today)
+                              ? today
+                              : initialDate,
+                          firstDate: firstTaskDate,
+                          lastDate: today,
                         );
                         if (picked != null && context.mounted) {
                           context.read<TaskEditorBloc>().add(

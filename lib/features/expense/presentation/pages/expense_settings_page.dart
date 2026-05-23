@@ -162,30 +162,53 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
                       const SizedBox(height: 18),
                       Text('Categories', style: theme.textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      Row(
                         children: <Widget>[
-                          if (categories.isNotEmpty)
-                            TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  _showAllCategories = !_showAllCategories;
-                                });
-                              },
-                              child: Text(
-                                _showAllCategories
-                                    ? 'Hide category'
-                                    : 'View category',
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: categories.isEmpty
+                                  ? const SizedBox.shrink()
+                                  : FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: TextButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            _showAllCategories =
+                                                !_showAllCategories;
+                                          });
+                                        },
+                                        child: Text(
+                                          _showAllCategories
+                                              ? 'Hide category'
+                                              : 'View category',
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerRight,
+                                child: FilledButton.tonalIcon(
+                                  onPressed: () => _showCategoryDialog(
+                                    context,
+                                    existingCategories: categories,
+                                  ),
+                                  icon: const Icon(Icons.add),
+                                  label: const Text(
+                                    'Add category',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                               ),
                             ),
-                          FilledButton.tonalIcon(
-                            onPressed: () => _showCategoryDialog(
-                              context,
-                              existingCategories: categories,
-                            ),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add category'),
                           ),
                         ],
                       ),
@@ -209,26 +232,52 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
                       const SizedBox(height: 14),
                       Text('Banks', style: theme.textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      Row(
                         children: <Widget>[
-                          if (banks.isNotEmpty)
-                            TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  _showAllBanks = !_showAllBanks;
-                                });
-                              },
-                              child: Text(
-                                _showAllBanks ? 'Hide banks' : 'View banks',
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: banks.isEmpty
+                                  ? const SizedBox.shrink()
+                                  : FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: TextButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            _showAllBanks = !_showAllBanks;
+                                          });
+                                        },
+                                        child: Text(
+                                          _showAllBanks
+                                              ? 'Hide banks'
+                                              : 'View banks',
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerRight,
+                                child: FilledButton.tonalIcon(
+                                  onPressed: () => _showBankDialog(
+                                    context,
+                                    existingBanks: banks,
+                                  ),
+                                  icon: const Icon(Icons.add),
+                                  label: const Text(
+                                    'Add bank',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                               ),
                             ),
-                          FilledButton.tonalIcon(
-                            onPressed: () =>
-                                _showBankDialog(context, existingBanks: banks),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add bank'),
                           ),
                         ],
                       ),
@@ -437,7 +486,10 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
       return;
     }
     scaffoldMessenger.showSnackBar(
-      buildAppSnackBar(context, message: 'Expense reminder set for $formattedTime.'),
+      buildAppSnackBar(
+        context,
+        message: 'Expense reminder set for $formattedTime.',
+      ),
     );
   }
 
@@ -506,13 +558,15 @@ class _ExpenseSettingsBodyState extends State<ExpenseSettingsBody> {
 
   Future<String> _exportExpenseData(
     BuildContext context, {
-    required DateTimeRange range,
+    required DateTimeRange? range,
     required ModuleExportFormat format,
   }) async {
     final repository = context.read<ExpenseRepository>();
     final exportService = context.read<ModuleDataExportService>();
     final entries = await repository.loadEntries(
-      filter: ExpenseEntryFilter(fromDate: range.start, toDate: range.end),
+      filter: range == null
+          ? null
+          : ExpenseEntryFilter(fromDate: range.start, toDate: range.end),
     );
 
     return exportService.exportExpenseData(

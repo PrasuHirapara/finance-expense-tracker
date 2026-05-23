@@ -9,6 +9,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_select_field.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
+import '../../../../shared/widgets/history_date_picker_dialog.dart';
 import '../../data/repositories/expense_repository.dart';
 import '../../domain/models/expense_models.dart';
 import '../blocs/bank/bank_bloc.dart';
@@ -89,31 +90,25 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
             final summaryCards = <_SummaryCardData>[
               _SummaryCardData(
                 label: 'Total Credit',
-                value: IndianNumberFormatter.formatCompactCurrency(
-                  summary.totalCredit,
-                ),
+                value: IndianNumberFormatter.formatCompact(summary.totalCredit),
                 color: const Color(0xFF1F8B4C),
                 filter: _ExpenseSummaryFilter.credit,
               ),
               _SummaryCardData(
                 label: 'Total Debit',
-                value: IndianNumberFormatter.formatCompactCurrency(
-                  summary.totalDebit,
-                ),
+                value: IndianNumberFormatter.formatCompact(summary.totalDebit),
                 color: const Color(0xFFC0392B),
                 filter: _ExpenseSummaryFilter.debit,
               ),
               _SummaryCardData(
                 label: 'Total Lent',
-                value: IndianNumberFormatter.formatCompactCurrency(
-                  summary.totalLent,
-                ),
+                value: IndianNumberFormatter.formatCompact(summary.totalLent),
                 color: const Color(0xFF8E44AD),
                 filter: _ExpenseSummaryFilter.lent,
               ),
               _SummaryCardData(
                 label: 'Total Borrowed',
-                value: IndianNumberFormatter.formatCompactCurrency(
+                value: IndianNumberFormatter.formatCompact(
                   summary.totalBorrowed,
                 ),
                 color: const Color(0xFF16A085),
@@ -282,17 +277,37 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                       ),
                     ),
                     const SizedBox(height: 18),
-                    TextField(
-                      controller: _searchController,
-                      decoration: const InputDecoration(
-                        labelText: 'Search expenses',
-                        hintText:
-                            'Search by date, title, description, or amount',
-                        prefixIcon: Icon(Icons.search_rounded),
-                      ),
-                      onChanged: (_) => setState(() {
-                        _visibleDateGroupCount = _initialVisibleDateGroups;
-                      }),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: const InputDecoration(
+                              labelText: 'Search expenses',
+                              hintText:
+                                  'Search by date, title, description, or amount',
+                              prefixIcon: Icon(Icons.search_rounded),
+                            ),
+                            onChanged: (_) => setState(() {
+                              _visibleDateGroupCount =
+                                  _initialVisibleDateGroups;
+                            }),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 56,
+                          height: 56,
+                          child: IconButton.filledTonal(
+                            tooltip: 'Open expense history dates',
+                            onPressed: () => _openExpenseHistoryPicker(
+                              context,
+                              activeEntries,
+                            ),
+                            icon: const Icon(Icons.calendar_month_rounded),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 18),
                     AppPanel(
@@ -435,6 +450,45 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
     ].map((value) => value.toLowerCase());
 
     return searchableValues.any((value) => value.contains(normalizedQuery));
+  }
+
+  Future<void> _openExpenseHistoryPicker(
+    BuildContext context,
+    List<ExpenseRecord> entries,
+  ) async {
+    final today = DateTime.now().startOfDay;
+    final historyDates = entries
+        .map((entry) => entry.date.startOfDay)
+        .where((date) => !date.isAfter(today))
+        .toSet();
+
+    if (historyDates.isEmpty) {
+      showAppSnackBar(
+        context,
+        message: 'No expense history dates available.',
+        type: AppSnackBarType.warning,
+      );
+      return;
+    }
+
+    final selectedDate = await HistoryDatePickerDialog.pick(
+      context: context,
+      title: 'Expense History',
+      dataDates: historyDates,
+    );
+
+    if (selectedDate == null || !context.mounted) {
+      return;
+    }
+
+    Navigator.of(context).pushNamed(
+      AppRoutes.expenseEntries,
+      arguments: ExpenseEntriesArgs(
+        initialDate: selectedDate,
+        title:
+            'Expenses on ${AppConstants.shortDateFormat.format(selectedDate)}',
+      ),
+    );
   }
 
   Map<DateTime, List<ExpenseRecord>> _groupEntries(

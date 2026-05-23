@@ -11,7 +11,10 @@ import '../../data/repositories/expense_repository.dart';
 import '../../domain/models/expense_models.dart';
 
 class ExpenseEntriesPage extends StatefulWidget {
-  const ExpenseEntriesPage({super.key});
+  const ExpenseEntriesPage({super.key, this.initialDate, this.title});
+
+  final DateTime? initialDate;
+  final String? title;
 
   @override
   State<ExpenseEntriesPage> createState() => _ExpenseEntriesPageState();
@@ -20,15 +23,24 @@ class ExpenseEntriesPage extends StatefulWidget {
 class _ExpenseEntriesPageState extends State<ExpenseEntriesPage> {
   static const int _entriesPerPage = 10;
 
-  ExpenseEntryFilter _filter = const ExpenseEntryFilter();
+  late ExpenseEntryFilter _filter;
   int _currentPage = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialDate = widget.initialDate;
+    _filter = initialDate == null
+        ? const ExpenseEntryFilter()
+        : ExpenseEntryFilter(fromDate: initialDate, toDate: initialDate);
+  }
 
   @override
   Widget build(BuildContext context) {
     final repository = context.read<ExpenseRepository>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('All Entries')),
+      appBar: AppBar(title: Text(widget.title ?? 'All Entries')),
       body: FutureBuilder<_ExpenseFilterOptions>(
         future: _loadOptions(repository),
         builder: (context, snapshot) {

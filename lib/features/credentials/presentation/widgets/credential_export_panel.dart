@@ -355,7 +355,7 @@ class _CredentialExportPanelState extends State<CredentialExportPanel> {
 }
 
 enum _CredentialExportScope {
-  all('All Credentials'),
+  all('All'),
   custom('Custom');
 
   const _CredentialExportScope(this.label);

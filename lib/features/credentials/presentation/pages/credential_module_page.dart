@@ -354,12 +354,18 @@ class _CredentialListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return AppPanel(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () async {
+          await Navigator.of(context).pushNamed(
+            AppRoutes.credentialDetail,
+            arguments: CredentialDetailArgs(credentialId: credential.id),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Row(
             children: <Widget>[
               Expanded(
                 child: Text(
@@ -369,31 +375,19 @@ class _CredentialListCard extends StatelessWidget {
                   style: theme.textTheme.titleLarge,
                 ),
               ),
-              const Icon(Icons.lock_rounded),
+              const SizedBox(width: 12),
+              Icon(
+                Icons.lock_rounded,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Encrypted data hidden until authenticated.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.tonalIcon(
-              onPressed: () async {
-                await Navigator.of(context).pushNamed(
-                  AppRoutes.credentialDetail,
-                  arguments: CredentialDetailArgs(credentialId: credential.id),
-                );
-              },
-              icon: const Icon(Icons.visibility_rounded),
-              label: const Text('View Securely'),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

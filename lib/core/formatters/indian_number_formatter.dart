@@ -8,21 +8,14 @@ class IndianNumberFormatter {
     'en_IN',
   );
 
-  static final NumberFormat _compactDecimalFormatter = NumberFormat(
-    '0.00',
-    'en_IN',
-  );
+  static final NumberFormat _croreFormatter = NumberFormat('0.##', 'en_IN');
 
   static String formatCompact(num value) {
     final absoluteValue = value.abs().toDouble();
     final prefix = value < 0 ? '-' : '';
 
     if (absoluteValue >= 10000000) {
-      return '$prefix${_compactDecimalFormatter.format(absoluteValue / 10000000)} Cr';
-    }
-
-    if (absoluteValue >= 100000) {
-      return '$prefix${_compactDecimalFormatter.format(absoluteValue / 100000)} Lakh';
+      return '$prefix${_croreFormatter.format(absoluteValue / 10000000)} Cr.';
     }
 
     return '$prefix${formatFull(absoluteValue)}';

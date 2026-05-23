@@ -142,27 +142,50 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
                     children: <Widget>[
                       Text('Categories', style: theme.textTheme.titleMedium),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      Row(
                         children: <Widget>[
-                          if (categories.isNotEmpty)
-                            TextButton(
-                              onPressed: () {
-                                setState(() {
-                                  _showAllCategories = !_showAllCategories;
-                                });
-                              },
-                              child: Text(
-                                _showAllCategories
-                                    ? 'Hide category'
-                                    : 'View category',
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: categories.isEmpty
+                                  ? const SizedBox.shrink()
+                                  : FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: TextButton(
+                                        onPressed: () {
+                                          setState(() {
+                                            _showAllCategories =
+                                                !_showAllCategories;
+                                          });
+                                        },
+                                        child: Text(
+                                          _showAllCategories
+                                              ? 'Hide category'
+                                              : 'View category',
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerRight,
+                                child: FilledButton.tonalIcon(
+                                  onPressed: () => _showCategoryDialog(context),
+                                  icon: const Icon(Icons.add),
+                                  label: const Text(
+                                    'Add category',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                               ),
                             ),
-                          FilledButton.tonalIcon(
-                            onPressed: () => _showCategoryDialog(context),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add category'),
                           ),
                         ],
                       ),
@@ -304,10 +327,7 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
     if (!context.mounted) {
       return;
     }
-    showAppSnackBar(
-      context,
-      message: 'Task reminder set for $formattedTime.',
-    );
+    showAppSnackBar(context, message: 'Task reminder set for $formattedTime.');
   }
 
   Future<void> _deleteTaskSectionData(
@@ -374,12 +394,14 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
 
   Future<String> _exportTaskData(
     BuildContext context, {
-    required DateTimeRange range,
+    required DateTimeRange? range,
     required ModuleExportFormat format,
   }) async {
     final repository = context.read<TaskRepository>();
     final exportService = context.read<ModuleDataExportService>();
-    final tasks = await repository.loadTasksBetween(range.start, range.end);
+    final tasks = range == null
+        ? await repository.loadAllTasks()
+        : await repository.loadTasksBetween(range.start, range.end);
 
     return exportService.exportTaskData(
       range: range,

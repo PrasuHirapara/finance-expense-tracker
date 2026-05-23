@@ -82,6 +82,34 @@ class TaskRepository {
         .toList(growable: false);
   }
 
+  Future<List<TaskItem>> loadAllTasks() async {
+    await ensureDailyTasksThroughDate(DateTime.now());
+    final rows =
+        await (_database.select(_database.dbTasks)..orderBy([
+              (table) => OrderingTerm.desc(table.taskDate),
+              (table) => OrderingTerm.asc(table.isCompleted),
+              (table) => OrderingTerm.desc(table.priority),
+              (table) => OrderingTerm.asc(table.createdAt),
+            ]))
+            .get();
+
+    return rows
+        .map(
+          (row) => _mapTaskItem(
+            id: row.id,
+            sourceTaskId: row.sourceTaskId,
+            title: row.title,
+            rawDescription: row.description,
+            category: row.category,
+            date: row.taskDate,
+            priority: row.priority,
+            isDaily: row.isDaily,
+            isCompleted: row.isCompleted,
+          ),
+        )
+        .toList(growable: false);
+  }
+
   Future<void> addTask(TaskDraft draft) async {
     await _database
         .into(_database.dbTasks)
@@ -104,10 +132,9 @@ class TaskRepository {
   }
 
   Future<void> updateTask({required int id, required TaskDraft draft}) async {
-    final existingTask =
-        await (_database.select(_database.dbTasks)
-              ..where((table) => table.id.equals(id)))
-            .getSingleOrNull();
+    final existingTask = await (_database.select(
+      _database.dbTasks,
+    )..where((table) => table.id.equals(id))).getSingleOrNull();
 
     await (_database.update(
       _database.dbTasks,

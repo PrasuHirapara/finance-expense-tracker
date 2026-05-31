@@ -309,6 +309,7 @@ class ExpenseRecord extends Equatable {
     required this.type,
     required this.category,
     required this.date,
+    required this.day,
     required this.paymentMode,
     required this.notes,
     this.counterparty,
@@ -328,6 +329,7 @@ class ExpenseRecord extends Equatable {
   final String type;
   final ExpenseCategory category;
   final DateTime date;
+  final String day;
   final String paymentMode;
   final String notes;
   final String? counterparty;
@@ -368,6 +370,7 @@ class ExpenseRecord extends Equatable {
     type,
     category,
     date,
+    day,
     paymentMode,
     notes,
     counterparty,

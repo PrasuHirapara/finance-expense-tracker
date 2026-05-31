@@ -685,6 +685,18 @@ class $DbFinanceEntriesTable extends DbFinanceEntries
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _entryDayMeta = const VerificationMeta(
+    'entryDay',
+  );
+  @override
+  late final GeneratedColumn<String> entryDay = GeneratedColumn<String>(
+    'entry_day',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _paymentModeMeta = const VerificationMeta(
     'paymentMode',
   );
@@ -738,6 +750,7 @@ class $DbFinanceEntriesTable extends DbFinanceEntries
     categoryId,
     bankId,
     entryDate,
+    entryDay,
     paymentMode,
     notes,
     counterparty,
@@ -803,6 +816,12 @@ class $DbFinanceEntriesTable extends DbFinanceEntries
       );
     } else if (isInserting) {
       context.missing(_entryDateMeta);
+    }
+    if (data.containsKey('entry_day')) {
+      context.handle(
+        _entryDayMeta,
+        entryDay.isAcceptableOrUnknown(data['entry_day']!, _entryDayMeta),
+      );
     }
     if (data.containsKey('payment_mode')) {
       context.handle(
@@ -873,6 +892,12 @@ class $DbFinanceEntriesTable extends DbFinanceEntries
         DriftSqlType.dateTime,
         data['${effectivePrefix}entry_date'],
       )!,
+      entryDay:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}entry_day'],
+          ) ??
+          '',
       paymentMode: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}payment_mode'],
@@ -906,6 +931,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
   final int categoryId;
   final int? bankId;
   final DateTime entryDate;
+  final String entryDay;
   final String paymentMode;
   final String notes;
   final String? counterparty;
@@ -918,6 +944,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
     required this.categoryId,
     this.bankId,
     required this.entryDate,
+    required this.entryDay,
     required this.paymentMode,
     required this.notes,
     this.counterparty,
@@ -935,6 +962,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
       map['bank_id'] = Variable<int>(bankId);
     }
     map['entry_date'] = Variable<DateTime>(entryDate);
+    map['entry_day'] = Variable<String>(entryDay);
     map['payment_mode'] = Variable<String>(paymentMode);
     map['notes'] = Variable<String>(notes);
     if (!nullToAbsent || counterparty != null) {
@@ -955,6 +983,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
           ? const Value.absent()
           : Value(bankId),
       entryDate: Value(entryDate),
+      entryDay: Value(entryDay),
       paymentMode: Value(paymentMode),
       notes: Value(notes),
       counterparty: counterparty == null && nullToAbsent
@@ -977,6 +1006,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
       categoryId: serializer.fromJson<int>(json['categoryId']),
       bankId: serializer.fromJson<int?>(json['bankId']),
       entryDate: serializer.fromJson<DateTime>(json['entryDate']),
+      entryDay: serializer.fromJson<String>(json['entryDay'] ?? ''),
       paymentMode: serializer.fromJson<String>(json['paymentMode']),
       notes: serializer.fromJson<String>(json['notes']),
       counterparty: serializer.fromJson<String?>(json['counterparty']),
@@ -994,6 +1024,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
       'categoryId': serializer.toJson<int>(categoryId),
       'bankId': serializer.toJson<int?>(bankId),
       'entryDate': serializer.toJson<DateTime>(entryDate),
+      'entryDay': serializer.toJson<String>(entryDay),
       'paymentMode': serializer.toJson<String>(paymentMode),
       'notes': serializer.toJson<String>(notes),
       'counterparty': serializer.toJson<String?>(counterparty),
@@ -1009,6 +1040,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
     int? categoryId,
     Value<int?> bankId = const Value.absent(),
     DateTime? entryDate,
+    String? entryDay,
     String? paymentMode,
     String? notes,
     Value<String?> counterparty = const Value.absent(),
@@ -1021,6 +1053,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
     categoryId: categoryId ?? this.categoryId,
     bankId: bankId.present ? bankId.value : this.bankId,
     entryDate: entryDate ?? this.entryDate,
+    entryDay: entryDay ?? this.entryDay,
     paymentMode: paymentMode ?? this.paymentMode,
     notes: notes ?? this.notes,
     counterparty: counterparty.present ? counterparty.value : this.counterparty,
@@ -1037,6 +1070,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
           : this.categoryId,
       bankId: data.bankId.present ? data.bankId.value : this.bankId,
       entryDate: data.entryDate.present ? data.entryDate.value : this.entryDate,
+      entryDay: data.entryDay.present ? data.entryDay.value : this.entryDay,
       paymentMode: data.paymentMode.present
           ? data.paymentMode.value
           : this.paymentMode,
@@ -1058,6 +1092,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
           ..write('categoryId: $categoryId, ')
           ..write('bankId: $bankId, ')
           ..write('entryDate: $entryDate, ')
+          ..write('entryDay: $entryDay, ')
           ..write('paymentMode: $paymentMode, ')
           ..write('notes: $notes, ')
           ..write('counterparty: $counterparty, ')
@@ -1075,6 +1110,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
     categoryId,
     bankId,
     entryDate,
+    entryDay,
     paymentMode,
     notes,
     counterparty,
@@ -1091,6 +1127,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
           other.categoryId == this.categoryId &&
           other.bankId == this.bankId &&
           other.entryDate == this.entryDate &&
+          other.entryDay == this.entryDay &&
           other.paymentMode == this.paymentMode &&
           other.notes == this.notes &&
           other.counterparty == this.counterparty &&
@@ -1105,6 +1142,7 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
   final Value<int> categoryId;
   final Value<int?> bankId;
   final Value<DateTime> entryDate;
+  final Value<String> entryDay;
   final Value<String> paymentMode;
   final Value<String> notes;
   final Value<String?> counterparty;
@@ -1117,6 +1155,7 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
     this.categoryId = const Value.absent(),
     this.bankId = const Value.absent(),
     this.entryDate = const Value.absent(),
+    this.entryDay = const Value.absent(),
     this.paymentMode = const Value.absent(),
     this.notes = const Value.absent(),
     this.counterparty = const Value.absent(),
@@ -1130,6 +1169,7 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
     required int categoryId,
     this.bankId = const Value.absent(),
     required DateTime entryDate,
+    String? entryDay,
     required String paymentMode,
     this.notes = const Value.absent(),
     this.counterparty = const Value.absent(),
@@ -1139,6 +1179,7 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
        type = Value(type),
        categoryId = Value(categoryId),
        entryDate = Value(entryDate),
+       entryDay = Value(entryDay ?? ''),
        paymentMode = Value(paymentMode);
   static Insertable<DbFinanceEntry> custom({
     Expression<int>? id,
@@ -1148,6 +1189,7 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
     Expression<int>? categoryId,
     Expression<int>? bankId,
     Expression<DateTime>? entryDate,
+    Expression<String>? entryDay,
     Expression<String>? paymentMode,
     Expression<String>? notes,
     Expression<String>? counterparty,
@@ -1161,6 +1203,7 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
       if (categoryId != null) 'category_id': categoryId,
       if (bankId != null) 'bank_id': bankId,
       if (entryDate != null) 'entry_date': entryDate,
+      if (entryDay != null) 'entry_day': entryDay,
       if (paymentMode != null) 'payment_mode': paymentMode,
       if (notes != null) 'notes': notes,
       if (counterparty != null) 'counterparty': counterparty,
@@ -1176,6 +1219,7 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
     Value<int>? categoryId,
     Value<int?>? bankId,
     Value<DateTime>? entryDate,
+    Value<String>? entryDay,
     Value<String>? paymentMode,
     Value<String>? notes,
     Value<String?>? counterparty,
@@ -1189,6 +1233,7 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
       categoryId: categoryId ?? this.categoryId,
       bankId: bankId ?? this.bankId,
       entryDate: entryDate ?? this.entryDate,
+      entryDay: entryDay ?? this.entryDay,
       paymentMode: paymentMode ?? this.paymentMode,
       notes: notes ?? this.notes,
       counterparty: counterparty ?? this.counterparty,
@@ -1220,6 +1265,9 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
     if (entryDate.present) {
       map['entry_date'] = Variable<DateTime>(entryDate.value);
     }
+    if (entryDay.present) {
+      map['entry_day'] = Variable<String>(entryDay.value);
+    }
     if (paymentMode.present) {
       map['payment_mode'] = Variable<String>(paymentMode.value);
     }
@@ -1245,6 +1293,7 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
           ..write('categoryId: $categoryId, ')
           ..write('bankId: $bankId, ')
           ..write('entryDate: $entryDate, ')
+          ..write('entryDay: $entryDay, ')
           ..write('paymentMode: $paymentMode, ')
           ..write('notes: $notes, ')
           ..write('counterparty: $counterparty, ')
@@ -4677,6 +4726,7 @@ typedef $$DbFinanceEntriesTableCreateCompanionBuilder =
       required int categoryId,
       Value<int?> bankId,
       required DateTime entryDate,
+      String? entryDay,
       required String paymentMode,
       Value<String> notes,
       Value<String?> counterparty,
@@ -4691,6 +4741,7 @@ typedef $$DbFinanceEntriesTableUpdateCompanionBuilder =
       Value<int> categoryId,
       Value<int?> bankId,
       Value<DateTime> entryDate,
+      Value<String> entryDay,
       Value<String> paymentMode,
       Value<String> notes,
       Value<String?> counterparty,
@@ -5298,6 +5349,7 @@ class $$DbFinanceEntriesTableTableManager
                 Value<int> categoryId = const Value.absent(),
                 Value<int?> bankId = const Value.absent(),
                 Value<DateTime> entryDate = const Value.absent(),
+                Value<String> entryDay = const Value.absent(),
                 Value<String> paymentMode = const Value.absent(),
                 Value<String> notes = const Value.absent(),
                 Value<String?> counterparty = const Value.absent(),
@@ -5310,6 +5362,7 @@ class $$DbFinanceEntriesTableTableManager
                 categoryId: categoryId,
                 bankId: bankId,
                 entryDate: entryDate,
+                entryDay: entryDay,
                 paymentMode: paymentMode,
                 notes: notes,
                 counterparty: counterparty,
@@ -5324,6 +5377,7 @@ class $$DbFinanceEntriesTableTableManager
                 required int categoryId,
                 Value<int?> bankId = const Value.absent(),
                 required DateTime entryDate,
+                String? entryDay,
                 required String paymentMode,
                 Value<String> notes = const Value.absent(),
                 Value<String?> counterparty = const Value.absent(),
@@ -5336,6 +5390,7 @@ class $$DbFinanceEntriesTableTableManager
                 categoryId: categoryId,
                 bankId: bankId,
                 entryDate: entryDate,
+                entryDay: entryDay,
                 paymentMode: paymentMode,
                 notes: notes,
                 counterparty: counterparty,

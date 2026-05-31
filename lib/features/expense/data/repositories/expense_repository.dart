@@ -13,6 +13,7 @@ class ExpenseRepository {
   ExpenseRepository(this._database);
 
   final AppDatabase _database;
+  Future<void>? _entryDaysBackfillFuture;
 
   static const List<String> _defaultBanks = <String>[
     'Axis',
@@ -23,6 +24,7 @@ class ExpenseRepository {
   ];
 
   Future<void> seedDefaults() async {
+    await _ensureEntryDaysBackfilled();
     await _database.insertCategories(
       AppConstants.defaultCategories
           .map(
@@ -211,6 +213,7 @@ class ExpenseRepository {
   }
 
   Future<void> addExpense(ExpenseDraft draft) async {
+    await _ensureEntryDaysBackfilled();
     await _database.transaction(() async {
       if (draft.selfTransferDraft != null) {
         await _insertSelfTransfer(draft);
@@ -246,6 +249,7 @@ class ExpenseRepository {
     required int id,
     required ExpenseDraft draft,
   }) async {
+    await _ensureEntryDaysBackfilled();
     await _database.transaction(() async {
       if (draft.selfTransferDraft != null) {
         throw StateError('Self transfer entries can only be created.');
@@ -325,6 +329,7 @@ class ExpenseRepository {
   }
 
   Future<void> deleteExpense(int id) async {
+    await _ensureEntryDaysBackfilled();
     await _database.transaction(() async {
       final linkedSettlements = await _loadSettlementsByIncomeEntryId(id);
       if (linkedSettlements.isNotEmpty) {
@@ -388,10 +393,13 @@ class ExpenseRepository {
 
   Stream<List<ExpenseRecord>> watchEntries({ExpenseEntryFilter? filter}) {
     final query = _entryJoin(filter: filter);
-    return query.watch().asyncMap(_mapExpenseRows);
+    return Stream.fromFuture(
+      _ensureEntryDaysBackfilled(),
+    ).asyncExpand((_) => query.watch().asyncMap(_mapExpenseRows));
   }
 
   Future<List<ExpenseRecord>> loadEntries({ExpenseEntryFilter? filter}) async {
+    await _ensureEntryDaysBackfilled();
     final query = _entryJoin(filter: filter);
     return _mapExpenseRows(await query.get());
   }
@@ -429,6 +437,7 @@ class ExpenseRepository {
     DateTime? customStartDate,
     DateTime? customEndDate,
   }) async {
+    await _ensureEntryDaysBackfilled();
     final anchor = anchorDate ?? DateTime.now();
     final customStart = (customStartDate ?? anchor.startOfWeek).startOfDay;
     final customEnd = (customEndDate ?? anchor.endOfWeek).endOfDay;
@@ -508,11 +517,13 @@ class ExpenseRepository {
   }
 
   Future<ExpenseRecord?> loadEntryById(int entryId) async {
+    await _ensureEntryDaysBackfilled();
     final records = await _loadEntryMapByIds(<int>[entryId]);
     return records[entryId];
   }
 
   Future<ExpenseEntryDetails?> loadEntryDetails(int entryId) async {
+    await _ensureEntryDaysBackfilled();
     final entry = await loadEntryById(entryId);
     if (entry == null) {
       return null;
@@ -604,6 +615,7 @@ class ExpenseRepository {
   }
 
   Future<List<LentResolutionCandidate>> loadResolvableLentEntries() async {
+    await _ensureEntryDaysBackfilled();
     final entries = await loadEntries();
     final entryById = <int, ExpenseRecord>{
       for (final entry in entries) entry.id: entry,
@@ -654,6 +666,7 @@ class ExpenseRepository {
 
   Future<List<BorrowedResolutionCandidate>>
   loadResolvableBorrowedEntries() async {
+    await _ensureEntryDaysBackfilled();
     final entries = await loadEntries();
     final candidates =
         entries
@@ -858,6 +871,7 @@ class ExpenseRepository {
             type: record.type,
             category: record.category,
             date: record.date,
+            day: record.day,
             paymentMode: record.paymentMode,
             notes: record.notes,
             counterparty: record.counterparty,
@@ -891,6 +905,9 @@ class ExpenseRepository {
         colorValue: category.colorValue,
       ),
       date: entry.entryDate,
+      day: entry.entryDay.isEmpty
+          ? _dayLabelForDate(entry.entryDate)
+          : entry.entryDay,
       paymentMode: entry.paymentMode,
       notes: entry.notes,
       counterparty: entry.counterparty,
@@ -1668,6 +1685,7 @@ class ExpenseRepository {
         categoryId: draft.categoryId,
         bankId: Value(useExplicitBankId ? bankId : draft.bankId),
         entryDate: draft.date,
+        entryDay: _dayLabelForDate(draft.date),
         paymentMode: paymentMode ?? draft.paymentMode,
         notes: Value(draft.notes.trim()),
         counterparty: Value(
@@ -1721,6 +1739,7 @@ class ExpenseRepository {
         categoryId: Value(draft.categoryId),
         bankId: Value(draft.bankId),
         entryDate: Value(draft.date),
+        entryDay: Value(_dayLabelForDate(draft.date)),
         paymentMode: Value(draft.paymentMode),
         notes: Value(draft.notes.trim()),
         counterparty: Value(
@@ -1735,6 +1754,35 @@ class ExpenseRepository {
       return null;
     }
     return counterparty.trim();
+  }
+
+  Future<void> _ensureEntryDaysBackfilled() {
+    return _entryDaysBackfillFuture ??= _backfillMissingEntryDays();
+  }
+
+  Future<void> _backfillMissingEntryDays() async {
+    final missingDayEntries = await (_database.select(
+      _database.dbFinanceEntries,
+    )..where((table) => table.entryDay.equals(''))).get();
+    if (missingDayEntries.isEmpty) {
+      return;
+    }
+
+    await _database.transaction(() async {
+      for (final entry in missingDayEntries) {
+        await (_database.update(
+          _database.dbFinanceEntries,
+        )..where((table) => table.id.equals(entry.id))).write(
+          DbFinanceEntriesCompanion(
+            entryDay: Value(_dayLabelForDate(entry.entryDate)),
+          ),
+        );
+      }
+    });
+  }
+
+  String _dayLabelForDate(DateTime date) {
+    return DateFormat('EEEE').format(date);
   }
 
   Future<void> _removeLegacyDemoEntries() async {

@@ -46,26 +46,25 @@ class ExpenseAnalyticsPage extends StatelessWidget {
                 children: <Widget>[
                   AnalyticsWindowSelector<ExpenseAnalyticsWindow>(
                     selectedValue: state.window,
-                    options: const <AnalyticsWindowOption<
-                      ExpenseAnalyticsWindow
-                    >>[
-                      AnalyticsWindowOption<ExpenseAnalyticsWindow>(
-                        value: ExpenseAnalyticsWindow.weekly,
-                        label: 'Week',
-                      ),
-                      AnalyticsWindowOption<ExpenseAnalyticsWindow>(
-                        value: ExpenseAnalyticsWindow.monthly,
-                        label: 'Month',
-                      ),
-                      AnalyticsWindowOption<ExpenseAnalyticsWindow>(
-                        value: ExpenseAnalyticsWindow.yearly,
-                        label: 'Year',
-                      ),
-                      AnalyticsWindowOption<ExpenseAnalyticsWindow>(
-                        value: ExpenseAnalyticsWindow.custom,
-                        label: 'Custom',
-                      ),
-                    ],
+                    options:
+                        const <AnalyticsWindowOption<ExpenseAnalyticsWindow>>[
+                          AnalyticsWindowOption<ExpenseAnalyticsWindow>(
+                            value: ExpenseAnalyticsWindow.weekly,
+                            label: 'Week',
+                          ),
+                          AnalyticsWindowOption<ExpenseAnalyticsWindow>(
+                            value: ExpenseAnalyticsWindow.monthly,
+                            label: 'Month',
+                          ),
+                          AnalyticsWindowOption<ExpenseAnalyticsWindow>(
+                            value: ExpenseAnalyticsWindow.yearly,
+                            label: 'Year',
+                          ),
+                          AnalyticsWindowOption<ExpenseAnalyticsWindow>(
+                            value: ExpenseAnalyticsWindow.custom,
+                            label: 'Custom',
+                          ),
+                        ],
                     onChanged: (window) {
                       context.read<ExpenseAnalyticsBloc>().add(
                         ExpenseAnalyticsWindowChanged(window),

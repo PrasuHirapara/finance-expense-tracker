@@ -34,6 +34,7 @@ class DbFinanceEntries extends Table {
   IntColumn get categoryId => integer().references(DbCategories, #id)();
   IntColumn get bankId => integer().nullable().references(DbBanks, #id)();
   DateTimeColumn get entryDate => dateTime()();
+  TextColumn get entryDay => text().withDefault(const Constant(''))();
   TextColumn get paymentMode => text()();
   TextColumn get notes => text().withDefault(const Constant(''))();
   TextColumn get counterparty => text().nullable()();
@@ -133,7 +134,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.test(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -156,6 +157,12 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 5) {
         await m.createTable(dbBorrowedSettlements);
+      }
+      if (from < 6) {
+        await m.addColumn(
+          dbFinanceEntries,
+          dbFinanceEntries.entryDay as GeneratedColumn<Object>,
+        );
       }
     },
   );

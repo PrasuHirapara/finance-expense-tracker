@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../domain/entities/transaction_type.dart';
@@ -48,6 +49,9 @@ class SeedService {
         type: type,
         categoryId: idsByName[categoryName]!,
         entryDate: now.subtract(Duration(days: daysAgo)),
+        entryDay: DateFormat(
+          'EEEE',
+        ).format(now.subtract(Duration(days: daysAgo))),
         paymentMode: paymentMode,
         notes: Value(notes),
         counterparty: Value(counterparty),

@@ -85,6 +85,7 @@ class ModuleDataImportService {
       TextCellValue('Category*'),
       TextCellValue('Bank'),
       TextCellValue('Date*'),
+      TextCellValue('Day'),
       TextCellValue('Payment Mode*'),
       TextCellValue('Counterparty'),
       TextCellValue('Notes'),
@@ -97,6 +98,7 @@ class ModuleDataImportService {
       TextCellValue(categories.first),
       TextCellValue(banks.isEmpty ? '' : banks.first),
       TextCellValue(DateFormat('yyyy-MM-dd').format(DateTime.now())),
+      TextCellValue(DateFormat('EEEE').format(DateTime.now())),
       TextCellValue(AppConstants.paymentModes.first),
       TextCellValue('Office friends'),
       TextCellValue('Sample row, replace with your own data'),
@@ -104,7 +106,7 @@ class ModuleDataImportService {
     _applyRowStyle(
       expenseSheet,
       rowIndex: 0,
-      columnCount: 10,
+      columnCount: 11,
       style: headerStyle,
     );
     _setColumnWidths(expenseSheet, <double>[
@@ -113,6 +115,7 @@ class ModuleDataImportService {
       14,
       16,
       18,
+      16,
       16,
       16,
       18,
@@ -154,6 +157,12 @@ class ModuleDataImportService {
       TextCellValue('Date'),
       TextCellValue(
         'Required. Prefer yyyy-MM-dd. Excel date cells are also accepted.',
+      ),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Day'),
+      TextCellValue(
+        'Optional. If missing, the app derives it from the Date column automatically.',
       ),
     ]);
     referenceSheet.appendRow(<CellValue?>[
@@ -345,6 +354,7 @@ class ModuleDataImportService {
         'category': <String>['category'],
         'bank': <String>['bank'],
         'date': <String>['date'],
+        'day': <String>['day', 'weekday', 'day of week'],
         'paymentMode': <String>['payment mode', 'paymentmode'],
         'counterparty': <String>['counterparty'],
         'notes': <String>['notes'],
@@ -463,6 +473,7 @@ class ModuleDataImportService {
                       : bankIds[row.bankName!.toLowerCase()],
                 ),
                 entryDate: row.date,
+                entryDay: row.day ?? _dayLabelForDate(row.date),
                 paymentMode: row.paymentMode,
                 notes: Value(row.notes),
                 counterparty: Value(row.counterparty),
@@ -683,6 +694,7 @@ class ModuleDataImportService {
     final paymentModeText = _cellText(_cellAt(row, headerMap['paymentMode']));
     final counterpartyText = _cellText(_cellAt(row, headerMap['counterparty']));
     final notes = _cellText(_cellAt(row, headerMap['notes']));
+    final dayText = _cellText(_cellAt(row, headerMap['day']));
     final amountCell = _cellAt(row, headerMap['amount']);
     final typeText = _cellText(_cellAt(row, headerMap['type']));
     final dateCell = _cellAt(row, headerMap['date']);
@@ -735,6 +747,7 @@ class ModuleDataImportService {
       categoryName: category,
       bankName: bank.isEmpty ? null : bank,
       date: date!,
+      day: dayText.isEmpty ? null : dayText,
       paymentMode: paymentMode!,
       counterparty: counterpartyText.isEmpty ? null : counterpartyText,
       notes: notes,
@@ -1643,6 +1656,10 @@ class ModuleDataImportService {
         left.month == right.month &&
         left.day == right.day;
   }
+
+  String _dayLabelForDate(DateTime date) {
+    return DateFormat('EEEE').format(date);
+  }
 }
 
 class _ValidatedExpenseRow {
@@ -1654,6 +1671,7 @@ class _ValidatedExpenseRow {
     required this.categoryName,
     required this.bankName,
     required this.date,
+    required this.day,
     required this.paymentMode,
     required this.counterparty,
     required this.notes,
@@ -1666,6 +1684,7 @@ class _ValidatedExpenseRow {
   final String categoryName;
   final String? bankName;
   final DateTime date;
+  final String? day;
   final String paymentMode;
   final String? counterparty;
   final String notes;
@@ -1678,6 +1697,7 @@ class _ValidatedExpenseRow {
     String? categoryName,
     String? bankName,
     DateTime? date,
+    Object? day = _moduleImportUnset,
     String? paymentMode,
     Object? counterparty = _moduleImportUnset,
     String? notes,
@@ -1690,6 +1710,7 @@ class _ValidatedExpenseRow {
       categoryName: categoryName ?? this.categoryName,
       bankName: bankName ?? this.bankName,
       date: date ?? this.date,
+      day: identical(day, _moduleImportUnset) ? this.day : day as String?,
       paymentMode: paymentMode ?? this.paymentMode,
       counterparty: identical(counterparty, _moduleImportUnset)
           ? this.counterparty

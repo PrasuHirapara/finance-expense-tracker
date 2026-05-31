@@ -29,6 +29,7 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
 
   _ExpenseSummaryFilter _activeSummaryFilter = _ExpenseSummaryFilter.net;
   final TextEditingController _searchController = TextEditingController();
+  late final FocusNode _searchFocusNode;
   DateTime? _expandedDate;
   int _visibleDateGroupCount = _initialVisibleDateGroups;
   bool _showCashEntries = false;
@@ -36,12 +37,14 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
   @override
   void initState() {
     super.initState();
+    _searchFocusNode = FocusNode();
     context.read<BankBloc>().add(const BanksSubscriptionRequested());
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -282,15 +285,20 @@ class _ExpenseModulePageState extends State<ExpenseModulePage> {
                         Expanded(
                           child: TextField(
                             controller: _searchController,
+                            focusNode: _searchFocusNode,
                             decoration: const InputDecoration(
                               labelText: 'Search expenses',
                               hintText:
                                   'Search by date, title, description, or amount',
                               prefixIcon: Icon(Icons.search_rounded),
                             ),
-                            onChanged: (_) => setState(() {
+                            onChanged: (value) => setState(() {
                               _visibleDateGroupCount =
                                   _initialVisibleDateGroups;
+                              if (value.trim().isEmpty &&
+                                  _searchFocusNode.hasFocus) {
+                                _searchFocusNode.unfocus();
+                              }
                             }),
                           ),
                         ),
@@ -777,31 +785,54 @@ class _DateTransactionGroup extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(
-                          _labelForDate(date),
-                          style: theme.textTheme.titleMedium,
+                        Row(
+                          children: <Widget>[
+                            Text(
+                              _labelForDate(date),
+                              style: theme.textTheme.titleMedium,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _dayLabelForDate(date),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          '${entries.length} transaction${entries.length == 1 ? '' : 's'}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
+                        Row(
+                          children: <Widget>[
+                            Text(
+                              '${entries.length} transaction${entries.length == 1 ? '' : 's'}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              IndianNumberFormatter.formatCompactCurrency(
+                                total,
+                              ),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: total >= 0
+                                    ? const Color(0xFF1F8B4C)
+                                    : const Color(0xFFC0392B),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                  ),
-                  Text(
-                    IndianNumberFormatter.formatCompactCurrency(total),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: total >= 0
-                          ? const Color(0xFF1F8B4C)
-                          : const Color(0xFFC0392B),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -851,6 +882,10 @@ class _DateTransactionGroup extends StatelessWidget {
       return 'Yesterday';
     }
     return AppConstants.shortDateFormat.format(date);
+  }
+
+  String _dayLabelForDate(DateTime date) {
+    return DateFormat('EEEE').format(date);
   }
 }
 

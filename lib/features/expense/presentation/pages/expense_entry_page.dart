@@ -20,6 +20,15 @@ class ExpenseEntryPage extends StatelessWidget {
       listener: (context, state) {
         if (state.status == ExpenseFormStatus.success) {
           Navigator.of(context).pop();
+          return;
+        }
+        if (state.status == ExpenseFormStatus.failure &&
+            state.errorMessage != null) {
+          showAppSnackBar(
+            context,
+            message: state.errorMessage!,
+            type: AppSnackBarType.warning,
+          );
         }
       },
       child: Scaffold(
@@ -433,11 +442,16 @@ class ExpenseEntryPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 InkWell(
                   onTap: () async {
+                    final now = DateTime.now();
+                    final initialDate =
+                        state.date == null || state.date!.isAfter(now)
+                        ? now
+                        : state.date!;
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: state.date ?? DateTime.now(),
+                      initialDate: initialDate,
                       firstDate: DateTime(2022),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      lastDate: now,
                     );
                     if (picked != null && context.mounted) {
                       context.read<ExpenseFormBloc>().add(
@@ -446,7 +460,12 @@ class ExpenseEntryPage extends StatelessWidget {
                     }
                   },
                   child: InputDecorator(
-                    decoration: const InputDecoration(labelText: 'Date'),
+                    decoration: InputDecoration(
+                      labelText: 'Date',
+                      errorText: state.showValidation && state.hasFutureDate
+                          ? 'Future expense dates are not allowed.'
+                          : null,
+                    ),
                     child: Text(
                       AppConstants.shortDateFormat.format(
                         state.date ?? DateTime.now(),

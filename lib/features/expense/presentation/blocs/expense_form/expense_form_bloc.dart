@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../core/constants/app_constants.dart';
+import '../../../../../core/extensions/date_time_x.dart';
 import '../../../data/repositories/expense_repository.dart';
 import '../../../domain/models/expense_models.dart';
 
@@ -67,11 +68,14 @@ class ExpenseFormState extends Equatable {
   bool get canResolveLent => isLentIncome && (parsedAmount ?? 0) > 0;
   bool get canResolveBorrowed => isBorrowedExpense && (parsedAmount ?? 0) > 0;
   bool get isSelfTransfer => paymentMode == 'Self Transfer';
+  bool get hasFutureDate =>
+      date != null && date!.startOfDay.isAfter(DateTime.now().startOfDay);
   bool get isValid =>
       title.trim().isNotEmpty &&
       (parsedAmount ?? 0) > 0 &&
       categoryId != null &&
       date != null &&
+      !hasFutureDate &&
       (!isSelfTransfer || selfTransferDraft != null);
   bool get isEditing => expenseId != null;
 
@@ -491,7 +495,17 @@ class ExpenseFormBloc extends Bloc<ExpenseFormEvent, ExpenseFormState> {
     Emitter<ExpenseFormState> emit,
   ) async {
     if (!state.isValid) {
-      emit(state.copyWith(showValidation: true));
+      emit(
+        state.copyWith(
+          showValidation: true,
+          status: state.hasFutureDate
+              ? ExpenseFormStatus.failure
+              : state.status,
+          errorMessage: state.hasFutureDate
+              ? 'Future expense dates are not allowed.'
+              : null,
+        ),
+      );
       return;
     }
 

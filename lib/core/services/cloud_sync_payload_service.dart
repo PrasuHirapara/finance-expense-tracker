@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:drift/drift.dart';
+import 'package:intl/intl.dart';
 
 import '../../data/database/app_database.dart';
 import '../../features/credentials/domain/models/credential_models.dart';
@@ -40,7 +41,7 @@ class CloudSyncPayloadService {
   final CloudBackupCryptoService _cloudBackupCryptoService;
   final HashAlgorithm _hashAlgorithm = Sha256();
 
-  static const int _expensePayloadSchemaVersion = 4;
+  static const int _expensePayloadSchemaVersion = 5;
 
   Future<CloudBackupBundle> buildBackupBundle({
     DateTime? exportedAt,
@@ -682,6 +683,17 @@ class CloudSyncPayloadService {
                       DateTime.tryParse(item['entryDate'] as String? ?? '') ??
                           DateTime.now(),
                     ),
+                    entryDay: Value(
+                      (item['entryDay'] is String &&
+                              (item['entryDay'] as String).trim().isNotEmpty)
+                          ? item['entryDay'] as String
+                          : _dayLabelForDate(
+                              DateTime.tryParse(
+                                    item['entryDate'] as String? ?? '',
+                                  ) ??
+                                  DateTime.now(),
+                            ),
+                    ),
                     paymentMode: Value(item['paymentMode'] as String? ?? ''),
                     notes: Value(item['notes'] as String? ?? ''),
                     counterparty: Value(item['counterparty'] as String?),
@@ -965,6 +977,10 @@ class CloudSyncPayloadService {
     }
   }
 
+  String _dayLabelForDate(DateTime date) {
+    return DateFormat('EEEE').format(date);
+  }
+
   Future<DateTime?> _extractCredentialExpiryDate(
     DbCredential credential, {
     String? credentialEncryptionKey,
@@ -1110,6 +1126,9 @@ class CloudSyncPayloadService {
               'categoryId': item.categoryId,
               'bankId': item.bankId,
               'entryDate': item.entryDate.toIso8601String(),
+              'entryDay': item.entryDay.isEmpty
+                  ? _dayLabelForDate(item.entryDate)
+                  : item.entryDay,
               'paymentMode': item.paymentMode,
               'notes': item.notes,
               'counterparty': item.counterparty,
@@ -1195,11 +1214,23 @@ class CloudSyncPayloadService {
             .whereType<Map<String, dynamic>>()
             .toList(growable: false);
 
+    Map<String, dynamic> normalizeEntry(Map<String, dynamic> item) {
+      final normalized = Map<String, dynamic>.from(item);
+      final parsedDate =
+          DateTime.tryParse(normalized['entryDate'] as String? ?? '') ??
+          DateTime.now();
+      final entryDay = normalized['entryDay'] is String
+          ? normalized['entryDay'] as String
+          : null;
+      normalized['entryDay'] = entryDay != null && entryDay.trim().isNotEmpty
+          ? entryDay
+          : _dayLabelForDate(parsedDate);
+      return normalized;
+    }
+
     if (rawSplitRecords.isEmpty) {
       return _NormalizedExpenseSyncPayload(
-        entries: rawEntries
-            .map((item) => Map<String, dynamic>.from(item))
-            .toList(growable: false),
+        entries: rawEntries.map(normalizeEntry).toList(growable: false),
         splitRecords: const <Map<String, dynamic>>[],
         splitParticipants: rawSplitParticipants
             .map((item) => Map<String, dynamic>.from(item))
@@ -1231,8 +1262,8 @@ class CloudSyncPayloadService {
     return _NormalizedExpenseSyncPayload(
       entries: rawEntries
           .where((item) => !legacyManagedLentEntryIds.contains(item['id']))
-          .map((item) {
-            final normalized = Map<String, dynamic>.from(item);
+          .map(normalizeEntry)
+          .map((normalized) {
             final entryId = normalized['id'];
             if (entryId is int &&
                 totalAmountByExpenseEntryId.containsKey(entryId)) {

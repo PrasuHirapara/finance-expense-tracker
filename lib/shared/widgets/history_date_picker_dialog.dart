@@ -72,8 +72,8 @@ class _HistoryDatePickerDialogState extends State<HistoryDatePickerDialog> {
 
     return AlertDialog(
       titlePadding: const EdgeInsets.fromLTRB(20, 18, 12, 0),
-      contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       title: Row(
         children: <Widget>[
           Expanded(child: Text(widget.title)),
@@ -129,7 +129,7 @@ class _HistoryDatePickerDialogState extends State<HistoryDatePickerDialog> {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 320,
+              height: 300,
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: _monthDelta(_firstMonth, _lastMonth) + 1,
@@ -235,19 +235,32 @@ class _HistoryDatePickerDialogState extends State<HistoryDatePickerDialog> {
   }
 
   void _selectYear(int year) {
-    setState(() {
-      final allowedMonths = _monthOptionsForYear(year);
-      final month = _visibleMonth.month.clamp(
-        allowedMonths.first,
-        allowedMonths.last,
-      );
-      _visibleMonth = DateTime(year, month);
-    });
+    final allowedMonths = _monthOptionsForYear(year);
+    final month = _visibleMonth.month.clamp(
+      allowedMonths.first,
+      allowedMonths.last,
+    );
+    _setVisibleMonth(DateTime(year, month));
   }
 
   void _selectMonth(int month) {
+    _setVisibleMonth(DateTime(_visibleMonth.year, month));
+  }
+
+  void _setVisibleMonth(DateTime month) {
+    final normalizedMonth = DateTime(month.year, month.month);
     setState(() {
-      _visibleMonth = DateTime(_visibleMonth.year, month);
+      _visibleMonth = normalizedMonth;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pageController.hasClients) {
+        return;
+      }
+      final targetPage = _monthDelta(_firstMonth, normalizedMonth);
+      if (targetPage == _pageController.page?.round()) {
+        return;
+      }
+      _pageController.jumpToPage(targetPage);
     });
   }
 

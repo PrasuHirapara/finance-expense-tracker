@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum TaskAnalyticsWindow { weekly, monthly, yearly }
+enum TaskAnalyticsWindow { weekly, monthly, yearly, custom }
 
 extension TaskAnalyticsWindowX on TaskAnalyticsWindow {
   String get label {
@@ -11,6 +11,8 @@ extension TaskAnalyticsWindowX on TaskAnalyticsWindow {
         return 'Month';
       case TaskAnalyticsWindow.yearly:
         return 'Year';
+      case TaskAnalyticsWindow.custom:
+        return 'Custom';
     }
   }
 }

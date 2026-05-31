@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../widgets/user_settings_section.dart';
 
 class SettingsModulePage extends StatelessWidget {
   const SettingsModulePage({super.key});
@@ -12,12 +13,7 @@ class SettingsModulePage extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
         children: <Widget>[
-          _buildNavigationTile(
-            context,
-            icon: Icons.person_outline_rounded,
-            title: 'User Settings',
-            routeName: AppRoutes.userSettingsInfo,
-          ),
+          const UserSettingsSection(),
           const SizedBox(height: 16),
           _buildNavigationTile(
             context,
@@ -55,7 +51,7 @@ class SettingsModulePage extends StatelessWidget {
     BuildContext context, {
     required IconData icon,
     required String title,
-    required String routeName,
+    String? routeName,
   }) {
     return AppPanel(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
@@ -66,7 +62,9 @@ class SettingsModulePage extends StatelessWidget {
         leading: Icon(icon),
         title: Text(title),
         trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => Navigator.of(context).pushNamed(routeName),
+        onTap: routeName == null
+            ? null
+            : () => Navigator.of(context).pushNamed(routeName),
       ),
     );
   }

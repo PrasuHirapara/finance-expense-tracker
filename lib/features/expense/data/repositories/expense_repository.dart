@@ -426,9 +426,17 @@ class ExpenseRepository {
     required ExpenseAnalyticsWindow window,
     int? bankId,
     DateTime? anchorDate,
+    DateTime? customStartDate,
+    DateTime? customEndDate,
   }) async {
     final anchor = anchorDate ?? DateTime.now();
-    final range = _resolveRange(window, anchor);
+    final customStart = (customStartDate ?? anchor.startOfWeek).startOfDay;
+    final customEnd = (customEndDate ?? anchor.endOfWeek).endOfDay;
+    final range = window == ExpenseAnalyticsWindow.custom
+        ? customStart.isAfter(customEnd)
+              ? _ExpenseDateRange(customEnd.startOfDay, customStart.endOfDay)
+              : _ExpenseDateRange(customStart, customEnd)
+        : _resolveRange(window, anchor);
     final entries =
         (await _mapExpenseRows(
               await _entryJoin(
@@ -1847,6 +1855,8 @@ class ExpenseRepository {
         );
       case ExpenseAnalyticsWindow.yearly:
         return _ExpenseDateRange(anchorDate.startOfYear, anchorDate.endOfYear);
+      case ExpenseAnalyticsWindow.custom:
+        return _ExpenseDateRange(anchorDate.startOfMonth, anchorDate.endOfDay);
     }
   }
 

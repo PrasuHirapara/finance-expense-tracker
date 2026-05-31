@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/extensions/date_time_x.dart';
 import '../../../../domain/entities/analytics_models.dart';
 import '../../../../presentation/widgets/charts/trend_line_chart.dart';
+import '../../../../shared/widgets/analytics_window_selector.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/custom_date_range_selector.dart';
 import '../../domain/models/task_models.dart';
 import '../blocs/task_analytics/task_analytics_bloc.dart';
 
@@ -33,26 +36,48 @@ class TaskAnalyticsPage extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: <Widget>[
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SegmentedButton<TaskAnalyticsWindow>(
-                  segments: TaskAnalyticsWindow.values
-                      .map(
-                        (window) => ButtonSegment<TaskAnalyticsWindow>(
-                          value: window,
-                          label: Text(window.label),
-                        ),
-                      )
-                      .toList(growable: false),
-                  selected: <TaskAnalyticsWindow>{state.window},
-                  onSelectionChanged: (selection) {
+              AnalyticsWindowSelector<TaskAnalyticsWindow>(
+                selectedValue: state.window,
+                options: const <AnalyticsWindowOption<TaskAnalyticsWindow>>[
+                  AnalyticsWindowOption<TaskAnalyticsWindow>(
+                    value: TaskAnalyticsWindow.weekly,
+                    label: 'Week',
+                  ),
+                  AnalyticsWindowOption<TaskAnalyticsWindow>(
+                    value: TaskAnalyticsWindow.monthly,
+                    label: 'Month',
+                  ),
+                  AnalyticsWindowOption<TaskAnalyticsWindow>(
+                    value: TaskAnalyticsWindow.yearly,
+                    label: 'Year',
+                  ),
+                  AnalyticsWindowOption<TaskAnalyticsWindow>(
+                    value: TaskAnalyticsWindow.custom,
+                    label: 'Custom',
+                  ),
+                ],
+                onChanged: (window) {
+                  context.read<TaskAnalyticsBloc>().add(
+                    TaskAnalyticsWindowChanged(window),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              if (state.window == TaskAnalyticsWindow.custom) ...<Widget>[
+                CustomDateRangeSelector(
+                  startDate: _customStartDate(state),
+                  endDate: _customEndDate(state),
+                  onChanged: (startDate, endDate) {
                     context.read<TaskAnalyticsBloc>().add(
-                      TaskAnalyticsWindowChanged(selection.first),
+                      TaskAnalyticsCustomRangeChanged(
+                        startDate: startDate,
+                        endDate: endDate,
+                      ),
                     );
                   },
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
+              ],
               if (analytics != null) ...<Widget>[
                 GridView.count(
                   crossAxisCount: MediaQuery.of(context).size.width >= 1100
@@ -228,6 +253,10 @@ class TaskAnalyticsPage extends StatelessWidget {
   }
 
   String _trendDescription(TaskAnalyticsData analytics) {
+    if (analytics.window == TaskAnalyticsWindow.custom) {
+      return 'Bottom labels follow the selected custom date range.';
+    }
+
     if (_usesMonthlyTrendLabels(analytics)) {
       return 'Bottom labels show month buckets across the selected year.';
     }
@@ -255,6 +284,14 @@ class TaskAnalyticsPage extends StatelessWidget {
 
   bool _usesMonthlyTrendLabels(TaskAnalyticsData analytics) {
     return analytics.window == TaskAnalyticsWindow.yearly;
+  }
+
+  DateTime _customStartDate(TaskAnalyticsState state) {
+    return state.customStartDate ?? DateTime.now().startOfWeek;
+  }
+
+  DateTime _customEndDate(TaskAnalyticsState state) {
+    return state.customEndDate ?? DateTime.now().endOfWeek;
   }
 
   Widget _buildTrendBottomLabel(

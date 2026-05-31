@@ -9,6 +9,8 @@ class ExpenseAnalyticsState extends Equatable {
     this.status = ExpenseAnalyticsStatus.initial,
     this.window = ExpenseAnalyticsWindow.monthly,
     this.selectedBankId,
+    this.customStartDate,
+    this.customEndDate,
     this.analytics,
     this.errorMessage,
   });
@@ -16,6 +18,8 @@ class ExpenseAnalyticsState extends Equatable {
   final ExpenseAnalyticsStatus status;
   final ExpenseAnalyticsWindow window;
   final int? selectedBankId;
+  final DateTime? customStartDate;
+  final DateTime? customEndDate;
   final ExpenseAnalyticsData? analytics;
   final String? errorMessage;
 
@@ -24,6 +28,8 @@ class ExpenseAnalyticsState extends Equatable {
     ExpenseAnalyticsWindow? window,
     int? selectedBankId,
     bool clearBank = false,
+    DateTime? customStartDate,
+    DateTime? customEndDate,
     ExpenseAnalyticsData? analytics,
     String? errorMessage,
   }) {
@@ -31,6 +37,8 @@ class ExpenseAnalyticsState extends Equatable {
       status: status ?? this.status,
       window: window ?? this.window,
       selectedBankId: clearBank ? null : selectedBankId ?? this.selectedBankId,
+      customStartDate: customStartDate ?? this.customStartDate,
+      customEndDate: customEndDate ?? this.customEndDate,
       analytics: analytics ?? this.analytics,
       errorMessage: errorMessage,
     );
@@ -41,6 +49,8 @@ class ExpenseAnalyticsState extends Equatable {
     status,
     window,
     selectedBankId,
+    customStartDate,
+    customEndDate,
     analytics,
     errorMessage,
   ];
@@ -77,6 +87,19 @@ class ExpenseAnalyticsBankChanged extends ExpenseAnalyticsEvent {
   List<Object?> get props => <Object?>[bankId];
 }
 
+class ExpenseAnalyticsCustomRangeChanged extends ExpenseAnalyticsEvent {
+  const ExpenseAnalyticsCustomRangeChanged({
+    required this.startDate,
+    required this.endDate,
+  });
+
+  final DateTime startDate;
+  final DateTime endDate;
+
+  @override
+  List<Object?> get props => <Object?>[startDate, endDate];
+}
+
 class ExpenseAnalyticsBloc
     extends Bloc<ExpenseAnalyticsEvent, ExpenseAnalyticsState> {
   ExpenseAnalyticsBloc(this._repository)
@@ -84,6 +107,7 @@ class ExpenseAnalyticsBloc
     on<ExpenseAnalyticsRequested>(_onRequested);
     on<ExpenseAnalyticsWindowChanged>(_onWindowChanged);
     on<ExpenseAnalyticsBankChanged>(_onBankChanged);
+    on<ExpenseAnalyticsCustomRangeChanged>(_onCustomRangeChanged);
   }
 
   final ExpenseRepository _repository;
@@ -97,6 +121,8 @@ class ExpenseAnalyticsBloc
       final analytics = await _repository.loadAnalytics(
         window: state.window,
         bankId: state.selectedBankId,
+        customStartDate: state.customStartDate,
+        customEndDate: state.customEndDate,
       );
       emit(
         state.copyWith(
@@ -120,6 +146,26 @@ class ExpenseAnalyticsBloc
     Emitter<ExpenseAnalyticsState> emit,
   ) {
     emit(state.copyWith(window: event.window));
+    add(const ExpenseAnalyticsRequested());
+  }
+
+  void _onCustomRangeChanged(
+    ExpenseAnalyticsCustomRangeChanged event,
+    Emitter<ExpenseAnalyticsState> emit,
+  ) {
+    final startDate = event.startDate.isAfter(event.endDate)
+        ? event.endDate
+        : event.startDate;
+    final endDate = event.startDate.isAfter(event.endDate)
+        ? event.startDate
+        : event.endDate;
+    emit(
+      state.copyWith(
+        window: ExpenseAnalyticsWindow.custom,
+        customStartDate: startDate,
+        customEndDate: endDate,
+      ),
+    );
     add(const ExpenseAnalyticsRequested());
   }
 

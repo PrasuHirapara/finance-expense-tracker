@@ -215,22 +215,49 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
   }
 
   ExpenseSplitDraft? _buildDraft() {
-    final participants = <ExpenseSplitParticipant>[];
-    for (var index = 0; index < _participants.length; index++) {
-      final item = _participants[index];
+    final expectedTotalMinorUnits = _toMinorUnits(widget.totalAmount);
+    final amountMinorUnits = <int>[];
+    final participantNames = <String>[];
+    var totalMinorUnits = 0;
+
+    for (final item in _participants) {
       final name = item.nameController.text.trim();
       final amount = _parseValue(item.amountController.text);
-      final percentage = widget.totalAmount <= 0
-          ? 0.0
-          : _roundValue((amount / widget.totalAmount) * 100);
+      final minorUnits = _toMinorUnits(amount);
       if (name.isEmpty) {
         _showError('Enter a name for every participant.');
         return null;
       }
+      participantNames.add(name);
+      amountMinorUnits.add(minorUnits);
+      totalMinorUnits += minorUnits;
+    }
+
+    if (totalMinorUnits != expectedTotalMinorUnits) {
+      _showError('Participant amounts must exactly match the expense amount.');
+      return null;
+    }
+
+    final participants = <ExpenseSplitParticipant>[];
+    var assignedPercentage = 0.0;
+    for (var index = 0; index < _participants.length; index++) {
+      final item = _participants[index];
+      final amount = _fromMinorUnits(amountMinorUnits[index]);
+      final isLast = index == _participants.length - 1;
+      final percentage = expectedTotalMinorUnits <= 0
+          ? 0.0
+          : isLast
+          ? _roundValue(100 - assignedPercentage)
+          : _roundValue(
+              (amountMinorUnits[index] / expectedTotalMinorUnits) * 100,
+            );
+      if (!isLast) {
+        assignedPercentage = _roundValue(assignedPercentage + percentage);
+      }
       participants.add(
         ExpenseSplitParticipant(
           id: item.id,
-          name: name,
+          name: participantNames[index],
           amount: _roundValue(amount),
           percentage: _roundValue(percentage),
           isSelf: item.isSelf,
@@ -240,23 +267,6 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
           sortOrder: index,
         ),
       );
-    }
-
-    final totalAmount = participants.fold<double>(
-      0,
-      (sum, item) => sum + item.amount,
-    );
-    final totalPercentage = participants.fold<double>(
-      0,
-      (sum, item) => sum + item.percentage,
-    );
-    if ((totalAmount - widget.totalAmount).abs() > 0.01) {
-      _showError('Participant amounts must exactly match the expense amount.');
-      return null;
-    }
-    if ((totalPercentage - 100).abs() > 0.01) {
-      _showError('Participant amounts must exactly match the expense amount.');
-      return null;
     }
 
     return ExpenseSplitDraft(
@@ -273,7 +283,7 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
   }
 
   double _parseValue(String value) =>
-      double.tryParse(value.replaceAll('%', '').trim()) ?? 0;
+      double.tryParse(value.replaceAll(RegExp(r'[^0-9.]'), '').trim()) ?? 0;
 
   String _formatNumber(double value) => _roundValue(value).toStringAsFixed(2);
 
@@ -287,7 +297,7 @@ class _ExpenseSplitEditorPageState extends State<_ExpenseSplitEditorPage> {
   Widget build(BuildContext context) {
     final amountTotal = _participants.fold<double>(
       0,
-      (sum, item) => sum + (double.tryParse(item.amountController.text) ?? 0),
+      (sum, item) => sum + _parseValue(item.amountController.text),
     );
 
     return Scaffold(

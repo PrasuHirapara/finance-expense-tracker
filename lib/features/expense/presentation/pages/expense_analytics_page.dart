@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/formatters/indian_number_formatter.dart';
+import '../../../../core/extensions/date_time_x.dart';
 import '../../../../domain/entities/analytics_models.dart';
 import '../../../../presentation/widgets/charts/borrowed_lent_bar_chart.dart';
 import '../../../../presentation/widgets/charts/category_pie_chart.dart';
 import '../../../../presentation/widgets/charts/trend_line_chart.dart';
+import '../../../../shared/widgets/analytics_window_selector.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_select_field.dart';
+import '../../../../shared/widgets/custom_date_range_selector.dart';
 import '../../domain/models/expense_models.dart';
 import '../blocs/bank/bank_bloc.dart';
 import '../blocs/expense_analytics/expense_analytics_bloc.dart';
@@ -41,26 +44,51 @@ class ExpenseAnalyticsPage extends StatelessWidget {
               return ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                 children: <Widget>[
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SegmentedButton<ExpenseAnalyticsWindow>(
-                      segments: ExpenseAnalyticsWindow.values
-                          .map(
-                            (window) => ButtonSegment<ExpenseAnalyticsWindow>(
-                              value: window,
-                              label: Text(window.label),
-                            ),
-                          )
-                          .toList(growable: false),
-                      selected: <ExpenseAnalyticsWindow>{state.window},
-                      onSelectionChanged: (selection) {
+                  AnalyticsWindowSelector<ExpenseAnalyticsWindow>(
+                    selectedValue: state.window,
+                    options: const <AnalyticsWindowOption<
+                      ExpenseAnalyticsWindow
+                    >>[
+                      AnalyticsWindowOption<ExpenseAnalyticsWindow>(
+                        value: ExpenseAnalyticsWindow.weekly,
+                        label: 'Week',
+                      ),
+                      AnalyticsWindowOption<ExpenseAnalyticsWindow>(
+                        value: ExpenseAnalyticsWindow.monthly,
+                        label: 'Month',
+                      ),
+                      AnalyticsWindowOption<ExpenseAnalyticsWindow>(
+                        value: ExpenseAnalyticsWindow.yearly,
+                        label: 'Year',
+                      ),
+                      AnalyticsWindowOption<ExpenseAnalyticsWindow>(
+                        value: ExpenseAnalyticsWindow.custom,
+                        label: 'Custom',
+                      ),
+                    ],
+                    onChanged: (window) {
+                      context.read<ExpenseAnalyticsBloc>().add(
+                        ExpenseAnalyticsWindowChanged(window),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  if (state.window ==
+                      ExpenseAnalyticsWindow.custom) ...<Widget>[
+                    CustomDateRangeSelector(
+                      startDate: _customStartDate(state),
+                      endDate: _customEndDate(state),
+                      onChanged: (startDate, endDate) {
                         context.read<ExpenseAnalyticsBloc>().add(
-                          ExpenseAnalyticsWindowChanged(selection.first),
+                          ExpenseAnalyticsCustomRangeChanged(
+                            startDate: startDate,
+                            endDate: endDate,
+                          ),
                         );
                       },
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
+                  ],
                   AppSelectField<int?>(
                     label: 'Bank filter',
                     value: state.selectedBankId,
@@ -274,6 +302,10 @@ class ExpenseAnalyticsPage extends StatelessWidget {
   }
 
   String _trendDescription(ExpenseAnalyticsData analytics) {
+    if (analytics.window == ExpenseAnalyticsWindow.custom) {
+      return 'Bottom labels follow the selected custom date range.';
+    }
+
     if (_usesYearlyTrendLabels(analytics)) {
       return 'Bottom labels show month buckets across the selected year.';
     }
@@ -312,6 +344,14 @@ class ExpenseAnalyticsPage extends StatelessWidget {
 
   bool _usesWeeklyTrendLabels(ExpenseAnalyticsData analytics) {
     return analytics.window == ExpenseAnalyticsWindow.weekly;
+  }
+
+  DateTime _customStartDate(ExpenseAnalyticsState state) {
+    return state.customStartDate ?? DateTime.now().startOfWeek;
+  }
+
+  DateTime _customEndDate(ExpenseAnalyticsState state) {
+    return state.customEndDate ?? DateTime.now().endOfWeek;
   }
 
   Widget _buildTrendBottomLabel(

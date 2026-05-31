@@ -98,6 +98,21 @@ class TaskChecklistItemCompletionChanged extends TaskEvent {
   List<Object?> get props => <Object?>[taskId, index, isCompleted];
 }
 
+class TaskChecklistItemTitleChanged extends TaskEvent {
+  const TaskChecklistItemTitleChanged({
+    required this.taskId,
+    required this.index,
+    required this.title,
+  });
+
+  final int taskId;
+  final int index;
+  final String title;
+
+  @override
+  List<Object?> get props => <Object?>[taskId, index, title];
+}
+
 class _TasksUpdated extends TaskEvent {
   const _TasksUpdated(this.tasks);
 
@@ -114,6 +129,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     on<TaskCompletionChanged>(_onCompletionChanged);
     on<TaskDeleted>(_onDeleted);
     on<TaskChecklistItemCompletionChanged>(_onChecklistItemCompletionChanged);
+    on<TaskChecklistItemTitleChanged>(_onChecklistItemTitleChanged);
     on<_TasksUpdated>(_onTasksUpdated);
   }
 
@@ -161,6 +177,17 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       taskId: event.taskId,
       index: event.index,
       isCompleted: event.isCompleted,
+    );
+  }
+
+  Future<void> _onChecklistItemTitleChanged(
+    TaskChecklistItemTitleChanged event,
+    Emitter<TaskState> emit,
+  ) async {
+    await _repository.setChecklistItemTitle(
+      taskId: event.taskId,
+      index: event.index,
+      title: event.title,
     );
   }
 

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/formatters/indian_number_formatter.dart';
 import '../../../domain/entities/analytics_models.dart';
 
 class CategoryPieChart extends StatefulWidget {
@@ -52,6 +53,7 @@ class _CategoryPieChartState extends State<CategoryPieChart> {
 
         final legend = _LegendList(
           data: widget.data,
+          total: total,
           selectedIndex: _selectedIndex,
           onItemTap: _toggleSelection,
         );
@@ -118,8 +120,6 @@ class _PieBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return AspectRatio(
       aspectRatio: 1,
       child: LayoutBuilder(
@@ -155,29 +155,13 @@ class _PieBody extends StatelessWidget {
                     .map((entry) {
                       final index = entry.key;
                       final item = entry.value;
-                      final percentage = item.amount / total * 100;
                       final isSelected = selectedIndex == index;
-                      final showTitle = isSelected || percentage >= 5;
 
                       return PieChartSectionData(
                         value: item.amount,
                         color: Color(item.colorValue),
                         radius: isSelected ? activeRadius : baseRadius,
-                        title: showTitle ? _formatPercentage(percentage) : '',
-                        titlePositionPercentageOffset: 0.66,
-                        titleStyle: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onPrimary,
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          shadows: const <Shadow>[
-                            Shadow(
-                              blurRadius: 3,
-                              color: Color(0x66000000),
-                              offset: Offset(0, 1),
-                            ),
-                          ],
-                        ),
+                        title: '',
                       );
                     })
                     .toList(growable: false),
@@ -188,23 +172,18 @@ class _PieBody extends StatelessWidget {
       ),
     );
   }
-
-  String _formatPercentage(double value) {
-    if (value >= 10) {
-      return '${value.toStringAsFixed(1)}%';
-    }
-    return '${value.toStringAsFixed(2)}%';
-  }
 }
 
 class _LegendList extends StatelessWidget {
   const _LegendList({
     required this.data,
+    required this.total,
     required this.selectedIndex,
     required this.onItemTap,
   });
 
   final List<CategorySpend> data;
+  final double total;
   final int? selectedIndex;
   final ValueChanged<int> onItemTap;
 
@@ -233,13 +212,17 @@ class _LegendList extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(2),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -248,10 +231,43 @@ class _LegendList extends StatelessWidget {
                         item.categoryName,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
+                        softWrap: true,
                         style: itemStyle?.copyWith(
                           fontWeight: isSelected
                               ? FontWeight.w700
                               : itemStyle.fontWeight,
+                          color: isSelected
+                              ? color
+                              : theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 58,
+                      child: Text(
+                        _formatPercentage(item.amount / total * 100),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: isSelected
+                              ? color
+                              : theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 82,
+                      child: Text(
+                        IndianNumberFormatter.formatCompact(item.amount),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
                           color: isSelected
                               ? color
                               : theme.colorScheme.onSurface,
@@ -265,5 +281,12 @@ class _LegendList extends StatelessWidget {
           })
           .toList(growable: false),
     );
+  }
+
+  String _formatPercentage(double value) {
+    if (value >= 10) {
+      return '${value.toStringAsFixed(1)}%';
+    }
+    return '${value.toStringAsFixed(2)}%';
   }
 }

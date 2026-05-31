@@ -370,8 +370,9 @@ class _CredentialListCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   credential.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                  overflow: TextOverflow.visible,
+                  softWrap: true,
                   style: theme.textTheme.titleLarge,
                 ),
               ),
@@ -420,41 +421,47 @@ class _CredentialInsightsPanel extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
+              Icon(Icons.security_rounded, color: theme.colorScheme.primary),
+              const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      'Security & Expiry Check',
-                      style: theme.textTheme.titleLarge,
-                    ),
-                  ],
+                child: Text(
+                  'Security & Expiry Check',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleLarge,
                 ),
               ),
-              FilledButton.tonalIcon(
-                onPressed: isLoading
-                    ? null
-                    : () {
-                        if (report == null) {
-                          onUnlock();
-                        } else {
-                          onClose();
-                        }
-                      },
-                icon: isLoading
-                    ? const SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        report == null
-                            ? Icons.shield_outlined
-                            : Icons.close_rounded,
-                      ),
-                label: Text(report == null ? 'Unlock' : 'Close'),
-              ),
             ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.tonalIcon(
+              onPressed: isLoading
+                  ? null
+                  : () {
+                      if (report == null) {
+                        onUnlock();
+                      } else {
+                        onClose();
+                      }
+                    },
+              icon: isLoading
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      report == null
+                          ? Icons.lock_open_rounded
+                          : Icons.close_rounded,
+                    ),
+              label: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(report == null ? 'Unlock' : 'Close'),
+              ),
+            ),
           ),
           if (report != null) ...<Widget>[
             const SizedBox(height: 16),

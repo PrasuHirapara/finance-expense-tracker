@@ -241,6 +241,52 @@ class TaskRepository {
     );
   }
 
+  Future<void> setChecklistItemTitle({
+    required int taskId,
+    required int index,
+    required String title,
+  }) async {
+    final trimmedTitle = title.trim();
+    if (trimmedTitle.isEmpty) {
+      return;
+    }
+
+    final row = await (_database.select(
+      _database.dbTasks,
+    )..where((table) => table.id.equals(taskId))).getSingleOrNull();
+    if (row == null) {
+      return;
+    }
+
+    final content = _decodeTaskContent(row.description);
+    if (index < 0 || index >= content.checklist.length) {
+      return;
+    }
+
+    final updatedChecklist = content.checklist
+        .asMap()
+        .entries
+        .map(
+          (entry) => entry.key == index
+              ? entry.value.copyWith(title: trimmedTitle)
+              : entry.value,
+        )
+        .toList(growable: false);
+
+    await (_database.update(
+      _database.dbTasks,
+    )..where((table) => table.id.equals(taskId))).write(
+      DbTasksCompanion(
+        description: Value(
+          _encodeTaskContent(
+            description: content.description,
+            checklist: updatedChecklist,
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> ensureDailyTasksThroughDate(DateTime selectedDate) async {
     await ensureDailyTasksForDate(selectedDate);
   }
@@ -319,12 +365,20 @@ class TaskRepository {
   Future<TaskAnalyticsData> loadAnalytics({
     required DateTime focusDate,
     required TaskAnalyticsWindow window,
+    DateTime? customStartDate,
+    DateTime? customEndDate,
   }) async {
-    await ensureDailyTasksThroughDate(focusDate);
+    await ensureDailyTasksThroughDate(customEndDate ?? focusDate);
     final tasks = await (_database.select(
       _database.dbTasks,
     )..orderBy([(table) => OrderingTerm.desc(table.taskDate)])).get();
-    final range = _resolveRange(window, focusDate);
+    final customStart = (customStartDate ?? focusDate.startOfWeek).startOfDay;
+    final customEnd = (customEndDate ?? focusDate.endOfWeek).endOfDay;
+    final range = window == TaskAnalyticsWindow.custom
+        ? customStart.isAfter(customEnd)
+              ? _TaskDateRange(customEnd.startOfDay, customStart.endOfDay)
+              : _TaskDateRange(customStart, customEnd)
+        : _resolveRange(window, focusDate);
     final tasksInRange = tasks
         .where(
           (task) =>
@@ -548,6 +602,8 @@ class TaskRepository {
         return _TaskDateRange(anchorDate.startOfMonth, anchorDate.endOfMonth);
       case TaskAnalyticsWindow.yearly:
         return _TaskDateRange(anchorDate.startOfYear, anchorDate.endOfYear);
+      case TaskAnalyticsWindow.custom:
+        return _TaskDateRange(anchorDate.startOfMonth, anchorDate.endOfDay);
     }
   }
 }

@@ -32,10 +32,7 @@ class _AddEntryView extends StatelessWidget {
       listenWhen: (previous, current) => previous.status != current.status,
       listener: (context, state) {
         if (state.status == AddEntryFormStatus.success) {
-          showAppSnackBar(
-            context,
-            message: 'Entry added successfully.',
-          );
+          showAppSnackBar(context, message: 'Entry added successfully.');
           Navigator.of(context).pop(true);
           return;
         }
@@ -121,6 +118,7 @@ class _AddEntryView extends StatelessWidget {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<int>(
                       initialValue: formState.selectedCategoryId,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
                       decoration: InputDecoration(
                         labelText: 'Category',
                         errorText:
@@ -142,6 +140,7 @@ class _AddEntryView extends StatelessWidget {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       initialValue: formState.paymentMode,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
                       decoration: const InputDecoration(
                         labelText: 'Payment Mode',
                       ),

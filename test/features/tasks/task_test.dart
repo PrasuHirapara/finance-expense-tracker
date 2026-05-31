@@ -59,7 +59,16 @@ void main() {
         index: 99,
         isCompleted: true,
       );
+      await repository.setChecklistItemTitle(
+        taskId: todayTasks.single.id,
+        index: 0,
+        title: 'Review today calendar',
+      );
       final reloadedToday = await repository.loadTasksBetween(today, today);
+      expect(
+        reloadedToday.single.checklist.single.title,
+        'Review today calendar',
+      );
       expect(reloadedToday.single.checklist.single.isCompleted, isFalse);
     });
 

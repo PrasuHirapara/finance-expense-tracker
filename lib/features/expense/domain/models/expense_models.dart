@@ -600,7 +600,7 @@ class ExpenseDashboardData extends Equatable {
   ];
 }
 
-enum ExpenseAnalyticsWindow { weekly, monthly, yearly }
+enum ExpenseAnalyticsWindow { weekly, monthly, yearly, custom }
 
 extension ExpenseAnalyticsWindowX on ExpenseAnalyticsWindow {
   String get label {
@@ -611,6 +611,8 @@ extension ExpenseAnalyticsWindowX on ExpenseAnalyticsWindow {
         return 'Month';
       case ExpenseAnalyticsWindow.yearly:
         return 'Year';
+      case ExpenseAnalyticsWindow.custom:
+        return 'Custom';
     }
   }
 }

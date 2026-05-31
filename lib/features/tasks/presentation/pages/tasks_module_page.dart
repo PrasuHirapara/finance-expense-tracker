@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -7,6 +9,7 @@ import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/history_date_picker_dialog.dart';
 import '../../data/repositories/task_repository.dart';
+import '../../domain/models/task_models.dart';
 import '../blocs/tasks/task_bloc.dart';
 import '../widgets/task_date_selector.dart';
 
@@ -129,32 +132,10 @@ class TasksModulePage extends StatelessWidget {
                           if (task.checklist.isNotEmpty) ...<Widget>[
                             const SizedBox(height: 12),
                             ...task.checklist.asMap().entries.map(
-                              (entry) => CheckboxListTile(
-                                value: entry.value.isCompleted,
-                                dense: true,
-                                contentPadding: EdgeInsets.zero,
-                                controlAffinity:
-                                    ListTileControlAffinity.leading,
-                                title: Text(
-                                  entry.value.title,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    decoration: entry.value.isCompleted
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                    color: entry.value.isCompleted
-                                        ? theme.colorScheme.onSurfaceVariant
-                                        : theme.colorScheme.onSurface,
-                                  ),
-                                ),
-                                onChanged: (value) {
-                                  context.read<TaskBloc>().add(
-                                    TaskChecklistItemCompletionChanged(
-                                      taskId: task.id,
-                                      index: entry.key,
-                                      isCompleted: value ?? false,
-                                    ),
-                                  );
-                                },
+                              (entry) => _EditableChecklistItemRow(
+                                taskId: task.id,
+                                index: entry.key,
+                                item: entry.value,
                               ),
                             ),
                           ],
@@ -248,6 +229,144 @@ class TasksModulePage extends StatelessWidget {
     }
 
     context.read<TaskBloc>().add(TasksDateSelected(selectedDate));
+  }
+}
+
+class _EditableChecklistItemRow extends StatelessWidget {
+  const _EditableChecklistItemRow({
+    required this.taskId,
+    required this.index,
+    required this.item,
+  });
+
+  final int taskId;
+  final int index;
+  final TaskChecklistItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Checkbox(
+            value: item.isCompleted,
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            onChanged: (value) {
+              context.read<TaskBloc>().add(
+                TaskChecklistItemCompletionChanged(
+                  taskId: taskId,
+                  index: index,
+                  isCompleted: value ?? false,
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _EditableChecklistTitleField(
+              taskId: taskId,
+              index: index,
+              item: item,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditableChecklistTitleField extends StatefulWidget {
+  const _EditableChecklistTitleField({
+    required this.taskId,
+    required this.index,
+    required this.item,
+  });
+
+  final int taskId;
+  final int index;
+  final TaskChecklistItem item;
+
+  @override
+  State<_EditableChecklistTitleField> createState() =>
+      _EditableChecklistTitleFieldState();
+}
+
+class _EditableChecklistTitleFieldState
+    extends State<_EditableChecklistTitleField> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+  Timer? _saveDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.item.title);
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void didUpdateWidget(covariant _EditableChecklistTitleField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_focusNode.hasFocus && widget.item.title != _controller.text) {
+      _controller.text = widget.item.title;
+    }
+  }
+
+  @override
+  void dispose() {
+    _saveDebounce?.cancel();
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _queueSave(String value) {
+    _saveDebounce?.cancel();
+    if (value.trim().isEmpty) {
+      return;
+    }
+    _saveDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) {
+        return;
+      }
+      context.read<TaskBloc>().add(
+        TaskChecklistItemTitleChanged(
+          taskId: widget.taskId,
+          index: widget.index,
+          title: value,
+        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return TextField(
+      controller: _controller,
+      focusNode: _focusNode,
+      minLines: 1,
+      maxLines: 2,
+      textInputAction: TextInputAction.done,
+      decoration: const InputDecoration(
+        labelText: 'Sub-task title',
+        isDense: true,
+        contentPadding: EdgeInsets.fromLTRB(14, 12, 14, 12),
+      ),
+      style: theme.textTheme.bodyMedium?.copyWith(
+        decoration: widget.item.isCompleted ? TextDecoration.lineThrough : null,
+        color: widget.item.isCompleted
+            ? theme.colorScheme.onSurfaceVariant
+            : theme.colorScheme.onSurface,
+      ),
+      onChanged: _queueSave,
+    );
   }
 }
 

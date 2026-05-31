@@ -637,6 +637,13 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
       _isUpdatingAutoBackup = true;
     });
     try {
+      if (enabled) {
+        await _maybeShowBatteryOptimizationDialog(context);
+        if (!context.mounted) {
+          return;
+        }
+      }
+
       await context.read<AutoBackupSchedulerService>().setAutoBackupEnabled(
         enabled,
       );
@@ -648,7 +655,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
         message: enabled ? 'Auto Backup enabled.' : 'Auto Backup disabled.',
       );
       if (enabled) {
-        await _maybeShowBatteryOptimizationDialog(context);
+        await _syncNow();
       } else {
         await _maybeShowRestoreBatteryOptimizationDialog(context);
       }
@@ -739,9 +746,9 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     if (!batteryOptimizationService.isSupported) {
       return;
     }
-    final isEnabled = await batteryOptimizationService
-        .isBatteryOptimizationEnabled();
-    if (!isEnabled || !context.mounted) {
+    final isIgnoringOptimization = await batteryOptimizationService
+        .isIgnoringBatteryOptimization();
+    if (isIgnoringOptimization || !context.mounted) {
       return;
     }
 

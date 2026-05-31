@@ -47,8 +47,7 @@ class AppSelectField<T> extends StatelessWidget {
           enabled: enabled,
           labelText: label,
           errorText: errorText,
-          // Remove dropdown arrow icon for a cleaner look
-          // suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded),
+          suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded),
         ),
         child: Row(
           children: <Widget>[

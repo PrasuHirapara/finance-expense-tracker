@@ -215,23 +215,25 @@ class _ChecklistSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.42,
+        ),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Checklist', style: Theme.of(context).textTheme.titleMedium),
+          Text('Checklist', style: theme.textTheme.titleMedium),
           const SizedBox(height: 6),
           Text(
             'Add subtasks for shopping, study, or work steps.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 14),
@@ -239,6 +241,7 @@ class _ChecklistSection extends StatelessWidget {
             (entry) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
                   const Icon(Icons.checklist_rounded, size: 20),
                   const SizedBox(width: 10),
@@ -247,7 +250,14 @@ class _ChecklistSection extends StatelessWidget {
                       initialValue: entry.value.title,
                       decoration: InputDecoration(
                         labelText: 'Checklist item ${entry.key + 1}',
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                       ),
+                      style: theme.textTheme.bodyMedium,
+                      textAlignVertical: TextAlignVertical.center,
                       onChanged: (value) => context.read<TaskEditorBloc>().add(
                         TaskChecklistItemChanged(
                           index: entry.key,

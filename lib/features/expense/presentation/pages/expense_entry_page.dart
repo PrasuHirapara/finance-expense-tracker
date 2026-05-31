@@ -168,7 +168,8 @@ class ExpenseEntryPage extends StatelessWidget {
                     ExpenseCategoryChanged(value),
                   ),
                 ),
-                if (state.type == 'expense' && !state.isSelfTransfer) ...<Widget>[
+                if (state.type == 'expense' &&
+                    !state.isSelfTransfer) ...<Widget>[
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
@@ -382,14 +383,15 @@ class ExpenseEntryPage extends StatelessWidget {
                       return;
                     }
 
-                    final result = await Navigator.of(context).push<SelfTransferDraft>(
-                      MaterialPageRoute<SelfTransferDraft>(
-                        builder: (_) => SelfTransferPage(
-                          banks: state.banks,
-                          initialDraft: state.selfTransferDraft,
-                        ),
-                      ),
-                    );
+                    final result = await Navigator.of(context)
+                        .push<SelfTransferDraft>(
+                          MaterialPageRoute<SelfTransferDraft>(
+                            builder: (_) => SelfTransferPage(
+                              banks: state.banks,
+                              initialDraft: state.selfTransferDraft,
+                            ),
+                          ),
+                        );
                     if (result != null && context.mounted) {
                       context.read<ExpenseFormBloc>().add(
                         ExpenseSelfTransferDraftChanged(result),
@@ -506,11 +508,7 @@ class ExpenseEntryPage extends StatelessWidget {
 }
 
 class SelfTransferPage extends StatefulWidget {
-  const SelfTransferPage({
-    super.key,
-    required this.banks,
-    this.initialDraft,
-  });
+  const SelfTransferPage({super.key, required this.banks, this.initialDraft});
 
   final List<BankName> banks;
   final SelfTransferDraft? initialDraft;

@@ -1,5 +1,6 @@
 import '../../features/credentials/data/services/credential_service.dart';
 import '../../features/expense/data/repositories/expense_repository.dart';
+import '../../features/investment/data/repositories/investment_repository.dart';
 import '../../features/tasks/data/repositories/task_category_repository.dart';
 import '../../features/tasks/data/repositories/task_repository.dart';
 import 'app_settings_repository.dart';
@@ -11,6 +12,7 @@ class AppDataResetService {
   AppDataResetService({
     required CredentialService credentialService,
     required ExpenseRepository expenseRepository,
+    required InvestmentRepository investmentRepository,
     required TaskRepository taskRepository,
     required TaskCategoryRepository taskCategoryRepository,
     required ReminderSettingsRepository reminderSettingsRepository,
@@ -19,6 +21,7 @@ class AppDataResetService {
     required CloudSyncService cloudSyncService,
   }) : _credentialService = credentialService,
        _expenseRepository = expenseRepository,
+       _investmentRepository = investmentRepository,
        _taskRepository = taskRepository,
        _taskCategoryRepository = taskCategoryRepository,
        _reminderSettingsRepository = reminderSettingsRepository,
@@ -28,6 +31,7 @@ class AppDataResetService {
 
   final CredentialService _credentialService;
   final ExpenseRepository _expenseRepository;
+  final InvestmentRepository _investmentRepository;
   final TaskRepository _taskRepository;
   final TaskCategoryRepository _taskCategoryRepository;
   final ReminderSettingsRepository _reminderSettingsRepository;
@@ -38,6 +42,7 @@ class AppDataResetService {
   Future<void> deleteAllData() async {
     await _credentialService.deleteAllCredentials();
     await _expenseRepository.clearSectionData();
+    await _investmentRepository.clearSectionData();
     await _taskRepository.clearSectionData();
     await _taskCategoryRepository.resetToDefaults();
     await _reminderSettingsRepository.resetExpenseReminder();

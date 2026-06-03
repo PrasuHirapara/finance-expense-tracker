@@ -11,7 +11,7 @@ class CloudSyncProtocol {
   static const String encryptedPayloadAlgorithm = 'aes-256-gcm-pbkdf2-sha256';
 }
 
-enum CloudSyncDomain { credential, expense, task, settings }
+enum CloudSyncDomain { credential, expense, task, investment, settings }
 
 extension CloudSyncDomainX on CloudSyncDomain {
   String get folderName {
@@ -22,6 +22,8 @@ extension CloudSyncDomainX on CloudSyncDomain {
         return 'Expense';
       case CloudSyncDomain.task:
         return 'Task';
+      case CloudSyncDomain.investment:
+        return 'Investment';
       case CloudSyncDomain.settings:
         return 'Settings';
     }
@@ -35,6 +37,8 @@ extension CloudSyncDomainX on CloudSyncDomain {
         return 'expense.json';
       case CloudSyncDomain.task:
         return 'task.json';
+      case CloudSyncDomain.investment:
+        return 'investment.json';
       case CloudSyncDomain.settings:
         return 'settings.json';
     }
@@ -227,6 +231,8 @@ class CloudBackupBundle extends Equatable {
     required this.taskPayload,
     required this.settingsPayload,
     required this.containsSettingsPayload,
+    required this.investmentPayload,
+    required this.containsInvestmentPayload,
   });
 
   final CloudSyncManifest manifest;
@@ -236,6 +242,8 @@ class CloudBackupBundle extends Equatable {
   final String taskPayload;
   final String settingsPayload;
   final bool containsSettingsPayload;
+  final String investmentPayload;
+  final bool containsInvestmentPayload;
 
   @override
   List<Object?> get props => <Object?>[
@@ -246,6 +254,8 @@ class CloudBackupBundle extends Equatable {
     taskPayload,
     settingsPayload,
     containsSettingsPayload,
+    investmentPayload,
+    containsInvestmentPayload,
   ];
 }
 

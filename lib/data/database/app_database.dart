@@ -115,6 +115,64 @@ class DbCredentials extends Table {
       dateTime().clientDefault(() => DateTime.now())();
 }
 
+class DbInvestmentCategories extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().unique()();
+  IntColumn get iconCodePoint => integer()();
+  IntColumn get colorValue => integer()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+  DateTimeColumn get updatedAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+}
+
+class DbInvestmentTaxProfiles extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get brokerName => text().unique()();
+  RealColumn get sttBuyPct => real()();
+  RealColumn get sttSellPct => real()();
+  RealColumn get exchangeChargePct => real()();
+  RealColumn get sebiChargePct => real()();
+  RealColumn get stampDutyPct => real()();
+  RealColumn get gstPct => real()();
+  RealColumn get brokeragePct => real()();
+  RealColumn get brokerageFlat => real()();
+  BoolColumn get brokerageMinOfBoth => boolean()();
+  RealColumn get dpChargePerScrip => real()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+  DateTimeColumn get updatedAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+}
+
+class DbInvestmentEntries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get categoryId => integer().references(DbInvestmentCategories, #id)();
+  TextColumn get symbol => text()();
+  RealColumn get qty => real()();
+  DateTimeColumn get buyDate => dateTime()();
+  RealColumn get buyRate => real()();
+  RealColumn get buyAmt => real()();
+  IntColumn get taxProfileId => integer().nullable().references(DbInvestmentTaxProfiles, #id)();
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+  DateTimeColumn get updatedAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+}
+
+class DbSellEntries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get buyEntryId => integer().references(DbInvestmentEntries, #id)();
+  TextColumn get symbol => text()();
+  RealColumn get sellQty => real()();
+  DateTimeColumn get sellDate => dateTime()();
+  RealColumn get sellRate => real()();
+  RealColumn get sellAmt => real()();
+  DateTimeColumn get createdAt =>
+      dateTime().clientDefault(() => DateTime.now())();
+}
+
 @DriftDatabase(
   tables: <Type>[
     DbCategories,
@@ -126,6 +184,10 @@ class DbCredentials extends Table {
     DbBorrowedSettlements,
     DbTasks,
     DbCredentials,
+    DbInvestmentCategories,
+    DbInvestmentTaxProfiles,
+    DbInvestmentEntries,
+    DbSellEntries,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -134,7 +196,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.test(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -163,6 +225,12 @@ class AppDatabase extends _$AppDatabase {
           dbFinanceEntries,
           dbFinanceEntries.entryDay as GeneratedColumn<Object>,
         );
+      }
+      if (from < 7) {
+        await m.createTable(dbInvestmentCategories);
+        await m.createTable(dbInvestmentTaxProfiles);
+        await m.createTable(dbInvestmentEntries);
+        await m.createTable(dbSellEntries);
       }
     },
   );

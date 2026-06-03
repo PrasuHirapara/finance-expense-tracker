@@ -51,7 +51,6 @@ class AppSelectField<T> extends StatelessWidget {
         ),
         child: Row(
           children: <Widget>[
-            // Remove leading icon from selected view
             Expanded(
               child: Text(
                 selectedOption?.label ?? hintText ?? 'Select',
@@ -79,18 +78,26 @@ class AppSelectField<T> extends StatelessWidget {
     }
 
     final origin = box.localToGlobal(Offset.zero, ancestor: overlay);
+    final fieldBottom = origin.dy + box.size.height;
+
+    // Calculate available space below the field and cap menu height so it
+    // stays below the widget without Flutter flipping it upward.
+    final spaceBelow = overlay.size.height - fieldBottom;
+    final menuMaxHeight = (spaceBelow - 16).clamp(120.0, 320.0);
+
     final selectedIndex = await showMenu<int>(
       context: context,
       position: RelativeRect.fromLTRB(
         origin.dx,
-        origin.dy + box.size.height,
+        fieldBottom,
         overlay.size.width - origin.dx - box.size.width,
-        overlay.size.height - origin.dy,
+        // Set bottom so the menu is constrained to menuMaxHeight below the field.
+        overlay.size.height - fieldBottom - menuMaxHeight,
       ),
       constraints: BoxConstraints(
         minWidth: box.size.width,
         maxWidth: box.size.width,
-        maxHeight: 320,
+        maxHeight: menuMaxHeight,
       ),
       items: options
           .asMap()
@@ -99,10 +106,20 @@ class AppSelectField<T> extends StatelessWidget {
               index,
               PopupMenuItem<int>(
                 value: index,
-                child: Text(
-                  option.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Row(
+                  children: <Widget>[
+                    if (option.leading != null) ...[
+                      option.leading!,
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: Text(
+                        option.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

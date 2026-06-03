@@ -51,6 +51,10 @@ class CloudSyncPayloadService {
     bool encryptCredentialTitlesForCloud = true,
     bool encryptNonCredentialPayloadsForCloud = true,
     bool includeCredentialsInBundle = true,
+    bool includeExpenseInBundle = true,
+    bool includeTasksInBundle = true,
+    bool includeInvestmentInBundle = true,
+    bool includeSettingsInBundle = true,
     AppCancellationToken? cancellationToken,
   }) async {
     final timestamp = exportedAt ?? DateTime.now();
@@ -91,6 +95,18 @@ class CloudSyncPayloadService {
       _reminderSettingsRepository.exportForCloud(),
       _appSettingsRepository.lastModifiedAt(),
       _reminderSettingsRepository.lastModifiedAt(),
+      (_database.select(
+        _database.dbInvestmentCategories,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
+      (_database.select(
+        _database.dbInvestmentTaxProfiles,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
+      (_database.select(
+        _database.dbInvestmentEntries,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
+      (_database.select(
+        _database.dbSellEntries,
+      )..orderBy([(table) => OrderingTerm.asc(table.id)])).get(),
     ]);
     cancellationToken?.throwIfCancelled();
     final categories = loadedData[0] as List<DbCategory>;
@@ -108,6 +124,10 @@ class CloudSyncPayloadService {
     final reminderSettings = loadedData[12] as Map<String, dynamic>;
     final appSettingsUpdatedAt = loadedData[13] as DateTime?;
     final reminderSettingsUpdatedAt = loadedData[14] as DateTime?;
+    final investmentCategories = loadedData[15] as List<DbInvestmentCategory>;
+    final investmentTaxProfiles = loadedData[16] as List<DbInvestmentTaxProfile>;
+    final investmentEntries = loadedData[17] as List<DbInvestmentEntry>;
+    final sellEntries = loadedData[18] as List<DbSellEntry>;
     final normalizedExpensePayload = _buildNormalizedExpensePayloadMaps(
       entries: entries,
       splitRecords: splitRecords,
@@ -134,54 +154,133 @@ class CloudSyncPayloadService {
           : const <Map<String, dynamic>>[],
     };
     final expenseHashSource = <String, dynamic>{
-      'categories': categories
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'name': item.name,
-              'iconCodePoint': item.iconCodePoint,
-              'colorValue': item.colorValue,
-              'createdAt': item.createdAt.toIso8601String(),
-            },
-          )
-          .toList(growable: false),
-      'banks': banks
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'name': item.name,
-              'createdAt': item.createdAt.toIso8601String(),
-            },
-          )
-          .toList(growable: false),
-      'entries': normalizedExpensePayload.entries,
-      'splitRecords': normalizedExpensePayload.splitRecords,
-      'splitParticipants': normalizedExpensePayload.splitParticipants,
-      'lentSettlements': normalizedExpensePayload.lentSettlements,
-      'borrowedSettlements': normalizedExpensePayload.borrowedSettlements,
+      'categories': includeExpenseInBundle
+          ? categories
+                .map(
+                  (item) => <String, dynamic>{
+                    'id': item.id,
+                    'name': item.name,
+                    'iconCodePoint': item.iconCodePoint,
+                    'colorValue': item.colorValue,
+                    'createdAt': item.createdAt.toIso8601String(),
+                  },
+                )
+                .toList(growable: false)
+          : const <Map<String, dynamic>>[],
+      'banks': includeExpenseInBundle
+          ? banks
+                .map(
+                  (item) => <String, dynamic>{
+                    'id': item.id,
+                    'name': item.name,
+                    'createdAt': item.createdAt.toIso8601String(),
+                  },
+                )
+                .toList(growable: false)
+          : const <Map<String, dynamic>>[],
+      'entries': includeExpenseInBundle ? normalizedExpensePayload.entries : const <Map<String, dynamic>>[],
+      'splitRecords': includeExpenseInBundle ? normalizedExpensePayload.splitRecords : const <Map<String, dynamic>>[],
+      'splitParticipants': includeExpenseInBundle ? normalizedExpensePayload.splitParticipants : const <Map<String, dynamic>>[],
+      'lentSettlements': includeExpenseInBundle ? normalizedExpensePayload.lentSettlements : const <Map<String, dynamic>>[],
+      'borrowedSettlements': includeExpenseInBundle ? normalizedExpensePayload.borrowedSettlements : const <Map<String, dynamic>>[],
     };
     final taskHashSource = <String, dynamic>{
-      'categories': taskCategories,
-      'tasks': tasks
-          .map(
-            (item) => <String, dynamic>{
-              'id': item.id,
-              'sourceTaskId': item.sourceTaskId,
-              'title': item.title,
-              'description': item.description,
-              'category': item.category,
-              'taskDate': item.taskDate.toIso8601String(),
-              'priority': item.priority,
-              'isDaily': item.isDaily,
-              'isCompleted': item.isCompleted,
-              'createdAt': item.createdAt.toIso8601String(),
-            },
-          )
-          .toList(growable: false),
+      'categories': includeTasksInBundle ? taskCategories : const <String>[],
+      'tasks': includeTasksInBundle
+          ? tasks
+                .map(
+                  (item) => <String, dynamic>{
+                    'id': item.id,
+                    'sourceTaskId': item.sourceTaskId,
+                    'title': item.title,
+                    'description': item.description,
+                    'category': item.category,
+                    'taskDate': item.taskDate.toIso8601String(),
+                    'priority': item.priority,
+                    'isDaily': item.isDaily,
+                    'isCompleted': item.isCompleted,
+                    'createdAt': item.createdAt.toIso8601String(),
+                  },
+                )
+                .toList(growable: false)
+          : const <Map<String, dynamic>>[],
     };
     final settingsHashSource = <String, dynamic>{
-      'appSettings': appSettings,
-      'reminderSettings': reminderSettings,
+      'appSettings': includeSettingsInBundle ? appSettings : const <String, dynamic>{},
+      'reminderSettings': includeSettingsInBundle ? reminderSettings : const <String, dynamic>{},
+    };
+    final investmentHashSource = <String, dynamic>{
+      'categories': includeInvestmentInBundle
+          ? investmentCategories
+                .map(
+                  (item) => <String, dynamic>{
+                    'id': item.id,
+                    'name': item.name,
+                    'iconCodePoint': item.iconCodePoint,
+                    'colorValue': item.colorValue,
+                    'createdAt': item.createdAt.toIso8601String(),
+                    'updatedAt': item.updatedAt.toIso8601String(),
+                  },
+                )
+                .toList(growable: false)
+          : const <Map<String, dynamic>>[],
+      'taxProfiles': includeInvestmentInBundle
+          ? investmentTaxProfiles
+                .map(
+                  (item) => <String, dynamic>{
+                    'id': item.id,
+                    'brokerName': item.brokerName,
+                    'sttBuyPct': item.sttBuyPct,
+                    'sttSellPct': item.sttSellPct,
+                    'exchangeChargePct': item.exchangeChargePct,
+                    'sebiChargePct': item.sebiChargePct,
+                    'stampDutyPct': item.stampDutyPct,
+                    'gstPct': item.gstPct,
+                    'brokeragePct': item.brokeragePct,
+                    'brokerageFlat': item.brokerageFlat,
+                    'brokerageMinOfBoth': item.brokerageMinOfBoth,
+                    'dpChargePerScrip': item.dpChargePerScrip,
+                    'createdAt': item.createdAt.toIso8601String(),
+                    'updatedAt': item.updatedAt.toIso8601String(),
+                  },
+                )
+                .toList(growable: false)
+          : const <Map<String, dynamic>>[],
+      'entries': includeInvestmentInBundle
+          ? investmentEntries
+                .map(
+                  (item) => <String, dynamic>{
+                    'id': item.id,
+                    'categoryId': item.categoryId,
+                    'symbol': item.symbol,
+                    'qty': item.qty,
+                    'buyDate': item.buyDate.toIso8601String(),
+                    'buyRate': item.buyRate,
+                    'buyAmt': item.buyAmt,
+                    'taxProfileId': item.taxProfileId,
+                    'notes': item.notes,
+                    'createdAt': item.createdAt.toIso8601String(),
+                    'updatedAt': item.updatedAt.toIso8601String(),
+                  },
+                )
+                .toList(growable: false)
+          : const <Map<String, dynamic>>[],
+      'sellEntries': includeInvestmentInBundle
+          ? sellEntries
+                .map(
+                  (item) => <String, dynamic>{
+                    'id': item.id,
+                    'buyEntryId': item.buyEntryId,
+                    'symbol': item.symbol,
+                    'sellQty': item.sellQty,
+                    'sellDate': item.sellDate.toIso8601String(),
+                    'sellRate': item.sellRate,
+                    'sellAmt': item.sellAmt,
+                    'createdAt': item.createdAt.toIso8601String(),
+                  },
+                )
+                .toList(growable: false)
+          : const <Map<String, dynamic>>[],
     };
     final domainHashes = <String, String>{
       CloudSyncDomain.credential.folderName: await _hashJsonContent(
@@ -193,6 +292,9 @@ class CloudSyncPayloadService {
       CloudSyncDomain.task.folderName: await _hashJsonContent(taskHashSource),
       CloudSyncDomain.settings.folderName: await _hashJsonContent(
         settingsHashSource,
+      ),
+      CloudSyncDomain.investment.folderName: await _hashJsonContent(
+        investmentHashSource,
       ),
     };
 
@@ -350,8 +452,13 @@ class CloudSyncPayloadService {
     final settingsJson = jsonEncode(<String, dynamic>{
       'schemaVersion': 1,
       'exportedAt': timestamp.toIso8601String(),
-      'appSettings': appSettings,
-      'reminderSettings': reminderSettings,
+      'appSettings': includeSettingsInBundle ? appSettings : const <String, dynamic>{},
+      'reminderSettings': includeSettingsInBundle ? reminderSettings : const <String, dynamic>{},
+    });
+    final investmentJson = jsonEncode(<String, dynamic>{
+      'schemaVersion': 1,
+      'exportedAt': timestamp.toIso8601String(),
+      ...investmentHashSource,
     });
     final protectedExpensePayload = encryptNonCredentialPayloadsForCloud
         ? await _encryptCloudPayload(
@@ -374,6 +481,13 @@ class CloudSyncPayloadService {
             domainLabel: CloudSyncDomain.settings.folderName,
           )
         : settingsJson;
+    final protectedInvestmentPayload = encryptNonCredentialPayloadsForCloud
+        ? await _encryptCloudPayload(
+            payload: investmentJson,
+            encryptionKey: nonCredentialEncryptionKey,
+            domainLabel: CloudSyncDomain.investment.folderName,
+          )
+        : investmentJson;
     final localLatestAt = _computeLocalLatestChangeAtFromData(
       categories: categories,
       banks: banks,
@@ -387,6 +501,10 @@ class CloudSyncPayloadService {
       taskCategoryUpdatedAt: taskCategoryUpdatedAt,
       appSettingsUpdatedAt: appSettingsUpdatedAt,
       reminderSettingsUpdatedAt: reminderSettingsUpdatedAt,
+      investmentCategories: investmentCategories,
+      investmentTaxProfiles: investmentTaxProfiles,
+      investmentEntries: investmentEntries,
+      sellEntries: sellEntries,
     );
 
     return CloudBackupBundle(
@@ -399,14 +517,21 @@ class CloudSyncPayloadService {
           CloudSyncDomain.credential.folderName: includeCredentialsInBundle
               ? credentials.length
               : 0,
-          CloudSyncDomain.expense.folderName:
-              normalizedExpensePayload.entries.length +
-              normalizedExpensePayload.splitRecords.length +
-              normalizedExpensePayload.splitParticipants.length +
-              normalizedExpensePayload.lentSettlements.length +
-              normalizedExpensePayload.borrowedSettlements.length,
-          CloudSyncDomain.task.folderName: tasks.length,
-          CloudSyncDomain.settings.folderName: 2,
+          CloudSyncDomain.expense.folderName: includeExpenseInBundle
+              ? (normalizedExpensePayload.entries.length +
+                 normalizedExpensePayload.splitRecords.length +
+                 normalizedExpensePayload.splitParticipants.length +
+                 normalizedExpensePayload.lentSettlements.length +
+                 normalizedExpensePayload.borrowedSettlements.length)
+              : 0,
+          CloudSyncDomain.task.folderName: includeTasksInBundle ? tasks.length : 0,
+          CloudSyncDomain.settings.folderName: includeSettingsInBundle ? 2 : 0,
+          CloudSyncDomain.investment.folderName: includeInvestmentInBundle
+              ? (investmentCategories.length +
+                 investmentTaxProfiles.length +
+                 investmentEntries.length +
+                 sellEntries.length)
+              : 0,
         },
         domainHashes: domainHashes,
         payloadEncryptionSchemaVersion:
@@ -418,7 +543,9 @@ class CloudSyncPayloadService {
       expensePayload: protectedExpensePayload,
       taskPayload: protectedTaskPayload,
       settingsPayload: protectedSettingsPayload,
-      containsSettingsPayload: true,
+      containsSettingsPayload: includeSettingsInBundle,
+      investmentPayload: protectedInvestmentPayload,
+      containsInvestmentPayload: includeInvestmentInBundle,
     );
   }
 
@@ -445,6 +572,10 @@ class CloudSyncPayloadService {
       _taskCategoryRepository.lastModifiedAt(),
       _appSettingsRepository.lastModifiedAt(),
       _reminderSettingsRepository.lastModifiedAt(),
+      (_database.select(_database.dbInvestmentCategories)).get(),
+      (_database.select(_database.dbInvestmentTaxProfiles)).get(),
+      (_database.select(_database.dbInvestmentEntries)).get(),
+      (_database.select(_database.dbSellEntries)).get(),
     ]);
     cancellationToken?.throwIfCancelled();
 
@@ -461,6 +592,10 @@ class CloudSyncPayloadService {
       taskCategoryUpdatedAt: loadedData[9] as DateTime?,
       appSettingsUpdatedAt: loadedData[10] as DateTime?,
       reminderSettingsUpdatedAt: loadedData[11] as DateTime?,
+      investmentCategories: loadedData[12] as List<DbInvestmentCategory>,
+      investmentTaxProfiles: loadedData[13] as List<DbInvestmentTaxProfile>,
+      investmentEntries: loadedData[14] as List<DbInvestmentEntry>,
+      sellEntries: loadedData[15] as List<DbSellEntry>,
     );
   }
 
@@ -477,6 +612,10 @@ class CloudSyncPayloadService {
     required DateTime? taskCategoryUpdatedAt,
     required DateTime? appSettingsUpdatedAt,
     required DateTime? reminderSettingsUpdatedAt,
+    required List<DbInvestmentCategory> investmentCategories,
+    required List<DbInvestmentTaxProfile> investmentTaxProfiles,
+    required List<DbInvestmentEntry> investmentEntries,
+    required List<DbSellEntry> sellEntries,
   }) {
     final candidates = <DateTime>[
       ...categories.map((item) => item.createdAt),
@@ -491,6 +630,13 @@ class CloudSyncPayloadService {
       ...tasks.map((item) => item.taskDate),
       ...credentials.map((item) => item.updatedAt),
       ...credentials.map((item) => item.createdAt),
+      ...investmentCategories.map((item) => item.createdAt),
+      ...investmentTaxProfiles.map((item) => item.createdAt),
+      ...investmentTaxProfiles.map((item) => item.updatedAt),
+      ...investmentEntries.map((item) => item.createdAt),
+      ...investmentEntries.map((item) => item.buyDate),
+      ...sellEntries.map((item) => item.createdAt),
+      ...sellEntries.map((item) => item.sellDate),
       ...<DateTime?>[taskCategoryUpdatedAt].whereType<DateTime>(),
       ...<DateTime?>[appSettingsUpdatedAt].whereType<DateTime>(),
       ...<DateTime?>[reminderSettingsUpdatedAt].whereType<DateTime>(),
@@ -509,23 +655,31 @@ class CloudSyncPayloadService {
     required String expensePayload,
     required String taskPayload,
     required String settingsPayload,
+    required String investmentPayload,
     String? credentialEncryptionKey,
     String? nonCredentialEncryptionKey,
     bool restoreCredentials = true,
     bool restoreSettings = true,
+    bool restoreInvestment = true,
+    bool restoreExpense = true,
+    bool restoreTasks = true,
     AppCancellationToken? cancellationToken,
   }) async {
     cancellationToken?.throwIfCancelled();
-    final decodedExpensePayload = await _decryptCloudPayloadIfNeeded(
-      payload: expensePayload,
-      encryptionKey: nonCredentialEncryptionKey,
-      domainLabel: CloudSyncDomain.expense.folderName,
-    );
-    final decodedTaskPayload = await _decryptCloudPayloadIfNeeded(
-      payload: taskPayload,
-      encryptionKey: nonCredentialEncryptionKey,
-      domainLabel: CloudSyncDomain.task.folderName,
-    );
+    final decodedExpensePayload = restoreExpense
+        ? await _decryptCloudPayloadIfNeeded(
+            payload: expensePayload,
+            encryptionKey: nonCredentialEncryptionKey,
+            domainLabel: CloudSyncDomain.expense.folderName,
+          )
+        : '{}';
+    final decodedTaskPayload = restoreTasks
+        ? await _decryptCloudPayloadIfNeeded(
+            payload: taskPayload,
+            encryptionKey: nonCredentialEncryptionKey,
+            domainLabel: CloudSyncDomain.task.folderName,
+          )
+        : '{}';
     final decodedSettingsPayload = restoreSettings
         ? await _decryptCloudPayloadIfNeeded(
             payload: settingsPayload,
@@ -533,34 +687,74 @@ class CloudSyncPayloadService {
             domainLabel: CloudSyncDomain.settings.folderName,
           )
         : '{}';
-    final expense = jsonDecode(decodedExpensePayload) as Map<String, dynamic>;
-    final task = jsonDecode(decodedTaskPayload) as Map<String, dynamic>;
+    final decodedInvestmentPayload = restoreInvestment
+        ? await _decryptCloudPayloadIfNeeded(
+            payload: investmentPayload,
+            encryptionKey: nonCredentialEncryptionKey,
+            domainLabel: CloudSyncDomain.investment.folderName,
+          )
+        : '{}';
+    final expense = restoreExpense
+        ? jsonDecode(decodedExpensePayload) as Map<String, dynamic>
+        : const <String, dynamic>{};
+    final task = restoreTasks
+        ? jsonDecode(decodedTaskPayload) as Map<String, dynamic>
+        : const <String, dynamic>{};
     final settings = restoreSettings
         ? jsonDecode(decodedSettingsPayload) as Map<String, dynamic>
         : const <String, dynamic>{};
     final credential = restoreCredentials
         ? jsonDecode(credentialPayload) as Map<String, dynamic>
         : const <String, dynamic>{};
+    final investment = restoreInvestment
+        ? jsonDecode(decodedInvestmentPayload) as Map<String, dynamic>
+        : const <String, dynamic>{};
     final normalizedExpensePayload = _normalizeExpenseRestorePayload(expense);
-    final categories =
-        (expense['categories'] as List<dynamic>? ?? const <dynamic>[])
-            .whereType<Map<String, dynamic>>()
-            .toList(growable: false);
-    final banks = (expense['banks'] as List<dynamic>? ?? const <dynamic>[])
-        .whereType<Map<String, dynamic>>()
-        .toList(growable: false);
-    final entries = normalizedExpensePayload.entries;
-    final splitRecords = normalizedExpensePayload.splitRecords;
-    final splitParticipants = normalizedExpensePayload.splitParticipants;
-    final lentSettlements = normalizedExpensePayload.lentSettlements;
-    final borrowedSettlements = normalizedExpensePayload.borrowedSettlements;
-    final taskCategories =
-        (task['categories'] as List<dynamic>? ?? const <dynamic>[])
-            .map((item) => item.toString())
-            .toList(growable: false);
-    final tasks = (task['tasks'] as List<dynamic>? ?? const <dynamic>[])
-        .whereType<Map<String, dynamic>>()
-        .toList(growable: false);
+    final categories = restoreExpense
+        ? (expense['categories'] as List<dynamic>? ?? const <dynamic>[])
+              .whereType<Map<String, dynamic>>()
+              .toList(growable: false)
+        : const <Map<String, dynamic>>[];
+    final banks = restoreExpense
+        ? (expense['banks'] as List<dynamic>? ?? const <dynamic>[])
+              .whereType<Map<String, dynamic>>()
+              .toList(growable: false)
+        : const <Map<String, dynamic>>[];
+    final entries = restoreExpense ? normalizedExpensePayload.entries : const <Map<String, dynamic>>[];
+    final splitRecords = restoreExpense ? normalizedExpensePayload.splitRecords : const <Map<String, dynamic>>[];
+    final splitParticipants = restoreExpense ? normalizedExpensePayload.splitParticipants : const <Map<String, dynamic>>[];
+    final lentSettlements = restoreExpense ? normalizedExpensePayload.lentSettlements : const <Map<String, dynamic>>[];
+    final borrowedSettlements = restoreExpense ? normalizedExpensePayload.borrowedSettlements : const <Map<String, dynamic>>[];
+    final taskCategories = restoreTasks
+        ? (task['categories'] as List<dynamic>? ?? const <dynamic>[])
+              .map((item) => item.toString())
+              .toList(growable: false)
+        : const <String>[];
+    final tasks = restoreTasks
+        ? (task['tasks'] as List<dynamic>? ?? const <dynamic>[])
+              .whereType<Map<String, dynamic>>()
+              .toList(growable: false)
+        : const <Map<String, dynamic>>[];
+    final investmentCategories = restoreInvestment
+        ? (investment['categories'] as List<dynamic>? ?? const <dynamic>[])
+              .whereType<Map<String, dynamic>>()
+              .toList(growable: false)
+        : const <Map<String, dynamic>>[];
+    final investmentTaxProfiles = restoreInvestment
+        ? (investment['taxProfiles'] as List<dynamic>? ?? const <dynamic>[])
+              .whereType<Map<String, dynamic>>()
+              .toList(growable: false)
+        : const <Map<String, dynamic>>[];
+    final investmentEntries = restoreInvestment
+        ? (investment['entries'] as List<dynamic>? ?? const <dynamic>[])
+              .whereType<Map<String, dynamic>>()
+              .toList(growable: false)
+        : const <Map<String, dynamic>>[];
+    final sellEntries = restoreInvestment
+        ? (investment['sellEntries'] as List<dynamic>? ?? const <dynamic>[])
+              .whereType<Map<String, dynamic>>()
+              .toList(growable: false)
+        : const <Map<String, dynamic>>[];
     final appSettings = settings['appSettings'];
     final reminderSettings = settings['reminderSettings'];
     final credentials = restoreCredentials
@@ -619,6 +813,12 @@ class CloudSyncPayloadService {
       await _database.delete(_database.dbTasks).go();
       if (restoreCredentials) {
         await _database.delete(_database.dbCredentials).go();
+      }
+      if (restoreInvestment) {
+        await _database.delete(_database.dbSellEntries).go();
+        await _database.delete(_database.dbInvestmentEntries).go();
+        await _database.delete(_database.dbInvestmentTaxProfiles).go();
+        await _database.delete(_database.dbInvestmentCategories).go();
       }
 
       if (categories.isNotEmpty) {
@@ -841,6 +1041,132 @@ class CloudSyncPayloadService {
                     priority: Value(item['priority'] as int? ?? 3),
                     isDaily: Value(item['isDaily'] as bool? ?? false),
                     isCompleted: Value(item['isCompleted'] as bool? ?? false),
+                    createdAt: Value(
+                      DateTime.tryParse(item['createdAt'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                  );
+                })
+                .toList(growable: false),
+          );
+        });
+      }
+
+      if (restoreInvestment && investmentCategories.isNotEmpty) {
+        cancellationToken?.throwIfCancelled();
+        await _database.batch((batch) {
+          batch.insertAll(
+            _database.dbInvestmentCategories,
+            investmentCategories
+                .map((item) {
+                  return DbInvestmentCategoriesCompanion(
+                    id: Value(item['id'] as int),
+                    name: Value(item['name'] as String? ?? ''),
+                    iconCodePoint: Value(item['iconCodePoint'] as int? ?? 0),
+                    colorValue: Value(item['colorValue'] as int? ?? 0),
+                    createdAt: Value(
+                      DateTime.tryParse(item['createdAt'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                    updatedAt: Value(
+                      DateTime.tryParse(item['updatedAt'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                  );
+                })
+                .toList(growable: false),
+          );
+        });
+      }
+
+      if (restoreInvestment && investmentTaxProfiles.isNotEmpty) {
+        cancellationToken?.throwIfCancelled();
+        await _database.batch((batch) {
+          batch.insertAll(
+            _database.dbInvestmentTaxProfiles,
+            investmentTaxProfiles
+                .map((item) {
+                  return DbInvestmentTaxProfilesCompanion(
+                    id: Value(item['id'] as int),
+                    brokerName: Value(item['brokerName'] as String? ?? ''),
+                    sttBuyPct: Value((item['sttBuyPct'] as num?)?.toDouble() ?? 0.0),
+                    sttSellPct: Value((item['sttSellPct'] as num?)?.toDouble() ?? 0.0),
+                    exchangeChargePct: Value((item['exchangeChargePct'] as num?)?.toDouble() ?? 0.0),
+                    sebiChargePct: Value((item['sebiChargePct'] as num?)?.toDouble() ?? 0.0),
+                    stampDutyPct: Value((item['stampDutyPct'] as num?)?.toDouble() ?? 0.0),
+                    gstPct: Value((item['gstPct'] as num?)?.toDouble() ?? 0.0),
+                    brokeragePct: Value((item['brokeragePct'] as num?)?.toDouble() ?? 0.0),
+                    brokerageFlat: Value((item['brokerageFlat'] as num?)?.toDouble() ?? 0.0),
+                    brokerageMinOfBoth: Value(item['brokerageMinOfBoth'] as bool? ?? false),
+                    dpChargePerScrip: Value((item['dpChargePerScrip'] as num?)?.toDouble() ?? 0.0),
+                    createdAt: Value(
+                      DateTime.tryParse(item['createdAt'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                    updatedAt: Value(
+                      DateTime.tryParse(item['updatedAt'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                  );
+                })
+                .toList(growable: false),
+          );
+        });
+      }
+
+      if (restoreInvestment && investmentEntries.isNotEmpty) {
+        cancellationToken?.throwIfCancelled();
+        await _database.batch((batch) {
+          batch.insertAll(
+            _database.dbInvestmentEntries,
+            investmentEntries
+                .map((item) {
+                  return DbInvestmentEntriesCompanion(
+                    id: Value(item['id'] as int),
+                    categoryId: Value(item['categoryId'] as int? ?? 0),
+                    symbol: Value(item['symbol'] as String? ?? ''),
+                    qty: Value((item['qty'] as num?)?.toDouble() ?? 0.0),
+                    buyDate: Value(
+                      DateTime.tryParse(item['buyDate'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                    buyRate: Value((item['buyRate'] as num?)?.toDouble() ?? 0.0),
+                    buyAmt: Value((item['buyAmt'] as num?)?.toDouble() ?? 0.0),
+                    taxProfileId: Value(item['taxProfileId'] as int?),
+                    notes: Value(item['notes'] as String?),
+                    createdAt: Value(
+                      DateTime.tryParse(item['createdAt'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                    updatedAt: Value(
+                      DateTime.tryParse(item['updatedAt'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                  );
+                })
+                .toList(growable: false),
+          );
+        });
+      }
+
+      if (restoreInvestment && sellEntries.isNotEmpty) {
+        cancellationToken?.throwIfCancelled();
+        await _database.batch((batch) {
+          batch.insertAll(
+            _database.dbSellEntries,
+            sellEntries
+                .map((item) {
+                  return DbSellEntriesCompanion(
+                    id: Value(item['id'] as int),
+                    buyEntryId: Value(item['buyEntryId'] as int? ?? 0),
+                    symbol: Value(item['symbol'] as String? ?? ''),
+                    sellQty: Value((item['sellQty'] as num?)?.toDouble() ?? 0.0),
+                    sellDate: Value(
+                      DateTime.tryParse(item['sellDate'] as String? ?? '') ??
+                          DateTime.now(),
+                    ),
+                    sellRate: Value((item['sellRate'] as num?)?.toDouble() ?? 0.0),
+                    sellAmt: Value((item['sellAmt'] as num?)?.toDouble() ?? 0.0),
                     createdAt: Value(
                       DateTime.tryParse(item['createdAt'] as String? ?? '') ??
                           DateTime.now(),

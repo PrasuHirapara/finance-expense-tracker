@@ -1685,7 +1685,7 @@ class ExpenseRepository {
         categoryId: draft.categoryId,
         bankId: Value(useExplicitBankId ? bankId : draft.bankId),
         entryDate: draft.date,
-        entryDay: _dayLabelForDate(draft.date),
+        entryDay: Value(_dayLabelForDate(draft.date)),
         paymentMode: paymentMode ?? draft.paymentMode,
         notes: Value(draft.notes.trim()),
         counterparty: Value(

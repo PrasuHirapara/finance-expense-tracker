@@ -9,6 +9,7 @@ import '../../domain/repositories/finance_repository.dart';
 import '../../features/credentials/data/repositories/credential_repository.dart';
 import '../../features/credentials/data/services/credential_service.dart';
 import '../../features/expense/data/repositories/expense_repository.dart';
+import '../../features/investment/data/repositories/investment_repository.dart';
 import '../../features/tasks/data/repositories/task_category_repository.dart';
 import '../../features/tasks/data/repositories/task_repository.dart';
 import '../models/app_preferences.dart';
@@ -37,6 +38,7 @@ class AppSession {
     required this.database,
     required this.appSettingsRepository,
     required this.expenseRepository,
+    required this.investmentRepository,
     required this.credentialRepository,
     required this.credentialCryptoService,
     required this.credentialSecurityService,
@@ -66,6 +68,7 @@ class AppSession {
     final database = AppDatabase();
     final appSettingsRepository = AppSettingsRepository();
     final expenseRepository = ExpenseRepository(database);
+    final investmentRepository = InvestmentRepository(database);
     final credentialRepository = CredentialRepository(database);
     final credentialCryptoService = CredentialCryptoService();
     final credentialSecurityService = CredentialSecurityService();
@@ -139,6 +142,7 @@ class AppSession {
     final appDataResetService = AppDataResetService(
       credentialService: credentialService,
       expenseRepository: expenseRepository,
+      investmentRepository: investmentRepository,
       taskRepository: taskRepository,
       taskCategoryRepository: taskCategoryRepository,
       reminderSettingsRepository: reminderSettingsRepository,
@@ -151,6 +155,7 @@ class AppSession {
       database: database,
       appSettingsRepository: appSettingsRepository,
       expenseRepository: expenseRepository,
+      investmentRepository: investmentRepository,
       credentialRepository: credentialRepository,
       credentialCryptoService: credentialCryptoService,
       credentialSecurityService: credentialSecurityService,
@@ -180,6 +185,7 @@ class AppSession {
   final AppDatabase database;
   final AppSettingsRepository appSettingsRepository;
   final ExpenseRepository expenseRepository;
+  final InvestmentRepository investmentRepository;
   final CredentialRepository credentialRepository;
   final CredentialCryptoService credentialCryptoService;
   final CredentialSecurityService credentialSecurityService;
@@ -207,6 +213,7 @@ class AppSession {
   Future<AppPreferences> bootstrap() async {
     final appPreferences = await appSettingsRepository.getSettings();
     await expenseRepository.seedDefaults();
+    await investmentRepository.seedDefaults();
     await taskCategoryRepository.ensureSeeded();
     await notificationService.initialize();
     await appPreferencesEffectsService.apply(appPreferences);

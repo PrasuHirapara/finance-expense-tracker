@@ -892,12 +892,10 @@ class $DbFinanceEntriesTable extends DbFinanceEntries
         DriftSqlType.dateTime,
         data['${effectivePrefix}entry_date'],
       )!,
-      entryDay:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}entry_day'],
-          ) ??
-          '',
+      entryDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entry_day'],
+      )!,
       paymentMode: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}payment_mode'],
@@ -1006,7 +1004,7 @@ class DbFinanceEntry extends DataClass implements Insertable<DbFinanceEntry> {
       categoryId: serializer.fromJson<int>(json['categoryId']),
       bankId: serializer.fromJson<int?>(json['bankId']),
       entryDate: serializer.fromJson<DateTime>(json['entryDate']),
-      entryDay: serializer.fromJson<String>(json['entryDay'] ?? ''),
+      entryDay: serializer.fromJson<String>(json['entryDay']),
       paymentMode: serializer.fromJson<String>(json['paymentMode']),
       notes: serializer.fromJson<String>(json['notes']),
       counterparty: serializer.fromJson<String?>(json['counterparty']),
@@ -1169,7 +1167,7 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
     required int categoryId,
     this.bankId = const Value.absent(),
     required DateTime entryDate,
-    String? entryDay,
+    this.entryDay = const Value.absent(),
     required String paymentMode,
     this.notes = const Value.absent(),
     this.counterparty = const Value.absent(),
@@ -1179,7 +1177,6 @@ class DbFinanceEntriesCompanion extends UpdateCompanion<DbFinanceEntry> {
        type = Value(type),
        categoryId = Value(categoryId),
        entryDate = Value(entryDate),
-       entryDay = Value(entryDay ?? ''),
        paymentMode = Value(paymentMode);
   static Insertable<DbFinanceEntry> custom({
     Expression<int>? id,
@@ -4121,6 +4118,2401 @@ class DbCredentialsCompanion extends UpdateCompanion<DbCredential> {
   }
 }
 
+class $DbInvestmentCategoriesTable extends DbInvestmentCategories
+    with TableInfo<$DbInvestmentCategoriesTable, DbInvestmentCategory> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DbInvestmentCategoriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _iconCodePointMeta = const VerificationMeta(
+    'iconCodePoint',
+  );
+  @override
+  late final GeneratedColumn<int> iconCodePoint = GeneratedColumn<int>(
+    'icon_code_point',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colorValueMeta = const VerificationMeta(
+    'colorValue',
+  );
+  @override
+  late final GeneratedColumn<int> colorValue = GeneratedColumn<int>(
+    'color_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    iconCodePoint,
+    colorValue,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'db_investment_categories';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DbInvestmentCategory> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('icon_code_point')) {
+      context.handle(
+        _iconCodePointMeta,
+        iconCodePoint.isAcceptableOrUnknown(
+          data['icon_code_point']!,
+          _iconCodePointMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_iconCodePointMeta);
+    }
+    if (data.containsKey('color_value')) {
+      context.handle(
+        _colorValueMeta,
+        colorValue.isAcceptableOrUnknown(data['color_value']!, _colorValueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_colorValueMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DbInvestmentCategory map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DbInvestmentCategory(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      iconCodePoint: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}icon_code_point'],
+      )!,
+      colorValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color_value'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DbInvestmentCategoriesTable createAlias(String alias) {
+    return $DbInvestmentCategoriesTable(attachedDatabase, alias);
+  }
+}
+
+class DbInvestmentCategory extends DataClass
+    implements Insertable<DbInvestmentCategory> {
+  final int id;
+  final String name;
+  final int iconCodePoint;
+  final int colorValue;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const DbInvestmentCategory({
+    required this.id,
+    required this.name,
+    required this.iconCodePoint,
+    required this.colorValue,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['icon_code_point'] = Variable<int>(iconCodePoint);
+    map['color_value'] = Variable<int>(colorValue);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DbInvestmentCategoriesCompanion toCompanion(bool nullToAbsent) {
+    return DbInvestmentCategoriesCompanion(
+      id: Value(id),
+      name: Value(name),
+      iconCodePoint: Value(iconCodePoint),
+      colorValue: Value(colorValue),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DbInvestmentCategory.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DbInvestmentCategory(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      iconCodePoint: serializer.fromJson<int>(json['iconCodePoint']),
+      colorValue: serializer.fromJson<int>(json['colorValue']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'iconCodePoint': serializer.toJson<int>(iconCodePoint),
+      'colorValue': serializer.toJson<int>(colorValue),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DbInvestmentCategory copyWith({
+    int? id,
+    String? name,
+    int? iconCodePoint,
+    int? colorValue,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => DbInvestmentCategory(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    iconCodePoint: iconCodePoint ?? this.iconCodePoint,
+    colorValue: colorValue ?? this.colorValue,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DbInvestmentCategory copyWithCompanion(DbInvestmentCategoriesCompanion data) {
+    return DbInvestmentCategory(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      iconCodePoint: data.iconCodePoint.present
+          ? data.iconCodePoint.value
+          : this.iconCodePoint,
+      colorValue: data.colorValue.present
+          ? data.colorValue.value
+          : this.colorValue,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbInvestmentCategory(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('iconCodePoint: $iconCodePoint, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, iconCodePoint, colorValue, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DbInvestmentCategory &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.iconCodePoint == this.iconCodePoint &&
+          other.colorValue == this.colorValue &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DbInvestmentCategoriesCompanion
+    extends UpdateCompanion<DbInvestmentCategory> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<int> iconCodePoint;
+  final Value<int> colorValue;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const DbInvestmentCategoriesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.iconCodePoint = const Value.absent(),
+    this.colorValue = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  DbInvestmentCategoriesCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required int iconCodePoint,
+    required int colorValue,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : name = Value(name),
+       iconCodePoint = Value(iconCodePoint),
+       colorValue = Value(colorValue);
+  static Insertable<DbInvestmentCategory> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<int>? iconCodePoint,
+    Expression<int>? colorValue,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (iconCodePoint != null) 'icon_code_point': iconCodePoint,
+      if (colorValue != null) 'color_value': colorValue,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  DbInvestmentCategoriesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<int>? iconCodePoint,
+    Value<int>? colorValue,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return DbInvestmentCategoriesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      iconCodePoint: iconCodePoint ?? this.iconCodePoint,
+      colorValue: colorValue ?? this.colorValue,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (iconCodePoint.present) {
+      map['icon_code_point'] = Variable<int>(iconCodePoint.value);
+    }
+    if (colorValue.present) {
+      map['color_value'] = Variable<int>(colorValue.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbInvestmentCategoriesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('iconCodePoint: $iconCodePoint, ')
+          ..write('colorValue: $colorValue, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DbInvestmentTaxProfilesTable extends DbInvestmentTaxProfiles
+    with TableInfo<$DbInvestmentTaxProfilesTable, DbInvestmentTaxProfile> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DbInvestmentTaxProfilesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _brokerNameMeta = const VerificationMeta(
+    'brokerName',
+  );
+  @override
+  late final GeneratedColumn<String> brokerName = GeneratedColumn<String>(
+    'broker_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _sttBuyPctMeta = const VerificationMeta(
+    'sttBuyPct',
+  );
+  @override
+  late final GeneratedColumn<double> sttBuyPct = GeneratedColumn<double>(
+    'stt_buy_pct',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sttSellPctMeta = const VerificationMeta(
+    'sttSellPct',
+  );
+  @override
+  late final GeneratedColumn<double> sttSellPct = GeneratedColumn<double>(
+    'stt_sell_pct',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _exchangeChargePctMeta = const VerificationMeta(
+    'exchangeChargePct',
+  );
+  @override
+  late final GeneratedColumn<double> exchangeChargePct =
+      GeneratedColumn<double>(
+        'exchange_charge_pct',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _sebiChargePctMeta = const VerificationMeta(
+    'sebiChargePct',
+  );
+  @override
+  late final GeneratedColumn<double> sebiChargePct = GeneratedColumn<double>(
+    'sebi_charge_pct',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stampDutyPctMeta = const VerificationMeta(
+    'stampDutyPct',
+  );
+  @override
+  late final GeneratedColumn<double> stampDutyPct = GeneratedColumn<double>(
+    'stamp_duty_pct',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _gstPctMeta = const VerificationMeta('gstPct');
+  @override
+  late final GeneratedColumn<double> gstPct = GeneratedColumn<double>(
+    'gst_pct',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _brokeragePctMeta = const VerificationMeta(
+    'brokeragePct',
+  );
+  @override
+  late final GeneratedColumn<double> brokeragePct = GeneratedColumn<double>(
+    'brokerage_pct',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _brokerageFlatMeta = const VerificationMeta(
+    'brokerageFlat',
+  );
+  @override
+  late final GeneratedColumn<double> brokerageFlat = GeneratedColumn<double>(
+    'brokerage_flat',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _brokerageMinOfBothMeta =
+      const VerificationMeta('brokerageMinOfBoth');
+  @override
+  late final GeneratedColumn<bool> brokerageMinOfBoth = GeneratedColumn<bool>(
+    'brokerage_min_of_both',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("brokerage_min_of_both" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _dpChargePerScripMeta = const VerificationMeta(
+    'dpChargePerScrip',
+  );
+  @override
+  late final GeneratedColumn<double> dpChargePerScrip = GeneratedColumn<double>(
+    'dp_charge_per_scrip',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    brokerName,
+    sttBuyPct,
+    sttSellPct,
+    exchangeChargePct,
+    sebiChargePct,
+    stampDutyPct,
+    gstPct,
+    brokeragePct,
+    brokerageFlat,
+    brokerageMinOfBoth,
+    dpChargePerScrip,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'db_investment_tax_profiles';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DbInvestmentTaxProfile> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('broker_name')) {
+      context.handle(
+        _brokerNameMeta,
+        brokerName.isAcceptableOrUnknown(data['broker_name']!, _brokerNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_brokerNameMeta);
+    }
+    if (data.containsKey('stt_buy_pct')) {
+      context.handle(
+        _sttBuyPctMeta,
+        sttBuyPct.isAcceptableOrUnknown(data['stt_buy_pct']!, _sttBuyPctMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sttBuyPctMeta);
+    }
+    if (data.containsKey('stt_sell_pct')) {
+      context.handle(
+        _sttSellPctMeta,
+        sttSellPct.isAcceptableOrUnknown(
+          data['stt_sell_pct']!,
+          _sttSellPctMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sttSellPctMeta);
+    }
+    if (data.containsKey('exchange_charge_pct')) {
+      context.handle(
+        _exchangeChargePctMeta,
+        exchangeChargePct.isAcceptableOrUnknown(
+          data['exchange_charge_pct']!,
+          _exchangeChargePctMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_exchangeChargePctMeta);
+    }
+    if (data.containsKey('sebi_charge_pct')) {
+      context.handle(
+        _sebiChargePctMeta,
+        sebiChargePct.isAcceptableOrUnknown(
+          data['sebi_charge_pct']!,
+          _sebiChargePctMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sebiChargePctMeta);
+    }
+    if (data.containsKey('stamp_duty_pct')) {
+      context.handle(
+        _stampDutyPctMeta,
+        stampDutyPct.isAcceptableOrUnknown(
+          data['stamp_duty_pct']!,
+          _stampDutyPctMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_stampDutyPctMeta);
+    }
+    if (data.containsKey('gst_pct')) {
+      context.handle(
+        _gstPctMeta,
+        gstPct.isAcceptableOrUnknown(data['gst_pct']!, _gstPctMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_gstPctMeta);
+    }
+    if (data.containsKey('brokerage_pct')) {
+      context.handle(
+        _brokeragePctMeta,
+        brokeragePct.isAcceptableOrUnknown(
+          data['brokerage_pct']!,
+          _brokeragePctMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_brokeragePctMeta);
+    }
+    if (data.containsKey('brokerage_flat')) {
+      context.handle(
+        _brokerageFlatMeta,
+        brokerageFlat.isAcceptableOrUnknown(
+          data['brokerage_flat']!,
+          _brokerageFlatMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_brokerageFlatMeta);
+    }
+    if (data.containsKey('brokerage_min_of_both')) {
+      context.handle(
+        _brokerageMinOfBothMeta,
+        brokerageMinOfBoth.isAcceptableOrUnknown(
+          data['brokerage_min_of_both']!,
+          _brokerageMinOfBothMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_brokerageMinOfBothMeta);
+    }
+    if (data.containsKey('dp_charge_per_scrip')) {
+      context.handle(
+        _dpChargePerScripMeta,
+        dpChargePerScrip.isAcceptableOrUnknown(
+          data['dp_charge_per_scrip']!,
+          _dpChargePerScripMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_dpChargePerScripMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DbInvestmentTaxProfile map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DbInvestmentTaxProfile(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      brokerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}broker_name'],
+      )!,
+      sttBuyPct: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}stt_buy_pct'],
+      )!,
+      sttSellPct: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}stt_sell_pct'],
+      )!,
+      exchangeChargePct: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}exchange_charge_pct'],
+      )!,
+      sebiChargePct: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}sebi_charge_pct'],
+      )!,
+      stampDutyPct: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}stamp_duty_pct'],
+      )!,
+      gstPct: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}gst_pct'],
+      )!,
+      brokeragePct: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}brokerage_pct'],
+      )!,
+      brokerageFlat: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}brokerage_flat'],
+      )!,
+      brokerageMinOfBoth: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}brokerage_min_of_both'],
+      )!,
+      dpChargePerScrip: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}dp_charge_per_scrip'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DbInvestmentTaxProfilesTable createAlias(String alias) {
+    return $DbInvestmentTaxProfilesTable(attachedDatabase, alias);
+  }
+}
+
+class DbInvestmentTaxProfile extends DataClass
+    implements Insertable<DbInvestmentTaxProfile> {
+  final int id;
+  final String brokerName;
+  final double sttBuyPct;
+  final double sttSellPct;
+  final double exchangeChargePct;
+  final double sebiChargePct;
+  final double stampDutyPct;
+  final double gstPct;
+  final double brokeragePct;
+  final double brokerageFlat;
+  final bool brokerageMinOfBoth;
+  final double dpChargePerScrip;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const DbInvestmentTaxProfile({
+    required this.id,
+    required this.brokerName,
+    required this.sttBuyPct,
+    required this.sttSellPct,
+    required this.exchangeChargePct,
+    required this.sebiChargePct,
+    required this.stampDutyPct,
+    required this.gstPct,
+    required this.brokeragePct,
+    required this.brokerageFlat,
+    required this.brokerageMinOfBoth,
+    required this.dpChargePerScrip,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['broker_name'] = Variable<String>(brokerName);
+    map['stt_buy_pct'] = Variable<double>(sttBuyPct);
+    map['stt_sell_pct'] = Variable<double>(sttSellPct);
+    map['exchange_charge_pct'] = Variable<double>(exchangeChargePct);
+    map['sebi_charge_pct'] = Variable<double>(sebiChargePct);
+    map['stamp_duty_pct'] = Variable<double>(stampDutyPct);
+    map['gst_pct'] = Variable<double>(gstPct);
+    map['brokerage_pct'] = Variable<double>(brokeragePct);
+    map['brokerage_flat'] = Variable<double>(brokerageFlat);
+    map['brokerage_min_of_both'] = Variable<bool>(brokerageMinOfBoth);
+    map['dp_charge_per_scrip'] = Variable<double>(dpChargePerScrip);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DbInvestmentTaxProfilesCompanion toCompanion(bool nullToAbsent) {
+    return DbInvestmentTaxProfilesCompanion(
+      id: Value(id),
+      brokerName: Value(brokerName),
+      sttBuyPct: Value(sttBuyPct),
+      sttSellPct: Value(sttSellPct),
+      exchangeChargePct: Value(exchangeChargePct),
+      sebiChargePct: Value(sebiChargePct),
+      stampDutyPct: Value(stampDutyPct),
+      gstPct: Value(gstPct),
+      brokeragePct: Value(brokeragePct),
+      brokerageFlat: Value(brokerageFlat),
+      brokerageMinOfBoth: Value(brokerageMinOfBoth),
+      dpChargePerScrip: Value(dpChargePerScrip),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DbInvestmentTaxProfile.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DbInvestmentTaxProfile(
+      id: serializer.fromJson<int>(json['id']),
+      brokerName: serializer.fromJson<String>(json['brokerName']),
+      sttBuyPct: serializer.fromJson<double>(json['sttBuyPct']),
+      sttSellPct: serializer.fromJson<double>(json['sttSellPct']),
+      exchangeChargePct: serializer.fromJson<double>(json['exchangeChargePct']),
+      sebiChargePct: serializer.fromJson<double>(json['sebiChargePct']),
+      stampDutyPct: serializer.fromJson<double>(json['stampDutyPct']),
+      gstPct: serializer.fromJson<double>(json['gstPct']),
+      brokeragePct: serializer.fromJson<double>(json['brokeragePct']),
+      brokerageFlat: serializer.fromJson<double>(json['brokerageFlat']),
+      brokerageMinOfBoth: serializer.fromJson<bool>(json['brokerageMinOfBoth']),
+      dpChargePerScrip: serializer.fromJson<double>(json['dpChargePerScrip']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'brokerName': serializer.toJson<String>(brokerName),
+      'sttBuyPct': serializer.toJson<double>(sttBuyPct),
+      'sttSellPct': serializer.toJson<double>(sttSellPct),
+      'exchangeChargePct': serializer.toJson<double>(exchangeChargePct),
+      'sebiChargePct': serializer.toJson<double>(sebiChargePct),
+      'stampDutyPct': serializer.toJson<double>(stampDutyPct),
+      'gstPct': serializer.toJson<double>(gstPct),
+      'brokeragePct': serializer.toJson<double>(brokeragePct),
+      'brokerageFlat': serializer.toJson<double>(brokerageFlat),
+      'brokerageMinOfBoth': serializer.toJson<bool>(brokerageMinOfBoth),
+      'dpChargePerScrip': serializer.toJson<double>(dpChargePerScrip),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DbInvestmentTaxProfile copyWith({
+    int? id,
+    String? brokerName,
+    double? sttBuyPct,
+    double? sttSellPct,
+    double? exchangeChargePct,
+    double? sebiChargePct,
+    double? stampDutyPct,
+    double? gstPct,
+    double? brokeragePct,
+    double? brokerageFlat,
+    bool? brokerageMinOfBoth,
+    double? dpChargePerScrip,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => DbInvestmentTaxProfile(
+    id: id ?? this.id,
+    brokerName: brokerName ?? this.brokerName,
+    sttBuyPct: sttBuyPct ?? this.sttBuyPct,
+    sttSellPct: sttSellPct ?? this.sttSellPct,
+    exchangeChargePct: exchangeChargePct ?? this.exchangeChargePct,
+    sebiChargePct: sebiChargePct ?? this.sebiChargePct,
+    stampDutyPct: stampDutyPct ?? this.stampDutyPct,
+    gstPct: gstPct ?? this.gstPct,
+    brokeragePct: brokeragePct ?? this.brokeragePct,
+    brokerageFlat: brokerageFlat ?? this.brokerageFlat,
+    brokerageMinOfBoth: brokerageMinOfBoth ?? this.brokerageMinOfBoth,
+    dpChargePerScrip: dpChargePerScrip ?? this.dpChargePerScrip,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DbInvestmentTaxProfile copyWithCompanion(
+    DbInvestmentTaxProfilesCompanion data,
+  ) {
+    return DbInvestmentTaxProfile(
+      id: data.id.present ? data.id.value : this.id,
+      brokerName: data.brokerName.present
+          ? data.brokerName.value
+          : this.brokerName,
+      sttBuyPct: data.sttBuyPct.present ? data.sttBuyPct.value : this.sttBuyPct,
+      sttSellPct: data.sttSellPct.present
+          ? data.sttSellPct.value
+          : this.sttSellPct,
+      exchangeChargePct: data.exchangeChargePct.present
+          ? data.exchangeChargePct.value
+          : this.exchangeChargePct,
+      sebiChargePct: data.sebiChargePct.present
+          ? data.sebiChargePct.value
+          : this.sebiChargePct,
+      stampDutyPct: data.stampDutyPct.present
+          ? data.stampDutyPct.value
+          : this.stampDutyPct,
+      gstPct: data.gstPct.present ? data.gstPct.value : this.gstPct,
+      brokeragePct: data.brokeragePct.present
+          ? data.brokeragePct.value
+          : this.brokeragePct,
+      brokerageFlat: data.brokerageFlat.present
+          ? data.brokerageFlat.value
+          : this.brokerageFlat,
+      brokerageMinOfBoth: data.brokerageMinOfBoth.present
+          ? data.brokerageMinOfBoth.value
+          : this.brokerageMinOfBoth,
+      dpChargePerScrip: data.dpChargePerScrip.present
+          ? data.dpChargePerScrip.value
+          : this.dpChargePerScrip,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbInvestmentTaxProfile(')
+          ..write('id: $id, ')
+          ..write('brokerName: $brokerName, ')
+          ..write('sttBuyPct: $sttBuyPct, ')
+          ..write('sttSellPct: $sttSellPct, ')
+          ..write('exchangeChargePct: $exchangeChargePct, ')
+          ..write('sebiChargePct: $sebiChargePct, ')
+          ..write('stampDutyPct: $stampDutyPct, ')
+          ..write('gstPct: $gstPct, ')
+          ..write('brokeragePct: $brokeragePct, ')
+          ..write('brokerageFlat: $brokerageFlat, ')
+          ..write('brokerageMinOfBoth: $brokerageMinOfBoth, ')
+          ..write('dpChargePerScrip: $dpChargePerScrip, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    brokerName,
+    sttBuyPct,
+    sttSellPct,
+    exchangeChargePct,
+    sebiChargePct,
+    stampDutyPct,
+    gstPct,
+    brokeragePct,
+    brokerageFlat,
+    brokerageMinOfBoth,
+    dpChargePerScrip,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DbInvestmentTaxProfile &&
+          other.id == this.id &&
+          other.brokerName == this.brokerName &&
+          other.sttBuyPct == this.sttBuyPct &&
+          other.sttSellPct == this.sttSellPct &&
+          other.exchangeChargePct == this.exchangeChargePct &&
+          other.sebiChargePct == this.sebiChargePct &&
+          other.stampDutyPct == this.stampDutyPct &&
+          other.gstPct == this.gstPct &&
+          other.brokeragePct == this.brokeragePct &&
+          other.brokerageFlat == this.brokerageFlat &&
+          other.brokerageMinOfBoth == this.brokerageMinOfBoth &&
+          other.dpChargePerScrip == this.dpChargePerScrip &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DbInvestmentTaxProfilesCompanion
+    extends UpdateCompanion<DbInvestmentTaxProfile> {
+  final Value<int> id;
+  final Value<String> brokerName;
+  final Value<double> sttBuyPct;
+  final Value<double> sttSellPct;
+  final Value<double> exchangeChargePct;
+  final Value<double> sebiChargePct;
+  final Value<double> stampDutyPct;
+  final Value<double> gstPct;
+  final Value<double> brokeragePct;
+  final Value<double> brokerageFlat;
+  final Value<bool> brokerageMinOfBoth;
+  final Value<double> dpChargePerScrip;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const DbInvestmentTaxProfilesCompanion({
+    this.id = const Value.absent(),
+    this.brokerName = const Value.absent(),
+    this.sttBuyPct = const Value.absent(),
+    this.sttSellPct = const Value.absent(),
+    this.exchangeChargePct = const Value.absent(),
+    this.sebiChargePct = const Value.absent(),
+    this.stampDutyPct = const Value.absent(),
+    this.gstPct = const Value.absent(),
+    this.brokeragePct = const Value.absent(),
+    this.brokerageFlat = const Value.absent(),
+    this.brokerageMinOfBoth = const Value.absent(),
+    this.dpChargePerScrip = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  DbInvestmentTaxProfilesCompanion.insert({
+    this.id = const Value.absent(),
+    required String brokerName,
+    required double sttBuyPct,
+    required double sttSellPct,
+    required double exchangeChargePct,
+    required double sebiChargePct,
+    required double stampDutyPct,
+    required double gstPct,
+    required double brokeragePct,
+    required double brokerageFlat,
+    required bool brokerageMinOfBoth,
+    required double dpChargePerScrip,
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : brokerName = Value(brokerName),
+       sttBuyPct = Value(sttBuyPct),
+       sttSellPct = Value(sttSellPct),
+       exchangeChargePct = Value(exchangeChargePct),
+       sebiChargePct = Value(sebiChargePct),
+       stampDutyPct = Value(stampDutyPct),
+       gstPct = Value(gstPct),
+       brokeragePct = Value(brokeragePct),
+       brokerageFlat = Value(brokerageFlat),
+       brokerageMinOfBoth = Value(brokerageMinOfBoth),
+       dpChargePerScrip = Value(dpChargePerScrip);
+  static Insertable<DbInvestmentTaxProfile> custom({
+    Expression<int>? id,
+    Expression<String>? brokerName,
+    Expression<double>? sttBuyPct,
+    Expression<double>? sttSellPct,
+    Expression<double>? exchangeChargePct,
+    Expression<double>? sebiChargePct,
+    Expression<double>? stampDutyPct,
+    Expression<double>? gstPct,
+    Expression<double>? brokeragePct,
+    Expression<double>? brokerageFlat,
+    Expression<bool>? brokerageMinOfBoth,
+    Expression<double>? dpChargePerScrip,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (brokerName != null) 'broker_name': brokerName,
+      if (sttBuyPct != null) 'stt_buy_pct': sttBuyPct,
+      if (sttSellPct != null) 'stt_sell_pct': sttSellPct,
+      if (exchangeChargePct != null) 'exchange_charge_pct': exchangeChargePct,
+      if (sebiChargePct != null) 'sebi_charge_pct': sebiChargePct,
+      if (stampDutyPct != null) 'stamp_duty_pct': stampDutyPct,
+      if (gstPct != null) 'gst_pct': gstPct,
+      if (brokeragePct != null) 'brokerage_pct': brokeragePct,
+      if (brokerageFlat != null) 'brokerage_flat': brokerageFlat,
+      if (brokerageMinOfBoth != null)
+        'brokerage_min_of_both': brokerageMinOfBoth,
+      if (dpChargePerScrip != null) 'dp_charge_per_scrip': dpChargePerScrip,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  DbInvestmentTaxProfilesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? brokerName,
+    Value<double>? sttBuyPct,
+    Value<double>? sttSellPct,
+    Value<double>? exchangeChargePct,
+    Value<double>? sebiChargePct,
+    Value<double>? stampDutyPct,
+    Value<double>? gstPct,
+    Value<double>? brokeragePct,
+    Value<double>? brokerageFlat,
+    Value<bool>? brokerageMinOfBoth,
+    Value<double>? dpChargePerScrip,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return DbInvestmentTaxProfilesCompanion(
+      id: id ?? this.id,
+      brokerName: brokerName ?? this.brokerName,
+      sttBuyPct: sttBuyPct ?? this.sttBuyPct,
+      sttSellPct: sttSellPct ?? this.sttSellPct,
+      exchangeChargePct: exchangeChargePct ?? this.exchangeChargePct,
+      sebiChargePct: sebiChargePct ?? this.sebiChargePct,
+      stampDutyPct: stampDutyPct ?? this.stampDutyPct,
+      gstPct: gstPct ?? this.gstPct,
+      brokeragePct: brokeragePct ?? this.brokeragePct,
+      brokerageFlat: brokerageFlat ?? this.brokerageFlat,
+      brokerageMinOfBoth: brokerageMinOfBoth ?? this.brokerageMinOfBoth,
+      dpChargePerScrip: dpChargePerScrip ?? this.dpChargePerScrip,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (brokerName.present) {
+      map['broker_name'] = Variable<String>(brokerName.value);
+    }
+    if (sttBuyPct.present) {
+      map['stt_buy_pct'] = Variable<double>(sttBuyPct.value);
+    }
+    if (sttSellPct.present) {
+      map['stt_sell_pct'] = Variable<double>(sttSellPct.value);
+    }
+    if (exchangeChargePct.present) {
+      map['exchange_charge_pct'] = Variable<double>(exchangeChargePct.value);
+    }
+    if (sebiChargePct.present) {
+      map['sebi_charge_pct'] = Variable<double>(sebiChargePct.value);
+    }
+    if (stampDutyPct.present) {
+      map['stamp_duty_pct'] = Variable<double>(stampDutyPct.value);
+    }
+    if (gstPct.present) {
+      map['gst_pct'] = Variable<double>(gstPct.value);
+    }
+    if (brokeragePct.present) {
+      map['brokerage_pct'] = Variable<double>(brokeragePct.value);
+    }
+    if (brokerageFlat.present) {
+      map['brokerage_flat'] = Variable<double>(brokerageFlat.value);
+    }
+    if (brokerageMinOfBoth.present) {
+      map['brokerage_min_of_both'] = Variable<bool>(brokerageMinOfBoth.value);
+    }
+    if (dpChargePerScrip.present) {
+      map['dp_charge_per_scrip'] = Variable<double>(dpChargePerScrip.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbInvestmentTaxProfilesCompanion(')
+          ..write('id: $id, ')
+          ..write('brokerName: $brokerName, ')
+          ..write('sttBuyPct: $sttBuyPct, ')
+          ..write('sttSellPct: $sttSellPct, ')
+          ..write('exchangeChargePct: $exchangeChargePct, ')
+          ..write('sebiChargePct: $sebiChargePct, ')
+          ..write('stampDutyPct: $stampDutyPct, ')
+          ..write('gstPct: $gstPct, ')
+          ..write('brokeragePct: $brokeragePct, ')
+          ..write('brokerageFlat: $brokerageFlat, ')
+          ..write('brokerageMinOfBoth: $brokerageMinOfBoth, ')
+          ..write('dpChargePerScrip: $dpChargePerScrip, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DbInvestmentEntriesTable extends DbInvestmentEntries
+    with TableInfo<$DbInvestmentEntriesTable, DbInvestmentEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DbInvestmentEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _categoryIdMeta = const VerificationMeta(
+    'categoryId',
+  );
+  @override
+  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+    'category_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES db_investment_categories (id)',
+    ),
+  );
+  static const VerificationMeta _symbolMeta = const VerificationMeta('symbol');
+  @override
+  late final GeneratedColumn<String> symbol = GeneratedColumn<String>(
+    'symbol',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _qtyMeta = const VerificationMeta('qty');
+  @override
+  late final GeneratedColumn<double> qty = GeneratedColumn<double>(
+    'qty',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _buyDateMeta = const VerificationMeta(
+    'buyDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> buyDate = GeneratedColumn<DateTime>(
+    'buy_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _buyRateMeta = const VerificationMeta(
+    'buyRate',
+  );
+  @override
+  late final GeneratedColumn<double> buyRate = GeneratedColumn<double>(
+    'buy_rate',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _buyAmtMeta = const VerificationMeta('buyAmt');
+  @override
+  late final GeneratedColumn<double> buyAmt = GeneratedColumn<double>(
+    'buy_amt',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taxProfileIdMeta = const VerificationMeta(
+    'taxProfileId',
+  );
+  @override
+  late final GeneratedColumn<int> taxProfileId = GeneratedColumn<int>(
+    'tax_profile_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES db_investment_tax_profiles (id)',
+    ),
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    categoryId,
+    symbol,
+    qty,
+    buyDate,
+    buyRate,
+    buyAmt,
+    taxProfileId,
+    notes,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'db_investment_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DbInvestmentEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('category_id')) {
+      context.handle(
+        _categoryIdMeta,
+        categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryIdMeta);
+    }
+    if (data.containsKey('symbol')) {
+      context.handle(
+        _symbolMeta,
+        symbol.isAcceptableOrUnknown(data['symbol']!, _symbolMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_symbolMeta);
+    }
+    if (data.containsKey('qty')) {
+      context.handle(
+        _qtyMeta,
+        qty.isAcceptableOrUnknown(data['qty']!, _qtyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_qtyMeta);
+    }
+    if (data.containsKey('buy_date')) {
+      context.handle(
+        _buyDateMeta,
+        buyDate.isAcceptableOrUnknown(data['buy_date']!, _buyDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_buyDateMeta);
+    }
+    if (data.containsKey('buy_rate')) {
+      context.handle(
+        _buyRateMeta,
+        buyRate.isAcceptableOrUnknown(data['buy_rate']!, _buyRateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_buyRateMeta);
+    }
+    if (data.containsKey('buy_amt')) {
+      context.handle(
+        _buyAmtMeta,
+        buyAmt.isAcceptableOrUnknown(data['buy_amt']!, _buyAmtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_buyAmtMeta);
+    }
+    if (data.containsKey('tax_profile_id')) {
+      context.handle(
+        _taxProfileIdMeta,
+        taxProfileId.isAcceptableOrUnknown(
+          data['tax_profile_id']!,
+          _taxProfileIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DbInvestmentEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DbInvestmentEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      categoryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}category_id'],
+      )!,
+      symbol: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}symbol'],
+      )!,
+      qty: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}qty'],
+      )!,
+      buyDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}buy_date'],
+      )!,
+      buyRate: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}buy_rate'],
+      )!,
+      buyAmt: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}buy_amt'],
+      )!,
+      taxProfileId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tax_profile_id'],
+      ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DbInvestmentEntriesTable createAlias(String alias) {
+    return $DbInvestmentEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class DbInvestmentEntry extends DataClass
+    implements Insertable<DbInvestmentEntry> {
+  final int id;
+  final int categoryId;
+  final String symbol;
+  final double qty;
+  final DateTime buyDate;
+  final double buyRate;
+  final double buyAmt;
+  final int? taxProfileId;
+  final String? notes;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const DbInvestmentEntry({
+    required this.id,
+    required this.categoryId,
+    required this.symbol,
+    required this.qty,
+    required this.buyDate,
+    required this.buyRate,
+    required this.buyAmt,
+    this.taxProfileId,
+    this.notes,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['category_id'] = Variable<int>(categoryId);
+    map['symbol'] = Variable<String>(symbol);
+    map['qty'] = Variable<double>(qty);
+    map['buy_date'] = Variable<DateTime>(buyDate);
+    map['buy_rate'] = Variable<double>(buyRate);
+    map['buy_amt'] = Variable<double>(buyAmt);
+    if (!nullToAbsent || taxProfileId != null) {
+      map['tax_profile_id'] = Variable<int>(taxProfileId);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DbInvestmentEntriesCompanion toCompanion(bool nullToAbsent) {
+    return DbInvestmentEntriesCompanion(
+      id: Value(id),
+      categoryId: Value(categoryId),
+      symbol: Value(symbol),
+      qty: Value(qty),
+      buyDate: Value(buyDate),
+      buyRate: Value(buyRate),
+      buyAmt: Value(buyAmt),
+      taxProfileId: taxProfileId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taxProfileId),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DbInvestmentEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DbInvestmentEntry(
+      id: serializer.fromJson<int>(json['id']),
+      categoryId: serializer.fromJson<int>(json['categoryId']),
+      symbol: serializer.fromJson<String>(json['symbol']),
+      qty: serializer.fromJson<double>(json['qty']),
+      buyDate: serializer.fromJson<DateTime>(json['buyDate']),
+      buyRate: serializer.fromJson<double>(json['buyRate']),
+      buyAmt: serializer.fromJson<double>(json['buyAmt']),
+      taxProfileId: serializer.fromJson<int?>(json['taxProfileId']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'categoryId': serializer.toJson<int>(categoryId),
+      'symbol': serializer.toJson<String>(symbol),
+      'qty': serializer.toJson<double>(qty),
+      'buyDate': serializer.toJson<DateTime>(buyDate),
+      'buyRate': serializer.toJson<double>(buyRate),
+      'buyAmt': serializer.toJson<double>(buyAmt),
+      'taxProfileId': serializer.toJson<int?>(taxProfileId),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DbInvestmentEntry copyWith({
+    int? id,
+    int? categoryId,
+    String? symbol,
+    double? qty,
+    DateTime? buyDate,
+    double? buyRate,
+    double? buyAmt,
+    Value<int?> taxProfileId = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => DbInvestmentEntry(
+    id: id ?? this.id,
+    categoryId: categoryId ?? this.categoryId,
+    symbol: symbol ?? this.symbol,
+    qty: qty ?? this.qty,
+    buyDate: buyDate ?? this.buyDate,
+    buyRate: buyRate ?? this.buyRate,
+    buyAmt: buyAmt ?? this.buyAmt,
+    taxProfileId: taxProfileId.present ? taxProfileId.value : this.taxProfileId,
+    notes: notes.present ? notes.value : this.notes,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DbInvestmentEntry copyWithCompanion(DbInvestmentEntriesCompanion data) {
+    return DbInvestmentEntry(
+      id: data.id.present ? data.id.value : this.id,
+      categoryId: data.categoryId.present
+          ? data.categoryId.value
+          : this.categoryId,
+      symbol: data.symbol.present ? data.symbol.value : this.symbol,
+      qty: data.qty.present ? data.qty.value : this.qty,
+      buyDate: data.buyDate.present ? data.buyDate.value : this.buyDate,
+      buyRate: data.buyRate.present ? data.buyRate.value : this.buyRate,
+      buyAmt: data.buyAmt.present ? data.buyAmt.value : this.buyAmt,
+      taxProfileId: data.taxProfileId.present
+          ? data.taxProfileId.value
+          : this.taxProfileId,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbInvestmentEntry(')
+          ..write('id: $id, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('symbol: $symbol, ')
+          ..write('qty: $qty, ')
+          ..write('buyDate: $buyDate, ')
+          ..write('buyRate: $buyRate, ')
+          ..write('buyAmt: $buyAmt, ')
+          ..write('taxProfileId: $taxProfileId, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    categoryId,
+    symbol,
+    qty,
+    buyDate,
+    buyRate,
+    buyAmt,
+    taxProfileId,
+    notes,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DbInvestmentEntry &&
+          other.id == this.id &&
+          other.categoryId == this.categoryId &&
+          other.symbol == this.symbol &&
+          other.qty == this.qty &&
+          other.buyDate == this.buyDate &&
+          other.buyRate == this.buyRate &&
+          other.buyAmt == this.buyAmt &&
+          other.taxProfileId == this.taxProfileId &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DbInvestmentEntriesCompanion extends UpdateCompanion<DbInvestmentEntry> {
+  final Value<int> id;
+  final Value<int> categoryId;
+  final Value<String> symbol;
+  final Value<double> qty;
+  final Value<DateTime> buyDate;
+  final Value<double> buyRate;
+  final Value<double> buyAmt;
+  final Value<int?> taxProfileId;
+  final Value<String?> notes;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const DbInvestmentEntriesCompanion({
+    this.id = const Value.absent(),
+    this.categoryId = const Value.absent(),
+    this.symbol = const Value.absent(),
+    this.qty = const Value.absent(),
+    this.buyDate = const Value.absent(),
+    this.buyRate = const Value.absent(),
+    this.buyAmt = const Value.absent(),
+    this.taxProfileId = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  DbInvestmentEntriesCompanion.insert({
+    this.id = const Value.absent(),
+    required int categoryId,
+    required String symbol,
+    required double qty,
+    required DateTime buyDate,
+    required double buyRate,
+    required double buyAmt,
+    this.taxProfileId = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : categoryId = Value(categoryId),
+       symbol = Value(symbol),
+       qty = Value(qty),
+       buyDate = Value(buyDate),
+       buyRate = Value(buyRate),
+       buyAmt = Value(buyAmt);
+  static Insertable<DbInvestmentEntry> custom({
+    Expression<int>? id,
+    Expression<int>? categoryId,
+    Expression<String>? symbol,
+    Expression<double>? qty,
+    Expression<DateTime>? buyDate,
+    Expression<double>? buyRate,
+    Expression<double>? buyAmt,
+    Expression<int>? taxProfileId,
+    Expression<String>? notes,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (categoryId != null) 'category_id': categoryId,
+      if (symbol != null) 'symbol': symbol,
+      if (qty != null) 'qty': qty,
+      if (buyDate != null) 'buy_date': buyDate,
+      if (buyRate != null) 'buy_rate': buyRate,
+      if (buyAmt != null) 'buy_amt': buyAmt,
+      if (taxProfileId != null) 'tax_profile_id': taxProfileId,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  DbInvestmentEntriesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? categoryId,
+    Value<String>? symbol,
+    Value<double>? qty,
+    Value<DateTime>? buyDate,
+    Value<double>? buyRate,
+    Value<double>? buyAmt,
+    Value<int?>? taxProfileId,
+    Value<String?>? notes,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return DbInvestmentEntriesCompanion(
+      id: id ?? this.id,
+      categoryId: categoryId ?? this.categoryId,
+      symbol: symbol ?? this.symbol,
+      qty: qty ?? this.qty,
+      buyDate: buyDate ?? this.buyDate,
+      buyRate: buyRate ?? this.buyRate,
+      buyAmt: buyAmt ?? this.buyAmt,
+      taxProfileId: taxProfileId ?? this.taxProfileId,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (categoryId.present) {
+      map['category_id'] = Variable<int>(categoryId.value);
+    }
+    if (symbol.present) {
+      map['symbol'] = Variable<String>(symbol.value);
+    }
+    if (qty.present) {
+      map['qty'] = Variable<double>(qty.value);
+    }
+    if (buyDate.present) {
+      map['buy_date'] = Variable<DateTime>(buyDate.value);
+    }
+    if (buyRate.present) {
+      map['buy_rate'] = Variable<double>(buyRate.value);
+    }
+    if (buyAmt.present) {
+      map['buy_amt'] = Variable<double>(buyAmt.value);
+    }
+    if (taxProfileId.present) {
+      map['tax_profile_id'] = Variable<int>(taxProfileId.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbInvestmentEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('categoryId: $categoryId, ')
+          ..write('symbol: $symbol, ')
+          ..write('qty: $qty, ')
+          ..write('buyDate: $buyDate, ')
+          ..write('buyRate: $buyRate, ')
+          ..write('buyAmt: $buyAmt, ')
+          ..write('taxProfileId: $taxProfileId, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DbSellEntriesTable extends DbSellEntries
+    with TableInfo<$DbSellEntriesTable, DbSellEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DbSellEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _buyEntryIdMeta = const VerificationMeta(
+    'buyEntryId',
+  );
+  @override
+  late final GeneratedColumn<int> buyEntryId = GeneratedColumn<int>(
+    'buy_entry_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES db_investment_entries (id)',
+    ),
+  );
+  static const VerificationMeta _symbolMeta = const VerificationMeta('symbol');
+  @override
+  late final GeneratedColumn<String> symbol = GeneratedColumn<String>(
+    'symbol',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sellQtyMeta = const VerificationMeta(
+    'sellQty',
+  );
+  @override
+  late final GeneratedColumn<double> sellQty = GeneratedColumn<double>(
+    'sell_qty',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sellDateMeta = const VerificationMeta(
+    'sellDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> sellDate = GeneratedColumn<DateTime>(
+    'sell_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sellRateMeta = const VerificationMeta(
+    'sellRate',
+  );
+  @override
+  late final GeneratedColumn<double> sellRate = GeneratedColumn<double>(
+    'sell_rate',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sellAmtMeta = const VerificationMeta(
+    'sellAmt',
+  );
+  @override
+  late final GeneratedColumn<double> sellAmt = GeneratedColumn<double>(
+    'sell_amt',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    buyEntryId,
+    symbol,
+    sellQty,
+    sellDate,
+    sellRate,
+    sellAmt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'db_sell_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DbSellEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('buy_entry_id')) {
+      context.handle(
+        _buyEntryIdMeta,
+        buyEntryId.isAcceptableOrUnknown(
+          data['buy_entry_id']!,
+          _buyEntryIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_buyEntryIdMeta);
+    }
+    if (data.containsKey('symbol')) {
+      context.handle(
+        _symbolMeta,
+        symbol.isAcceptableOrUnknown(data['symbol']!, _symbolMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_symbolMeta);
+    }
+    if (data.containsKey('sell_qty')) {
+      context.handle(
+        _sellQtyMeta,
+        sellQty.isAcceptableOrUnknown(data['sell_qty']!, _sellQtyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sellQtyMeta);
+    }
+    if (data.containsKey('sell_date')) {
+      context.handle(
+        _sellDateMeta,
+        sellDate.isAcceptableOrUnknown(data['sell_date']!, _sellDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sellDateMeta);
+    }
+    if (data.containsKey('sell_rate')) {
+      context.handle(
+        _sellRateMeta,
+        sellRate.isAcceptableOrUnknown(data['sell_rate']!, _sellRateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sellRateMeta);
+    }
+    if (data.containsKey('sell_amt')) {
+      context.handle(
+        _sellAmtMeta,
+        sellAmt.isAcceptableOrUnknown(data['sell_amt']!, _sellAmtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sellAmtMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DbSellEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DbSellEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      buyEntryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}buy_entry_id'],
+      )!,
+      symbol: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}symbol'],
+      )!,
+      sellQty: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}sell_qty'],
+      )!,
+      sellDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}sell_date'],
+      )!,
+      sellRate: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}sell_rate'],
+      )!,
+      sellAmt: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}sell_amt'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DbSellEntriesTable createAlias(String alias) {
+    return $DbSellEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class DbSellEntry extends DataClass implements Insertable<DbSellEntry> {
+  final int id;
+  final int buyEntryId;
+  final String symbol;
+  final double sellQty;
+  final DateTime sellDate;
+  final double sellRate;
+  final double sellAmt;
+  final DateTime createdAt;
+  const DbSellEntry({
+    required this.id,
+    required this.buyEntryId,
+    required this.symbol,
+    required this.sellQty,
+    required this.sellDate,
+    required this.sellRate,
+    required this.sellAmt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['buy_entry_id'] = Variable<int>(buyEntryId);
+    map['symbol'] = Variable<String>(symbol);
+    map['sell_qty'] = Variable<double>(sellQty);
+    map['sell_date'] = Variable<DateTime>(sellDate);
+    map['sell_rate'] = Variable<double>(sellRate);
+    map['sell_amt'] = Variable<double>(sellAmt);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DbSellEntriesCompanion toCompanion(bool nullToAbsent) {
+    return DbSellEntriesCompanion(
+      id: Value(id),
+      buyEntryId: Value(buyEntryId),
+      symbol: Value(symbol),
+      sellQty: Value(sellQty),
+      sellDate: Value(sellDate),
+      sellRate: Value(sellRate),
+      sellAmt: Value(sellAmt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DbSellEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DbSellEntry(
+      id: serializer.fromJson<int>(json['id']),
+      buyEntryId: serializer.fromJson<int>(json['buyEntryId']),
+      symbol: serializer.fromJson<String>(json['symbol']),
+      sellQty: serializer.fromJson<double>(json['sellQty']),
+      sellDate: serializer.fromJson<DateTime>(json['sellDate']),
+      sellRate: serializer.fromJson<double>(json['sellRate']),
+      sellAmt: serializer.fromJson<double>(json['sellAmt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'buyEntryId': serializer.toJson<int>(buyEntryId),
+      'symbol': serializer.toJson<String>(symbol),
+      'sellQty': serializer.toJson<double>(sellQty),
+      'sellDate': serializer.toJson<DateTime>(sellDate),
+      'sellRate': serializer.toJson<double>(sellRate),
+      'sellAmt': serializer.toJson<double>(sellAmt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DbSellEntry copyWith({
+    int? id,
+    int? buyEntryId,
+    String? symbol,
+    double? sellQty,
+    DateTime? sellDate,
+    double? sellRate,
+    double? sellAmt,
+    DateTime? createdAt,
+  }) => DbSellEntry(
+    id: id ?? this.id,
+    buyEntryId: buyEntryId ?? this.buyEntryId,
+    symbol: symbol ?? this.symbol,
+    sellQty: sellQty ?? this.sellQty,
+    sellDate: sellDate ?? this.sellDate,
+    sellRate: sellRate ?? this.sellRate,
+    sellAmt: sellAmt ?? this.sellAmt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DbSellEntry copyWithCompanion(DbSellEntriesCompanion data) {
+    return DbSellEntry(
+      id: data.id.present ? data.id.value : this.id,
+      buyEntryId: data.buyEntryId.present
+          ? data.buyEntryId.value
+          : this.buyEntryId,
+      symbol: data.symbol.present ? data.symbol.value : this.symbol,
+      sellQty: data.sellQty.present ? data.sellQty.value : this.sellQty,
+      sellDate: data.sellDate.present ? data.sellDate.value : this.sellDate,
+      sellRate: data.sellRate.present ? data.sellRate.value : this.sellRate,
+      sellAmt: data.sellAmt.present ? data.sellAmt.value : this.sellAmt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbSellEntry(')
+          ..write('id: $id, ')
+          ..write('buyEntryId: $buyEntryId, ')
+          ..write('symbol: $symbol, ')
+          ..write('sellQty: $sellQty, ')
+          ..write('sellDate: $sellDate, ')
+          ..write('sellRate: $sellRate, ')
+          ..write('sellAmt: $sellAmt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    buyEntryId,
+    symbol,
+    sellQty,
+    sellDate,
+    sellRate,
+    sellAmt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DbSellEntry &&
+          other.id == this.id &&
+          other.buyEntryId == this.buyEntryId &&
+          other.symbol == this.symbol &&
+          other.sellQty == this.sellQty &&
+          other.sellDate == this.sellDate &&
+          other.sellRate == this.sellRate &&
+          other.sellAmt == this.sellAmt &&
+          other.createdAt == this.createdAt);
+}
+
+class DbSellEntriesCompanion extends UpdateCompanion<DbSellEntry> {
+  final Value<int> id;
+  final Value<int> buyEntryId;
+  final Value<String> symbol;
+  final Value<double> sellQty;
+  final Value<DateTime> sellDate;
+  final Value<double> sellRate;
+  final Value<double> sellAmt;
+  final Value<DateTime> createdAt;
+  const DbSellEntriesCompanion({
+    this.id = const Value.absent(),
+    this.buyEntryId = const Value.absent(),
+    this.symbol = const Value.absent(),
+    this.sellQty = const Value.absent(),
+    this.sellDate = const Value.absent(),
+    this.sellRate = const Value.absent(),
+    this.sellAmt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  DbSellEntriesCompanion.insert({
+    this.id = const Value.absent(),
+    required int buyEntryId,
+    required String symbol,
+    required double sellQty,
+    required DateTime sellDate,
+    required double sellRate,
+    required double sellAmt,
+    this.createdAt = const Value.absent(),
+  }) : buyEntryId = Value(buyEntryId),
+       symbol = Value(symbol),
+       sellQty = Value(sellQty),
+       sellDate = Value(sellDate),
+       sellRate = Value(sellRate),
+       sellAmt = Value(sellAmt);
+  static Insertable<DbSellEntry> custom({
+    Expression<int>? id,
+    Expression<int>? buyEntryId,
+    Expression<String>? symbol,
+    Expression<double>? sellQty,
+    Expression<DateTime>? sellDate,
+    Expression<double>? sellRate,
+    Expression<double>? sellAmt,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (buyEntryId != null) 'buy_entry_id': buyEntryId,
+      if (symbol != null) 'symbol': symbol,
+      if (sellQty != null) 'sell_qty': sellQty,
+      if (sellDate != null) 'sell_date': sellDate,
+      if (sellRate != null) 'sell_rate': sellRate,
+      if (sellAmt != null) 'sell_amt': sellAmt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  DbSellEntriesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? buyEntryId,
+    Value<String>? symbol,
+    Value<double>? sellQty,
+    Value<DateTime>? sellDate,
+    Value<double>? sellRate,
+    Value<double>? sellAmt,
+    Value<DateTime>? createdAt,
+  }) {
+    return DbSellEntriesCompanion(
+      id: id ?? this.id,
+      buyEntryId: buyEntryId ?? this.buyEntryId,
+      symbol: symbol ?? this.symbol,
+      sellQty: sellQty ?? this.sellQty,
+      sellDate: sellDate ?? this.sellDate,
+      sellRate: sellRate ?? this.sellRate,
+      sellAmt: sellAmt ?? this.sellAmt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (buyEntryId.present) {
+      map['buy_entry_id'] = Variable<int>(buyEntryId.value);
+    }
+    if (symbol.present) {
+      map['symbol'] = Variable<String>(symbol.value);
+    }
+    if (sellQty.present) {
+      map['sell_qty'] = Variable<double>(sellQty.value);
+    }
+    if (sellDate.present) {
+      map['sell_date'] = Variable<DateTime>(sellDate.value);
+    }
+    if (sellRate.present) {
+      map['sell_rate'] = Variable<double>(sellRate.value);
+    }
+    if (sellAmt.present) {
+      map['sell_amt'] = Variable<double>(sellAmt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DbSellEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('buyEntryId: $buyEntryId, ')
+          ..write('symbol: $symbol, ')
+          ..write('sellQty: $sellQty, ')
+          ..write('sellDate: $sellDate, ')
+          ..write('sellRate: $sellRate, ')
+          ..write('sellAmt: $sellAmt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4138,6 +6530,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $DbBorrowedSettlementsTable(this);
   late final $DbTasksTable dbTasks = $DbTasksTable(this);
   late final $DbCredentialsTable dbCredentials = $DbCredentialsTable(this);
+  late final $DbInvestmentCategoriesTable dbInvestmentCategories =
+      $DbInvestmentCategoriesTable(this);
+  late final $DbInvestmentTaxProfilesTable dbInvestmentTaxProfiles =
+      $DbInvestmentTaxProfilesTable(this);
+  late final $DbInvestmentEntriesTable dbInvestmentEntries =
+      $DbInvestmentEntriesTable(this);
+  late final $DbSellEntriesTable dbSellEntries = $DbSellEntriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4152,6 +6551,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     dbBorrowedSettlements,
     dbTasks,
     dbCredentials,
+    dbInvestmentCategories,
+    dbInvestmentTaxProfiles,
+    dbInvestmentEntries,
+    dbSellEntries,
   ];
 }
 
@@ -4726,7 +7129,7 @@ typedef $$DbFinanceEntriesTableCreateCompanionBuilder =
       required int categoryId,
       Value<int?> bankId,
       required DateTime entryDate,
-      String? entryDay,
+      Value<String> entryDay,
       required String paymentMode,
       Value<String> notes,
       Value<String?> counterparty,
@@ -4897,6 +7300,11 @@ class $$DbFinanceEntriesTableFilterComposer
 
   ColumnFilters<DateTime> get entryDate => $composableBuilder(
     column: $table.entryDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entryDay => $composableBuilder(
+    column: $table.entryDay,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5076,6 +7484,11 @@ class $$DbFinanceEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get entryDay => $composableBuilder(
+    column: $table.entryDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get paymentMode => $composableBuilder(
     column: $table.paymentMode,
     builder: (column) => ColumnOrderings(column),
@@ -5166,6 +7579,9 @@ class $$DbFinanceEntriesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get entryDate =>
       $composableBuilder(column: $table.entryDate, builder: (column) => column);
+
+  GeneratedColumn<String> get entryDay =>
+      $composableBuilder(column: $table.entryDay, builder: (column) => column);
 
   GeneratedColumn<String> get paymentMode => $composableBuilder(
     column: $table.paymentMode,
@@ -5377,7 +7793,7 @@ class $$DbFinanceEntriesTableTableManager
                 required int categoryId,
                 Value<int?> bankId = const Value.absent(),
                 required DateTime entryDate,
-                String? entryDay,
+                Value<String> entryDay = const Value.absent(),
                 required String paymentMode,
                 Value<String> notes = const Value.absent(),
                 Value<String?> counterparty = const Value.absent(),
@@ -8233,6 +10649,1903 @@ typedef $$DbCredentialsTableProcessedTableManager =
       DbCredential,
       PrefetchHooks Function()
     >;
+typedef $$DbInvestmentCategoriesTableCreateCompanionBuilder =
+    DbInvestmentCategoriesCompanion Function({
+      Value<int> id,
+      required String name,
+      required int iconCodePoint,
+      required int colorValue,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$DbInvestmentCategoriesTableUpdateCompanionBuilder =
+    DbInvestmentCategoriesCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<int> iconCodePoint,
+      Value<int> colorValue,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$DbInvestmentCategoriesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $DbInvestmentCategoriesTable,
+          DbInvestmentCategory
+        > {
+  $$DbInvestmentCategoriesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$DbInvestmentEntriesTable, List<DbInvestmentEntry>>
+  _dbInvestmentEntriesRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.dbInvestmentEntries,
+        aliasName: $_aliasNameGenerator(
+          db.dbInvestmentCategories.id,
+          db.dbInvestmentEntries.categoryId,
+        ),
+      );
+
+  $$DbInvestmentEntriesTableProcessedTableManager get dbInvestmentEntriesRefs {
+    final manager = $$DbInvestmentEntriesTableTableManager(
+      $_db,
+      $_db.dbInvestmentEntries,
+    ).filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _dbInvestmentEntriesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$DbInvestmentCategoriesTableFilterComposer
+    extends Composer<_$AppDatabase, $DbInvestmentCategoriesTable> {
+  $$DbInvestmentCategoriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get iconCodePoint => $composableBuilder(
+    column: $table.iconCodePoint,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> dbInvestmentEntriesRefs(
+    Expression<bool> Function($$DbInvestmentEntriesTableFilterComposer f) f,
+  ) {
+    final $$DbInvestmentEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dbInvestmentEntries,
+      getReferencedColumn: (t) => t.categoryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbInvestmentEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.dbInvestmentEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DbInvestmentCategoriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DbInvestmentCategoriesTable> {
+  $$DbInvestmentCategoriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get iconCodePoint => $composableBuilder(
+    column: $table.iconCodePoint,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DbInvestmentCategoriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DbInvestmentCategoriesTable> {
+  $$DbInvestmentCategoriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get iconCodePoint => $composableBuilder(
+    column: $table.iconCodePoint,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get colorValue => $composableBuilder(
+    column: $table.colorValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> dbInvestmentEntriesRefs<T extends Object>(
+    Expression<T> Function($$DbInvestmentEntriesTableAnnotationComposer a) f,
+  ) {
+    final $$DbInvestmentEntriesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.dbInvestmentEntries,
+          getReferencedColumn: (t) => t.categoryId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbInvestmentEntriesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.dbInvestmentEntries,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$DbInvestmentCategoriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DbInvestmentCategoriesTable,
+          DbInvestmentCategory,
+          $$DbInvestmentCategoriesTableFilterComposer,
+          $$DbInvestmentCategoriesTableOrderingComposer,
+          $$DbInvestmentCategoriesTableAnnotationComposer,
+          $$DbInvestmentCategoriesTableCreateCompanionBuilder,
+          $$DbInvestmentCategoriesTableUpdateCompanionBuilder,
+          (DbInvestmentCategory, $$DbInvestmentCategoriesTableReferences),
+          DbInvestmentCategory,
+          PrefetchHooks Function({bool dbInvestmentEntriesRefs})
+        > {
+  $$DbInvestmentCategoriesTableTableManager(
+    _$AppDatabase db,
+    $DbInvestmentCategoriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DbInvestmentCategoriesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$DbInvestmentCategoriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DbInvestmentCategoriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> iconCodePoint = const Value.absent(),
+                Value<int> colorValue = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DbInvestmentCategoriesCompanion(
+                id: id,
+                name: name,
+                iconCodePoint: iconCodePoint,
+                colorValue: colorValue,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required int iconCodePoint,
+                required int colorValue,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DbInvestmentCategoriesCompanion.insert(
+                id: id,
+                name: name,
+                iconCodePoint: iconCodePoint,
+                colorValue: colorValue,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DbInvestmentCategoriesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({dbInvestmentEntriesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (dbInvestmentEntriesRefs) db.dbInvestmentEntries,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (dbInvestmentEntriesRefs)
+                    await $_getPrefetchedData<
+                      DbInvestmentCategory,
+                      $DbInvestmentCategoriesTable,
+                      DbInvestmentEntry
+                    >(
+                      currentTable: table,
+                      referencedTable: $$DbInvestmentCategoriesTableReferences
+                          ._dbInvestmentEntriesRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$DbInvestmentCategoriesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).dbInvestmentEntriesRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.categoryId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DbInvestmentCategoriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DbInvestmentCategoriesTable,
+      DbInvestmentCategory,
+      $$DbInvestmentCategoriesTableFilterComposer,
+      $$DbInvestmentCategoriesTableOrderingComposer,
+      $$DbInvestmentCategoriesTableAnnotationComposer,
+      $$DbInvestmentCategoriesTableCreateCompanionBuilder,
+      $$DbInvestmentCategoriesTableUpdateCompanionBuilder,
+      (DbInvestmentCategory, $$DbInvestmentCategoriesTableReferences),
+      DbInvestmentCategory,
+      PrefetchHooks Function({bool dbInvestmentEntriesRefs})
+    >;
+typedef $$DbInvestmentTaxProfilesTableCreateCompanionBuilder =
+    DbInvestmentTaxProfilesCompanion Function({
+      Value<int> id,
+      required String brokerName,
+      required double sttBuyPct,
+      required double sttSellPct,
+      required double exchangeChargePct,
+      required double sebiChargePct,
+      required double stampDutyPct,
+      required double gstPct,
+      required double brokeragePct,
+      required double brokerageFlat,
+      required bool brokerageMinOfBoth,
+      required double dpChargePerScrip,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$DbInvestmentTaxProfilesTableUpdateCompanionBuilder =
+    DbInvestmentTaxProfilesCompanion Function({
+      Value<int> id,
+      Value<String> brokerName,
+      Value<double> sttBuyPct,
+      Value<double> sttSellPct,
+      Value<double> exchangeChargePct,
+      Value<double> sebiChargePct,
+      Value<double> stampDutyPct,
+      Value<double> gstPct,
+      Value<double> brokeragePct,
+      Value<double> brokerageFlat,
+      Value<bool> brokerageMinOfBoth,
+      Value<double> dpChargePerScrip,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$DbInvestmentTaxProfilesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $DbInvestmentTaxProfilesTable,
+          DbInvestmentTaxProfile
+        > {
+  $$DbInvestmentTaxProfilesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$DbInvestmentEntriesTable, List<DbInvestmentEntry>>
+  _dbInvestmentEntriesRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.dbInvestmentEntries,
+        aliasName: $_aliasNameGenerator(
+          db.dbInvestmentTaxProfiles.id,
+          db.dbInvestmentEntries.taxProfileId,
+        ),
+      );
+
+  $$DbInvestmentEntriesTableProcessedTableManager get dbInvestmentEntriesRefs {
+    final manager = $$DbInvestmentEntriesTableTableManager(
+      $_db,
+      $_db.dbInvestmentEntries,
+    ).filter((f) => f.taxProfileId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _dbInvestmentEntriesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$DbInvestmentTaxProfilesTableFilterComposer
+    extends Composer<_$AppDatabase, $DbInvestmentTaxProfilesTable> {
+  $$DbInvestmentTaxProfilesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get brokerName => $composableBuilder(
+    column: $table.brokerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sttBuyPct => $composableBuilder(
+    column: $table.sttBuyPct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sttSellPct => $composableBuilder(
+    column: $table.sttSellPct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get exchangeChargePct => $composableBuilder(
+    column: $table.exchangeChargePct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sebiChargePct => $composableBuilder(
+    column: $table.sebiChargePct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get stampDutyPct => $composableBuilder(
+    column: $table.stampDutyPct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get gstPct => $composableBuilder(
+    column: $table.gstPct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get brokeragePct => $composableBuilder(
+    column: $table.brokeragePct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get brokerageFlat => $composableBuilder(
+    column: $table.brokerageFlat,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get brokerageMinOfBoth => $composableBuilder(
+    column: $table.brokerageMinOfBoth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get dpChargePerScrip => $composableBuilder(
+    column: $table.dpChargePerScrip,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> dbInvestmentEntriesRefs(
+    Expression<bool> Function($$DbInvestmentEntriesTableFilterComposer f) f,
+  ) {
+    final $$DbInvestmentEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dbInvestmentEntries,
+      getReferencedColumn: (t) => t.taxProfileId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbInvestmentEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.dbInvestmentEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DbInvestmentTaxProfilesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DbInvestmentTaxProfilesTable> {
+  $$DbInvestmentTaxProfilesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get brokerName => $composableBuilder(
+    column: $table.brokerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get sttBuyPct => $composableBuilder(
+    column: $table.sttBuyPct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get sttSellPct => $composableBuilder(
+    column: $table.sttSellPct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get exchangeChargePct => $composableBuilder(
+    column: $table.exchangeChargePct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get sebiChargePct => $composableBuilder(
+    column: $table.sebiChargePct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get stampDutyPct => $composableBuilder(
+    column: $table.stampDutyPct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get gstPct => $composableBuilder(
+    column: $table.gstPct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get brokeragePct => $composableBuilder(
+    column: $table.brokeragePct,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get brokerageFlat => $composableBuilder(
+    column: $table.brokerageFlat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get brokerageMinOfBoth => $composableBuilder(
+    column: $table.brokerageMinOfBoth,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get dpChargePerScrip => $composableBuilder(
+    column: $table.dpChargePerScrip,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DbInvestmentTaxProfilesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DbInvestmentTaxProfilesTable> {
+  $$DbInvestmentTaxProfilesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get brokerName => $composableBuilder(
+    column: $table.brokerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get sttBuyPct =>
+      $composableBuilder(column: $table.sttBuyPct, builder: (column) => column);
+
+  GeneratedColumn<double> get sttSellPct => $composableBuilder(
+    column: $table.sttSellPct,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get exchangeChargePct => $composableBuilder(
+    column: $table.exchangeChargePct,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get sebiChargePct => $composableBuilder(
+    column: $table.sebiChargePct,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get stampDutyPct => $composableBuilder(
+    column: $table.stampDutyPct,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get gstPct =>
+      $composableBuilder(column: $table.gstPct, builder: (column) => column);
+
+  GeneratedColumn<double> get brokeragePct => $composableBuilder(
+    column: $table.brokeragePct,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get brokerageFlat => $composableBuilder(
+    column: $table.brokerageFlat,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get brokerageMinOfBoth => $composableBuilder(
+    column: $table.brokerageMinOfBoth,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get dpChargePerScrip => $composableBuilder(
+    column: $table.dpChargePerScrip,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> dbInvestmentEntriesRefs<T extends Object>(
+    Expression<T> Function($$DbInvestmentEntriesTableAnnotationComposer a) f,
+  ) {
+    final $$DbInvestmentEntriesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.dbInvestmentEntries,
+          getReferencedColumn: (t) => t.taxProfileId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbInvestmentEntriesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.dbInvestmentEntries,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$DbInvestmentTaxProfilesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DbInvestmentTaxProfilesTable,
+          DbInvestmentTaxProfile,
+          $$DbInvestmentTaxProfilesTableFilterComposer,
+          $$DbInvestmentTaxProfilesTableOrderingComposer,
+          $$DbInvestmentTaxProfilesTableAnnotationComposer,
+          $$DbInvestmentTaxProfilesTableCreateCompanionBuilder,
+          $$DbInvestmentTaxProfilesTableUpdateCompanionBuilder,
+          (DbInvestmentTaxProfile, $$DbInvestmentTaxProfilesTableReferences),
+          DbInvestmentTaxProfile,
+          PrefetchHooks Function({bool dbInvestmentEntriesRefs})
+        > {
+  $$DbInvestmentTaxProfilesTableTableManager(
+    _$AppDatabase db,
+    $DbInvestmentTaxProfilesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DbInvestmentTaxProfilesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$DbInvestmentTaxProfilesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DbInvestmentTaxProfilesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> brokerName = const Value.absent(),
+                Value<double> sttBuyPct = const Value.absent(),
+                Value<double> sttSellPct = const Value.absent(),
+                Value<double> exchangeChargePct = const Value.absent(),
+                Value<double> sebiChargePct = const Value.absent(),
+                Value<double> stampDutyPct = const Value.absent(),
+                Value<double> gstPct = const Value.absent(),
+                Value<double> brokeragePct = const Value.absent(),
+                Value<double> brokerageFlat = const Value.absent(),
+                Value<bool> brokerageMinOfBoth = const Value.absent(),
+                Value<double> dpChargePerScrip = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DbInvestmentTaxProfilesCompanion(
+                id: id,
+                brokerName: brokerName,
+                sttBuyPct: sttBuyPct,
+                sttSellPct: sttSellPct,
+                exchangeChargePct: exchangeChargePct,
+                sebiChargePct: sebiChargePct,
+                stampDutyPct: stampDutyPct,
+                gstPct: gstPct,
+                brokeragePct: brokeragePct,
+                brokerageFlat: brokerageFlat,
+                brokerageMinOfBoth: brokerageMinOfBoth,
+                dpChargePerScrip: dpChargePerScrip,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String brokerName,
+                required double sttBuyPct,
+                required double sttSellPct,
+                required double exchangeChargePct,
+                required double sebiChargePct,
+                required double stampDutyPct,
+                required double gstPct,
+                required double brokeragePct,
+                required double brokerageFlat,
+                required bool brokerageMinOfBoth,
+                required double dpChargePerScrip,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DbInvestmentTaxProfilesCompanion.insert(
+                id: id,
+                brokerName: brokerName,
+                sttBuyPct: sttBuyPct,
+                sttSellPct: sttSellPct,
+                exchangeChargePct: exchangeChargePct,
+                sebiChargePct: sebiChargePct,
+                stampDutyPct: stampDutyPct,
+                gstPct: gstPct,
+                brokeragePct: brokeragePct,
+                brokerageFlat: brokerageFlat,
+                brokerageMinOfBoth: brokerageMinOfBoth,
+                dpChargePerScrip: dpChargePerScrip,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DbInvestmentTaxProfilesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({dbInvestmentEntriesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (dbInvestmentEntriesRefs) db.dbInvestmentEntries,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (dbInvestmentEntriesRefs)
+                    await $_getPrefetchedData<
+                      DbInvestmentTaxProfile,
+                      $DbInvestmentTaxProfilesTable,
+                      DbInvestmentEntry
+                    >(
+                      currentTable: table,
+                      referencedTable: $$DbInvestmentTaxProfilesTableReferences
+                          ._dbInvestmentEntriesRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$DbInvestmentTaxProfilesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).dbInvestmentEntriesRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.taxProfileId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DbInvestmentTaxProfilesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DbInvestmentTaxProfilesTable,
+      DbInvestmentTaxProfile,
+      $$DbInvestmentTaxProfilesTableFilterComposer,
+      $$DbInvestmentTaxProfilesTableOrderingComposer,
+      $$DbInvestmentTaxProfilesTableAnnotationComposer,
+      $$DbInvestmentTaxProfilesTableCreateCompanionBuilder,
+      $$DbInvestmentTaxProfilesTableUpdateCompanionBuilder,
+      (DbInvestmentTaxProfile, $$DbInvestmentTaxProfilesTableReferences),
+      DbInvestmentTaxProfile,
+      PrefetchHooks Function({bool dbInvestmentEntriesRefs})
+    >;
+typedef $$DbInvestmentEntriesTableCreateCompanionBuilder =
+    DbInvestmentEntriesCompanion Function({
+      Value<int> id,
+      required int categoryId,
+      required String symbol,
+      required double qty,
+      required DateTime buyDate,
+      required double buyRate,
+      required double buyAmt,
+      Value<int?> taxProfileId,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$DbInvestmentEntriesTableUpdateCompanionBuilder =
+    DbInvestmentEntriesCompanion Function({
+      Value<int> id,
+      Value<int> categoryId,
+      Value<String> symbol,
+      Value<double> qty,
+      Value<DateTime> buyDate,
+      Value<double> buyRate,
+      Value<double> buyAmt,
+      Value<int?> taxProfileId,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$DbInvestmentEntriesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $DbInvestmentEntriesTable,
+          DbInvestmentEntry
+        > {
+  $$DbInvestmentEntriesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $DbInvestmentCategoriesTable _categoryIdTable(_$AppDatabase db) =>
+      db.dbInvestmentCategories.createAlias(
+        $_aliasNameGenerator(
+          db.dbInvestmentEntries.categoryId,
+          db.dbInvestmentCategories.id,
+        ),
+      );
+
+  $$DbInvestmentCategoriesTableProcessedTableManager get categoryId {
+    final $_column = $_itemColumn<int>('category_id')!;
+
+    final manager = $$DbInvestmentCategoriesTableTableManager(
+      $_db,
+      $_db.dbInvestmentCategories,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $DbInvestmentTaxProfilesTable _taxProfileIdTable(_$AppDatabase db) =>
+      db.dbInvestmentTaxProfiles.createAlias(
+        $_aliasNameGenerator(
+          db.dbInvestmentEntries.taxProfileId,
+          db.dbInvestmentTaxProfiles.id,
+        ),
+      );
+
+  $$DbInvestmentTaxProfilesTableProcessedTableManager? get taxProfileId {
+    final $_column = $_itemColumn<int>('tax_profile_id');
+    if ($_column == null) return null;
+    final manager = $$DbInvestmentTaxProfilesTableTableManager(
+      $_db,
+      $_db.dbInvestmentTaxProfiles,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_taxProfileIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$DbSellEntriesTable, List<DbSellEntry>>
+  _dbSellEntriesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.dbSellEntries,
+    aliasName: $_aliasNameGenerator(
+      db.dbInvestmentEntries.id,
+      db.dbSellEntries.buyEntryId,
+    ),
+  );
+
+  $$DbSellEntriesTableProcessedTableManager get dbSellEntriesRefs {
+    final manager = $$DbSellEntriesTableTableManager(
+      $_db,
+      $_db.dbSellEntries,
+    ).filter((f) => f.buyEntryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_dbSellEntriesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$DbInvestmentEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $DbInvestmentEntriesTable> {
+  $$DbInvestmentEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get symbol => $composableBuilder(
+    column: $table.symbol,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get qty => $composableBuilder(
+    column: $table.qty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get buyDate => $composableBuilder(
+    column: $table.buyDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get buyRate => $composableBuilder(
+    column: $table.buyRate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get buyAmt => $composableBuilder(
+    column: $table.buyAmt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$DbInvestmentCategoriesTableFilterComposer get categoryId {
+    final $$DbInvestmentCategoriesTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.categoryId,
+          referencedTable: $db.dbInvestmentCategories,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbInvestmentCategoriesTableFilterComposer(
+                $db: $db,
+                $table: $db.dbInvestmentCategories,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$DbInvestmentTaxProfilesTableFilterComposer get taxProfileId {
+    final $$DbInvestmentTaxProfilesTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.taxProfileId,
+          referencedTable: $db.dbInvestmentTaxProfiles,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbInvestmentTaxProfilesTableFilterComposer(
+                $db: $db,
+                $table: $db.dbInvestmentTaxProfiles,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  Expression<bool> dbSellEntriesRefs(
+    Expression<bool> Function($$DbSellEntriesTableFilterComposer f) f,
+  ) {
+    final $$DbSellEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dbSellEntries,
+      getReferencedColumn: (t) => t.buyEntryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSellEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.dbSellEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DbInvestmentEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DbInvestmentEntriesTable> {
+  $$DbInvestmentEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get symbol => $composableBuilder(
+    column: $table.symbol,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get qty => $composableBuilder(
+    column: $table.qty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get buyDate => $composableBuilder(
+    column: $table.buyDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get buyRate => $composableBuilder(
+    column: $table.buyRate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get buyAmt => $composableBuilder(
+    column: $table.buyAmt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$DbInvestmentCategoriesTableOrderingComposer get categoryId {
+    final $$DbInvestmentCategoriesTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.categoryId,
+          referencedTable: $db.dbInvestmentCategories,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbInvestmentCategoriesTableOrderingComposer(
+                $db: $db,
+                $table: $db.dbInvestmentCategories,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$DbInvestmentTaxProfilesTableOrderingComposer get taxProfileId {
+    final $$DbInvestmentTaxProfilesTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.taxProfileId,
+          referencedTable: $db.dbInvestmentTaxProfiles,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbInvestmentTaxProfilesTableOrderingComposer(
+                $db: $db,
+                $table: $db.dbInvestmentTaxProfiles,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$DbInvestmentEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DbInvestmentEntriesTable> {
+  $$DbInvestmentEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get symbol =>
+      $composableBuilder(column: $table.symbol, builder: (column) => column);
+
+  GeneratedColumn<double> get qty =>
+      $composableBuilder(column: $table.qty, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get buyDate =>
+      $composableBuilder(column: $table.buyDate, builder: (column) => column);
+
+  GeneratedColumn<double> get buyRate =>
+      $composableBuilder(column: $table.buyRate, builder: (column) => column);
+
+  GeneratedColumn<double> get buyAmt =>
+      $composableBuilder(column: $table.buyAmt, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$DbInvestmentCategoriesTableAnnotationComposer get categoryId {
+    final $$DbInvestmentCategoriesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.categoryId,
+          referencedTable: $db.dbInvestmentCategories,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbInvestmentCategoriesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.dbInvestmentCategories,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$DbInvestmentTaxProfilesTableAnnotationComposer get taxProfileId {
+    final $$DbInvestmentTaxProfilesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.taxProfileId,
+          referencedTable: $db.dbInvestmentTaxProfiles,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbInvestmentTaxProfilesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.dbInvestmentTaxProfiles,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  Expression<T> dbSellEntriesRefs<T extends Object>(
+    Expression<T> Function($$DbSellEntriesTableAnnotationComposer a) f,
+  ) {
+    final $$DbSellEntriesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.dbSellEntries,
+      getReferencedColumn: (t) => t.buyEntryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbSellEntriesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.dbSellEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DbInvestmentEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DbInvestmentEntriesTable,
+          DbInvestmentEntry,
+          $$DbInvestmentEntriesTableFilterComposer,
+          $$DbInvestmentEntriesTableOrderingComposer,
+          $$DbInvestmentEntriesTableAnnotationComposer,
+          $$DbInvestmentEntriesTableCreateCompanionBuilder,
+          $$DbInvestmentEntriesTableUpdateCompanionBuilder,
+          (DbInvestmentEntry, $$DbInvestmentEntriesTableReferences),
+          DbInvestmentEntry,
+          PrefetchHooks Function({
+            bool categoryId,
+            bool taxProfileId,
+            bool dbSellEntriesRefs,
+          })
+        > {
+  $$DbInvestmentEntriesTableTableManager(
+    _$AppDatabase db,
+    $DbInvestmentEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DbInvestmentEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DbInvestmentEntriesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DbInvestmentEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> categoryId = const Value.absent(),
+                Value<String> symbol = const Value.absent(),
+                Value<double> qty = const Value.absent(),
+                Value<DateTime> buyDate = const Value.absent(),
+                Value<double> buyRate = const Value.absent(),
+                Value<double> buyAmt = const Value.absent(),
+                Value<int?> taxProfileId = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DbInvestmentEntriesCompanion(
+                id: id,
+                categoryId: categoryId,
+                symbol: symbol,
+                qty: qty,
+                buyDate: buyDate,
+                buyRate: buyRate,
+                buyAmt: buyAmt,
+                taxProfileId: taxProfileId,
+                notes: notes,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int categoryId,
+                required String symbol,
+                required double qty,
+                required DateTime buyDate,
+                required double buyRate,
+                required double buyAmt,
+                Value<int?> taxProfileId = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DbInvestmentEntriesCompanion.insert(
+                id: id,
+                categoryId: categoryId,
+                symbol: symbol,
+                qty: qty,
+                buyDate: buyDate,
+                buyRate: buyRate,
+                buyAmt: buyAmt,
+                taxProfileId: taxProfileId,
+                notes: notes,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DbInvestmentEntriesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                categoryId = false,
+                taxProfileId = false,
+                dbSellEntriesRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (dbSellEntriesRefs) db.dbSellEntries,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (categoryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.categoryId,
+                                    referencedTable:
+                                        $$DbInvestmentEntriesTableReferences
+                                            ._categoryIdTable(db),
+                                    referencedColumn:
+                                        $$DbInvestmentEntriesTableReferences
+                                            ._categoryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (taxProfileId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.taxProfileId,
+                                    referencedTable:
+                                        $$DbInvestmentEntriesTableReferences
+                                            ._taxProfileIdTable(db),
+                                    referencedColumn:
+                                        $$DbInvestmentEntriesTableReferences
+                                            ._taxProfileIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (dbSellEntriesRefs)
+                        await $_getPrefetchedData<
+                          DbInvestmentEntry,
+                          $DbInvestmentEntriesTable,
+                          DbSellEntry
+                        >(
+                          currentTable: table,
+                          referencedTable: $$DbInvestmentEntriesTableReferences
+                              ._dbSellEntriesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$DbInvestmentEntriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).dbSellEntriesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.buyEntryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$DbInvestmentEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DbInvestmentEntriesTable,
+      DbInvestmentEntry,
+      $$DbInvestmentEntriesTableFilterComposer,
+      $$DbInvestmentEntriesTableOrderingComposer,
+      $$DbInvestmentEntriesTableAnnotationComposer,
+      $$DbInvestmentEntriesTableCreateCompanionBuilder,
+      $$DbInvestmentEntriesTableUpdateCompanionBuilder,
+      (DbInvestmentEntry, $$DbInvestmentEntriesTableReferences),
+      DbInvestmentEntry,
+      PrefetchHooks Function({
+        bool categoryId,
+        bool taxProfileId,
+        bool dbSellEntriesRefs,
+      })
+    >;
+typedef $$DbSellEntriesTableCreateCompanionBuilder =
+    DbSellEntriesCompanion Function({
+      Value<int> id,
+      required int buyEntryId,
+      required String symbol,
+      required double sellQty,
+      required DateTime sellDate,
+      required double sellRate,
+      required double sellAmt,
+      Value<DateTime> createdAt,
+    });
+typedef $$DbSellEntriesTableUpdateCompanionBuilder =
+    DbSellEntriesCompanion Function({
+      Value<int> id,
+      Value<int> buyEntryId,
+      Value<String> symbol,
+      Value<double> sellQty,
+      Value<DateTime> sellDate,
+      Value<double> sellRate,
+      Value<double> sellAmt,
+      Value<DateTime> createdAt,
+    });
+
+final class $$DbSellEntriesTableReferences
+    extends BaseReferences<_$AppDatabase, $DbSellEntriesTable, DbSellEntry> {
+  $$DbSellEntriesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $DbInvestmentEntriesTable _buyEntryIdTable(_$AppDatabase db) =>
+      db.dbInvestmentEntries.createAlias(
+        $_aliasNameGenerator(
+          db.dbSellEntries.buyEntryId,
+          db.dbInvestmentEntries.id,
+        ),
+      );
+
+  $$DbInvestmentEntriesTableProcessedTableManager get buyEntryId {
+    final $_column = $_itemColumn<int>('buy_entry_id')!;
+
+    final manager = $$DbInvestmentEntriesTableTableManager(
+      $_db,
+      $_db.dbInvestmentEntries,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_buyEntryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DbSellEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $DbSellEntriesTable> {
+  $$DbSellEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get symbol => $composableBuilder(
+    column: $table.symbol,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sellQty => $composableBuilder(
+    column: $table.sellQty,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get sellDate => $composableBuilder(
+    column: $table.sellDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sellRate => $composableBuilder(
+    column: $table.sellRate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sellAmt => $composableBuilder(
+    column: $table.sellAmt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$DbInvestmentEntriesTableFilterComposer get buyEntryId {
+    final $$DbInvestmentEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.buyEntryId,
+      referencedTable: $db.dbInvestmentEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DbInvestmentEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.dbInvestmentEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DbSellEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DbSellEntriesTable> {
+  $$DbSellEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get symbol => $composableBuilder(
+    column: $table.symbol,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get sellQty => $composableBuilder(
+    column: $table.sellQty,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get sellDate => $composableBuilder(
+    column: $table.sellDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get sellRate => $composableBuilder(
+    column: $table.sellRate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get sellAmt => $composableBuilder(
+    column: $table.sellAmt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$DbInvestmentEntriesTableOrderingComposer get buyEntryId {
+    final $$DbInvestmentEntriesTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.buyEntryId,
+          referencedTable: $db.dbInvestmentEntries,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbInvestmentEntriesTableOrderingComposer(
+                $db: $db,
+                $table: $db.dbInvestmentEntries,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$DbSellEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DbSellEntriesTable> {
+  $$DbSellEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get symbol =>
+      $composableBuilder(column: $table.symbol, builder: (column) => column);
+
+  GeneratedColumn<double> get sellQty =>
+      $composableBuilder(column: $table.sellQty, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get sellDate =>
+      $composableBuilder(column: $table.sellDate, builder: (column) => column);
+
+  GeneratedColumn<double> get sellRate =>
+      $composableBuilder(column: $table.sellRate, builder: (column) => column);
+
+  GeneratedColumn<double> get sellAmt =>
+      $composableBuilder(column: $table.sellAmt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$DbInvestmentEntriesTableAnnotationComposer get buyEntryId {
+    final $$DbInvestmentEntriesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.buyEntryId,
+          referencedTable: $db.dbInvestmentEntries,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DbInvestmentEntriesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.dbInvestmentEntries,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$DbSellEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DbSellEntriesTable,
+          DbSellEntry,
+          $$DbSellEntriesTableFilterComposer,
+          $$DbSellEntriesTableOrderingComposer,
+          $$DbSellEntriesTableAnnotationComposer,
+          $$DbSellEntriesTableCreateCompanionBuilder,
+          $$DbSellEntriesTableUpdateCompanionBuilder,
+          (DbSellEntry, $$DbSellEntriesTableReferences),
+          DbSellEntry,
+          PrefetchHooks Function({bool buyEntryId})
+        > {
+  $$DbSellEntriesTableTableManager(_$AppDatabase db, $DbSellEntriesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DbSellEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DbSellEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DbSellEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> buyEntryId = const Value.absent(),
+                Value<String> symbol = const Value.absent(),
+                Value<double> sellQty = const Value.absent(),
+                Value<DateTime> sellDate = const Value.absent(),
+                Value<double> sellRate = const Value.absent(),
+                Value<double> sellAmt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DbSellEntriesCompanion(
+                id: id,
+                buyEntryId: buyEntryId,
+                symbol: symbol,
+                sellQty: sellQty,
+                sellDate: sellDate,
+                sellRate: sellRate,
+                sellAmt: sellAmt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int buyEntryId,
+                required String symbol,
+                required double sellQty,
+                required DateTime sellDate,
+                required double sellRate,
+                required double sellAmt,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => DbSellEntriesCompanion.insert(
+                id: id,
+                buyEntryId: buyEntryId,
+                symbol: symbol,
+                sellQty: sellQty,
+                sellDate: sellDate,
+                sellRate: sellRate,
+                sellAmt: sellAmt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DbSellEntriesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({buyEntryId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (buyEntryId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.buyEntryId,
+                                referencedTable: $$DbSellEntriesTableReferences
+                                    ._buyEntryIdTable(db),
+                                referencedColumn: $$DbSellEntriesTableReferences
+                                    ._buyEntryIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DbSellEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DbSellEntriesTable,
+      DbSellEntry,
+      $$DbSellEntriesTableFilterComposer,
+      $$DbSellEntriesTableOrderingComposer,
+      $$DbSellEntriesTableAnnotationComposer,
+      $$DbSellEntriesTableCreateCompanionBuilder,
+      $$DbSellEntriesTableUpdateCompanionBuilder,
+      (DbSellEntry, $$DbSellEntriesTableReferences),
+      DbSellEntry,
+      PrefetchHooks Function({bool buyEntryId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8255,4 +12568,18 @@ class $AppDatabaseManager {
       $$DbTasksTableTableManager(_db, _db.dbTasks);
   $$DbCredentialsTableTableManager get dbCredentials =>
       $$DbCredentialsTableTableManager(_db, _db.dbCredentials);
+  $$DbInvestmentCategoriesTableTableManager get dbInvestmentCategories =>
+      $$DbInvestmentCategoriesTableTableManager(
+        _db,
+        _db.dbInvestmentCategories,
+      );
+  $$DbInvestmentTaxProfilesTableTableManager get dbInvestmentTaxProfiles =>
+      $$DbInvestmentTaxProfilesTableTableManager(
+        _db,
+        _db.dbInvestmentTaxProfiles,
+      );
+  $$DbInvestmentEntriesTableTableManager get dbInvestmentEntries =>
+      $$DbInvestmentEntriesTableTableManager(_db, _db.dbInvestmentEntries);
+  $$DbSellEntriesTableTableManager get dbSellEntries =>
+      $$DbSellEntriesTableTableManager(_db, _db.dbSellEntries);
 }

@@ -49,9 +49,9 @@ class SeedService {
         type: type,
         categoryId: idsByName[categoryName]!,
         entryDate: now.subtract(Duration(days: daysAgo)),
-        entryDay: DateFormat(
-          'EEEE',
-        ).format(now.subtract(Duration(days: daysAgo))),
+        entryDay: Value(
+          DateFormat('EEEE').format(now.subtract(Duration(days: daysAgo))),
+        ),
         paymentMode: paymentMode,
         notes: Value(notes),
         counterparty: Value(counterparty),

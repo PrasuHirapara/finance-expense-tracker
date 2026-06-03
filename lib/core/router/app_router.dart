@@ -22,6 +22,19 @@ import '../../features/tasks/presentation/blocs/task_editor/task_editor_bloc.dar
 import '../../features/tasks/presentation/pages/task_analytics_page.dart';
 import '../../features/tasks/presentation/pages/task_editor_page.dart';
 import '../../features/tasks/presentation/pages/task_settings_page.dart';
+import '../../features/investment/data/repositories/investment_repository.dart';
+import '../../features/investment/domain/models/investment_models.dart';
+import '../../features/investment/presentation/blocs/investment_form/investment_form_bloc.dart';
+import '../../features/investment/presentation/pages/investment_entry_form_page.dart';
+import '../../features/investment/presentation/pages/sell_entry_form_page.dart';
+import '../../features/investment/presentation/pages/investment_entry_detail_page.dart';
+import '../../features/investment/presentation/pages/investment_analytics_page.dart';
+import '../../features/investment/presentation/pages/investment_settings_page.dart';
+import '../../features/expense/presentation/pages/expense_import_preview_page.dart';
+import '../../features/credentials/presentation/pages/credential_import_preview_page.dart';
+import '../../features/investment/presentation/pages/investment_import_preview_page.dart';
+import '../../core/services/module_data_import_service.dart';
+import '../../core/services/app_settings_repository.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -36,6 +49,14 @@ class AppRoutes {
   static const String taskAnalytics = '/tasks/analytics';
   static const String taskEditor = '/tasks/editor';
   static const String taskSettings = '/tasks/settings';
+  static const String investmentAdd = '/investment/add';
+  static const String investmentSellAdd = '/investment/sell/add';
+  static const String investmentDetail = '/investment/detail';
+  static const String investmentAnalytics = '/investment/analytics';
+  static const String investmentSettings = '/investment/settings';
+  static const String expenseImportPreview = '/expense/import/preview';
+  static const String credentialImportPreview = '/credential/import/preview';
+  static const String investmentImportPreview = '/investment/import/preview';
   static const String userSettingsInfo = '/settings/user-settings';
   static const String appSettingsInfo = '/settings/app-settings';
   static const String backupSettingsInfo = '/settings/backup-settings';
@@ -67,6 +88,46 @@ class ExpenseEntriesArgs {
 
   final DateTime? initialDate;
   final String? title;
+}
+
+class InvestmentEditorArgs {
+  const InvestmentEditorArgs({this.entry});
+  final InvestmentEntry? entry;
+}
+
+class SellEditorArgs {
+  const SellEditorArgs({
+    required this.buyEntryId,
+    required this.symbol,
+    required this.remainingUnsoldQty,
+  });
+  final int buyEntryId;
+  final String symbol;
+  final double remainingUnsoldQty;
+}
+
+class InvestmentDetailArgs {
+  const InvestmentDetailArgs({required this.symbol});
+  final String symbol;
+}
+
+class InvestmentImportPreviewArgs {
+  const InvestmentImportPreviewArgs({required this.previewData});
+  final InvestmentImportPreviewData previewData;
+}
+
+class ExpenseImportPreviewArgs {
+  const ExpenseImportPreviewArgs({required this.previewData});
+  final ExpenseImportPreviewData previewData;
+}
+
+class CredentialImportPreviewArgs {
+  const CredentialImportPreviewArgs({
+    required this.previewData,
+    required this.encryptionKey,
+  });
+  final CredentialImportPreviewData previewData;
+  final String encryptionKey;
 }
 
 class AppRouter {
@@ -147,6 +208,62 @@ class AppRouter {
       case AppRoutes.taskSettings:
         return MaterialPageRoute<void>(
           builder: (context) => const TaskSettingsPage(),
+        );
+      case AppRoutes.investmentAdd:
+        final args = settings.arguments as InvestmentEditorArgs?;
+        return MaterialPageRoute<void>(
+          builder: (context) => BlocProvider(
+            create: (context) =>
+                InvestmentFormBloc(
+                  context.read<InvestmentRepository>(),
+                  context.read<AppSettingsRepository>(),
+                )..add(InvestmentFormInit(existingEntry: args?.entry)),
+            child: const InvestmentEntryFormPage(),
+          ),
+        );
+      case AppRoutes.investmentSellAdd:
+        final args = settings.arguments as SellEditorArgs;
+        return MaterialPageRoute<void>(
+          builder: (context) => BlocProvider(
+            create: (context) =>
+                InvestmentFormBloc(
+                  context.read<InvestmentRepository>(),
+                  context.read<AppSettingsRepository>(),
+                )..add(InvestmentFormSellInit(
+                    buyEntryId: args.buyEntryId,
+                    symbol: args.symbol,
+                    remainingUnsoldQty: args.remainingUnsoldQty,
+                  )),
+            child: const SellEntryFormPage(),
+          ),
+        );
+      case AppRoutes.investmentDetail:
+        final args = settings.arguments as InvestmentDetailArgs;
+        return MaterialPageRoute<void>(
+          builder: (context) => InvestmentEntryDetailPage(args: args),
+        );
+      case AppRoutes.investmentAnalytics:
+        return MaterialPageRoute<void>(
+          builder: (context) => const InvestmentAnalyticsPage(),
+        );
+      case AppRoutes.investmentSettings:
+        return MaterialPageRoute<void>(
+          builder: (context) => const InvestmentSettingsPage(),
+        );
+      case AppRoutes.expenseImportPreview:
+        final args = settings.arguments as ExpenseImportPreviewArgs;
+        return MaterialPageRoute<void>(
+          builder: (context) => ExpenseImportPreviewPage(args: args),
+        );
+      case AppRoutes.credentialImportPreview:
+        final args = settings.arguments as CredentialImportPreviewArgs;
+        return MaterialPageRoute<void>(
+          builder: (context) => CredentialImportPreviewPage(args: args),
+        );
+      case AppRoutes.investmentImportPreview:
+        final args = settings.arguments as InvestmentImportPreviewArgs;
+        return MaterialPageRoute<void>(
+          builder: (context) => InvestmentImportPreviewPage(args: args),
         );
       case AppRoutes.userSettingsInfo:
         return MaterialPageRoute<void>(

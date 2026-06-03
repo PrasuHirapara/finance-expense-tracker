@@ -74,6 +74,7 @@ void main() {
         expensePayload: bundle.expensePayload,
         taskPayload: bundle.taskPayload,
         settingsPayload: bundle.settingsPayload,
+        investmentPayload: bundle.investmentPayload,
         credentialEncryptionKey: testCredentialKey,
         restoreSettings: false,
       );

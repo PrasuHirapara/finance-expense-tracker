@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/services/module_data_import_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
@@ -115,26 +116,25 @@ class _ExpenseImportSectionState extends State<ExpenseImportSection> {
     });
 
     try {
-      final importResult = await context
+      final previewData = await context
           .read<ModuleDataImportService>()
-          .importExpenseExcel(result.files.single.path!);
+          .previewExpenseExcel(result.files.single.path!);
       if (!mounted) {
         return;
       }
-      showAppSnackBar(context, message: importResult.message);
-    } on ModuleImportException catch (error) {
+      Navigator.of(context).pushNamed(
+        AppRoutes.expenseImportPreview,
+        arguments: ExpenseImportPreviewArgs(previewData: previewData),
+      );
+    } catch (error) {
       if (!mounted) {
         return;
       }
-      if (error.errors.isEmpty) {
-        showAppSnackBar(
-          context,
-          message: error.message,
-          type: AppSnackBarType.error,
-        );
-      } else {
-        await _showImportErrors(error);
-      }
+      showAppSnackBar(
+        context,
+        message: 'Import failed: ${error.toString()}',
+        type: AppSnackBarType.error,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -142,39 +142,5 @@ class _ExpenseImportSectionState extends State<ExpenseImportSection> {
         });
       }
     }
-  }
-
-  Future<void> _showImportErrors(ModuleImportException error) {
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Import Errors'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(error.message),
-                const SizedBox(height: 12),
-                ...error.errors.map(
-                  (rowError) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(rowError),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: <Widget>[
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
   }
 }

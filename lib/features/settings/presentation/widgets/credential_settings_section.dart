@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/cancellable_task.dart';
 import '../../../../core/services/cloud_sync_service.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/services/module_data_import_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
@@ -518,29 +519,28 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
     });
 
     try {
-      final result = await context
+      final previewData = await context
           .read<ModuleDataImportService>()
-          .importCredentialExcel(
-            file.files.single.path!,
-            encryptionKey: authenticatedKey,
-          );
+          .previewCredentialExcel(file.files.single.path!);
       if (!mounted) {
         return;
       }
-      showAppSnackBar(context, message: result.message);
-    } on ModuleImportException catch (error) {
+      Navigator.of(context).pushNamed(
+        AppRoutes.credentialImportPreview,
+        arguments: CredentialImportPreviewArgs(
+          previewData: previewData,
+          encryptionKey: authenticatedKey,
+        ),
+      );
+    } catch (error) {
       if (!mounted) {
         return;
       }
-      if (error.errors.isEmpty) {
-        showAppSnackBar(
-          context,
-          message: error.message,
-          type: AppSnackBarType.error,
-        );
-      } else {
-        await _showImportErrors(error);
-      }
+      showAppSnackBar(
+        context,
+        message: 'Import failed: ${error.toString()}',
+        type: AppSnackBarType.error,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -548,40 +548,6 @@ class _CredentialSettingsSectionState extends State<CredentialSettingsSection> {
         });
       }
     }
-  }
-
-  Future<void> _showImportErrors(ModuleImportException error) {
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Import Errors'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(error.message),
-                const SizedBox(height: 12),
-                ...error.errors.map(
-                  (rowError) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(rowError),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: <Widget>[
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<T> _runBlockingOperation<T>({

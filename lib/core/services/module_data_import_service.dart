@@ -340,7 +340,7 @@ class ModuleDataImportService {
     return file.path;
   }
 
-  Future<ModuleImportResult> importExpenseExcel(String filePath) async {
+  Future<ExpenseImportPreviewData> previewExpenseExcel(String filePath) async {
     final workbook = await _loadWorkbook(filePath);
     final sheet = _resolveSheet(workbook, preferredSheetName: 'Expenses');
     final splitBundle = _parseExpenseSplitWorkbook(workbook);
@@ -369,8 +369,7 @@ class ModuleDataImportService {
       ],
     );
 
-    final errors = <String>[];
-    final rows = <_ValidatedExpenseRow>[];
+    final rows = <ExpenseImportRow>[];
 
     for (var rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
       final row = sheet.row(rowIndex);
@@ -379,36 +378,87 @@ class ModuleDataImportService {
       }
 
       try {
-        rows.add(
-          _validateExpenseRow(
-            row: row,
-            rowNumber: rowIndex + 1,
-            headerMap: headerMap,
-          ),
+        final validated = _validateExpenseRow(
+          row: row,
+          rowNumber: rowIndex + 1,
+          headerMap: headerMap,
         );
+        rows.add(ExpenseImportRow(
+          sourceEntryId: validated.sourceEntryId,
+          title: validated.title,
+          amount: validated.amount,
+          type: validated.type,
+          categoryName: validated.categoryName,
+          bankName: validated.bankName,
+          date: validated.date,
+          day: validated.day,
+          paymentMode: validated.paymentMode,
+          counterparty: validated.counterparty,
+          notes: validated.notes,
+          isValid: true,
+        ));
       } on ModuleImportException catch (error) {
-        errors.addAll(
-          error.errors.isEmpty ? <String>[error.message] : error.errors,
-        );
+        final sourceEntryId = _parseOptionalInt(_cellAt(row, headerMap['entryId']));
+        final title = _cellText(_cellAt(row, headerMap['title']));
+        final category = _cellText(_cellAt(row, headerMap['category']));
+        final bank = _cellText(_cellAt(row, headerMap['bank']));
+        final paymentModeText = _cellText(_cellAt(row, headerMap['paymentMode']));
+        final counterpartyText = _cellText(_cellAt(row, headerMap['counterparty']));
+        final notes = _cellText(_cellAt(row, headerMap['notes']));
+        final dayText = _cellText(_cellAt(row, headerMap['day']));
+        final amountCell = _cellAt(row, headerMap['amount']);
+        final typeText = _cellText(_cellAt(row, headerMap['type']));
+        final dateCell = _cellAt(row, headerMap['date']);
+
+        final amount = _parseAmount(amountCell) ?? 0.0;
+        final date = _parseDate(dateCell) ?? DateTime.now();
+
+        rows.add(ExpenseImportRow(
+          sourceEntryId: sourceEntryId,
+          title: title.isEmpty ? 'Untitled' : title,
+          amount: amount,
+          type: typeText.isEmpty ? 'Expense' : typeText,
+          categoryName: category.isEmpty ? 'Miscellaneous' : category,
+          bankName: bank.isEmpty ? null : bank,
+          date: date,
+          day: dayText.isEmpty ? null : dayText,
+          paymentMode: paymentModeText.isEmpty ? 'Cash' : paymentModeText,
+          counterparty: counterpartyText.isEmpty ? null : counterpartyText,
+          notes: notes,
+          isValid: false,
+          validationError: error.message,
+        ));
       }
     }
 
-    if (rows.isEmpty) {
-      throw const ModuleImportException(
-        'No expense rows were found to import.',
-        <String>['Add at least one completed row below the header row.'],
-      );
-    }
+    return ExpenseImportPreviewData(
+      rows: rows,
+      splitBundle: splitBundle,
+    );
+  }
 
-    if (errors.isNotEmpty) {
-      throw ModuleImportException(
-        'Expense import failed because some rows are invalid.',
-        errors,
+  Future<ModuleImportResult> saveExpenseImport(
+    List<ExpenseImportRow> validRows,
+    ExpenseSplitImportBundle splitBundle,
+  ) async {
+    final validatedRows = validRows.map((row) {
+      return _ValidatedExpenseRow(
+        sourceEntryId: row.sourceEntryId,
+        title: row.title,
+        amount: row.amount,
+        type: _normalizeExpenseType(row.type) ?? 'expense',
+        categoryName: row.categoryName,
+        bankName: row.bankName,
+        date: row.date,
+        day: row.day,
+        paymentMode: _normalizePaymentMode(row.paymentMode) ?? AppConstants.paymentModes.first,
+        counterparty: row.counterparty,
+        notes: row.notes,
       );
-    }
+    }).toList();
 
     final normalizedExpenseImport = _normalizeExpenseImportData(
-      rows: rows,
+      rows: validatedRows,
       splitBundle: splitBundle,
     );
 
@@ -473,7 +523,7 @@ class ModuleDataImportService {
                       : bankIds[row.bankName!.toLowerCase()],
                 ),
                 entryDate: row.date,
-                entryDay: row.day ?? _dayLabelForDate(row.date),
+                entryDay: Value(row.day ?? _dayLabelForDate(row.date)),
                 paymentMode: row.paymentMode,
                 notes: Value(row.notes),
                 counterparty: Value(row.counterparty),
@@ -511,20 +561,28 @@ class ModuleDataImportService {
 
       return ModuleImportResult(
         savedItems: normalizedExpenseImport.rows.length,
-        validatedRows: rows.length,
+        validatedRows: validRows.length,
         message: messageBuffer.toString(),
       );
     });
   }
 
-  Future<ModuleImportResult> importCredentialExcel(
-    String filePath, {
-    required String encryptionKey,
-  }) async {
-    if (encryptionKey.trim().isEmpty) {
-      throw const ModuleImportException('A valid encryption key is required.');
+  Future<ModuleImportResult> importExpenseExcel(String filePath) async {
+    final preview = await previewExpenseExcel(filePath);
+    final errors = preview.rows
+        .where((r) => !r.isValid)
+        .map((r) => r.validationError ?? 'Invalid row')
+        .toList();
+    if (errors.isNotEmpty) {
+      throw ModuleImportException(
+        'Expense import failed because some rows are invalid.',
+        errors,
+      );
     }
+    return saveExpenseImport(preview.rows, preview.splitBundle);
+  }
 
+  Future<CredentialImportPreviewData> previewCredentialExcel(String filePath) async {
     final workbook = await _loadWorkbook(filePath);
     final sheet = _resolveSheet(workbook, preferredSheetName: 'Credentials');
     final headerMap = _resolveHeaderMap(
@@ -543,11 +601,9 @@ class ModuleDataImportService {
       requiredKeys: const <String>['title', 'field', 'value'],
     );
 
-    final errors = <String>[];
-    final groupedFields = <String, List<CredentialField>>{};
+    final rows = <CredentialImportRow>[];
+    final groupedFields = <String, List<String>>{};
     final groupedExpiryDates = <String, DateTime?>{};
-    final titleByGroup = <String, String>{};
-    var validatedRows = 0;
 
     for (var rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
       final row = sheet.row(rowIndex);
@@ -580,59 +636,83 @@ class ModuleDataImportService {
         );
       }
 
-      if (rowErrors.isNotEmpty) {
-        errors.add('Row ${rowIndex + 1}: ${rowErrors.join(' ')}');
-        continue;
+      final groupKey = title.toLowerCase();
+      
+      if (rowErrors.isEmpty) {
+        final existingFields = groupedFields.putIfAbsent(
+          groupKey,
+          () => <String>[],
+        );
+        final existingExpiryDate = groupedExpiryDates[groupKey];
+
+        if (parsedExpiryDate != null) {
+          if (existingExpiryDate != null &&
+              !_isSameDate(existingExpiryDate, parsedExpiryDate)) {
+            rowErrors.add(
+              'Expiry Date does not match other rows for credential "$title".',
+            );
+          } else {
+            groupedExpiryDates[groupKey] = parsedExpiryDate;
+          }
+        } else {
+          groupedExpiryDates.putIfAbsent(groupKey, () => null);
+        }
+
+        final hasDuplicateField = existingFields.any(
+          (f) => f.toLowerCase() == field.toLowerCase(),
+        );
+        if (hasDuplicateField) {
+          rowErrors.add(
+            'Field "$field" is duplicated for credential "$title".',
+          );
+        } else {
+          existingFields.add(field);
+        }
       }
 
-      final groupKey = title.toLowerCase();
+      final isValid = rowErrors.isEmpty;
+      rows.add(CredentialImportRow(
+        title: title.isEmpty ? 'Untitled' : title,
+        expiryDate: parsedExpiryDate,
+        field: field.isEmpty ? 'Username' : field,
+        value: value,
+        isValid: isValid,
+        validationError: isValid ? null : rowErrors.join(' '),
+      ));
+    }
+
+    return CredentialImportPreviewData(rows: rows);
+  }
+
+  Future<ModuleImportResult> saveCredentialImport(
+    List<CredentialImportRow> validRows, {
+    required String encryptionKey,
+  }) async {
+    if (encryptionKey.trim().isEmpty) {
+      throw const ModuleImportException('A valid encryption key is required.');
+    }
+
+    final groupedFields = <String, List<CredentialField>>{};
+    final groupedExpiryDates = <String, DateTime?>{};
+    final titleByGroup = <String, String>{};
+
+    for (final row in validRows) {
+      if (!row.isValid) continue;
+
+      final groupKey = row.title.toLowerCase();
       final existingFields = groupedFields.putIfAbsent(
         groupKey,
         () => <CredentialField>[],
       );
-      titleByGroup.putIfAbsent(groupKey, () => title);
-      final existingExpiryDate = groupedExpiryDates[groupKey];
+      titleByGroup.putIfAbsent(groupKey, () => row.title);
 
-      if (parsedExpiryDate != null) {
-        if (existingExpiryDate != null &&
-            !_isSameDate(existingExpiryDate, parsedExpiryDate)) {
-          errors.add(
-            'Row ${rowIndex + 1}: Expiry Date does not match other rows for credential "$title".',
-          );
-          continue;
-        }
-        groupedExpiryDates[groupKey] = parsedExpiryDate;
+      if (row.expiryDate != null) {
+        groupedExpiryDates[groupKey] = row.expiryDate;
       } else {
         groupedExpiryDates.putIfAbsent(groupKey, () => null);
       }
 
-      final hasDuplicateField = existingFields.any(
-        (existingField) =>
-            existingField.keyLabel.toLowerCase() == field.toLowerCase(),
-      );
-      if (hasDuplicateField) {
-        errors.add(
-          'Row ${rowIndex + 1}: Field "$field" is duplicated for credential "$title".',
-        );
-        continue;
-      }
-
-      existingFields.add(CredentialField(keyLabel: field, value: value));
-      validatedRows += 1;
-    }
-
-    if (validatedRows == 0) {
-      throw const ModuleImportException(
-        'No credential rows were found to import.',
-        <String>['Add at least one completed row below the header row.'],
-      );
-    }
-
-    if (errors.isNotEmpty) {
-      throw ModuleImportException(
-        'Credential import failed because some rows are invalid.',
-        errors,
-      );
+      existingFields.add(CredentialField(keyLabel: row.field, value: row.value));
     }
 
     final drafts = groupedFields.entries
@@ -676,10 +756,28 @@ class ModuleDataImportService {
 
     return ModuleImportResult(
       savedItems: drafts.length,
-      validatedRows: validatedRows,
+      validatedRows: validRows.length,
       message:
-          '${drafts.length} credential${drafts.length == 1 ? '' : 's'} imported successfully from $validatedRows row${validatedRows == 1 ? '' : 's'}.',
+          '${drafts.length} credential${drafts.length == 1 ? '' : 's'} imported successfully.',
     );
+  }
+
+  Future<ModuleImportResult> importCredentialExcel(
+    String filePath, {
+    required String encryptionKey,
+  }) async {
+    final preview = await previewCredentialExcel(filePath);
+    final errors = preview.rows
+        .where((r) => !r.isValid)
+        .map((r) => r.validationError ?? 'Invalid row')
+        .toList();
+    if (errors.isNotEmpty) {
+      throw ModuleImportException(
+        'Credential import failed because some rows are invalid.',
+        errors,
+      );
+    }
+    return saveCredentialImport(preview.rows, encryptionKey: encryptionKey);
   }
 
   _ValidatedExpenseRow _validateExpenseRow({
@@ -754,26 +852,26 @@ class ModuleDataImportService {
     );
   }
 
-  _ExpenseSplitImportBundle _parseExpenseSplitWorkbook(Excel workbook) {
+  ExpenseSplitImportBundle _parseExpenseSplitWorkbook(Excel workbook) {
     final splitRecordsSheet = workbook.tables['Split Records'];
     final splitParticipantsSheet = workbook.tables['Split Participants'];
     final settlementsSheet = workbook.tables['Lent Settlements'];
     final borrowedSettlementsSheet = workbook.tables['Borrowed Settlements'];
 
     final splitRecords = splitRecordsSheet == null
-        ? const <_ImportedSplitRecord>[]
+        ? const <ImportedSplitRecord>[]
         : _parseSplitRecordSheet(splitRecordsSheet);
     final splitParticipants = splitParticipantsSheet == null
-        ? const <_ImportedSplitParticipant>[]
+        ? const <ImportedSplitParticipant>[]
         : _parseSplitParticipantSheet(splitParticipantsSheet);
     final settlements = settlementsSheet == null
-        ? const <_ImportedLentSettlement>[]
+        ? const <ImportedLentSettlement>[]
         : _parseLentSettlementSheet(settlementsSheet);
     final borrowedSettlements = borrowedSettlementsSheet == null
-        ? const <_ImportedBorrowedSettlement>[]
+        ? const <ImportedBorrowedSettlement>[]
         : _parseBorrowedSettlementSheet(borrowedSettlementsSheet);
 
-    return _ExpenseSplitImportBundle(
+    return ExpenseSplitImportBundle(
       splitRecords: splitRecords,
       splitParticipants: splitParticipants,
       settlements: settlements,
@@ -781,7 +879,7 @@ class ModuleDataImportService {
     );
   }
 
-  List<_ImportedSplitRecord> _parseSplitRecordSheet(Sheet sheet) {
+  List<ImportedSplitRecord> _parseSplitRecordSheet(Sheet sheet) {
     final headerMap = _resolveHeaderMap(
       headerRow: sheet.row(0),
       aliases: const <String, List<String>>{
@@ -794,7 +892,7 @@ class ModuleDataImportService {
       requiredKeys: const <String>['splitRecordId', 'totalAmount'],
     );
 
-    final rows = <_ImportedSplitRecord>[];
+    final rows = <ImportedSplitRecord>[];
     for (var rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
       final row = sheet.row(rowIndex);
       if (_isBlankRow(row, headerMap.values)) {
@@ -813,7 +911,7 @@ class ModuleDataImportService {
         );
       }
       rows.add(
-        _ImportedSplitRecord(
+        ImportedSplitRecord(
           sourceId: sourceId,
           sourceExpenseEntryId: _parseOptionalInt(
             _cellAt(row, headerMap['expenseEntryId']),
@@ -833,7 +931,7 @@ class ModuleDataImportService {
     return rows;
   }
 
-  List<_ImportedSplitParticipant> _parseSplitParticipantSheet(Sheet sheet) {
+  List<ImportedSplitParticipant> _parseSplitParticipantSheet(Sheet sheet) {
     final headerMap = _resolveHeaderMap(
       headerRow: sheet.row(0),
       aliases: const <String, List<String>>{
@@ -856,7 +954,7 @@ class ModuleDataImportService {
       ],
     );
 
-    final rows = <_ImportedSplitParticipant>[];
+    final rows = <ImportedSplitParticipant>[];
     for (var rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
       final row = sheet.row(rowIndex);
       if (_isBlankRow(row, headerMap.values)) {
@@ -886,7 +984,7 @@ class ModuleDataImportService {
         );
       }
       rows.add(
-        _ImportedSplitParticipant(
+        ImportedSplitParticipant(
           sourceId: sourceId,
           sourceSplitRecordId: sourceSplitRecordId,
           participantName: participantName,
@@ -908,7 +1006,7 @@ class ModuleDataImportService {
     return rows;
   }
 
-  List<_ImportedLentSettlement> _parseLentSettlementSheet(Sheet sheet) {
+  List<ImportedLentSettlement> _parseLentSettlementSheet(Sheet sheet) {
     final headerMap = _resolveHeaderMap(
       headerRow: sheet.row(0),
       aliases: const <String, List<String>>{
@@ -931,7 +1029,7 @@ class ModuleDataImportService {
       ],
     );
 
-    final rows = <_ImportedLentSettlement>[];
+    final rows = <ImportedLentSettlement>[];
     for (var rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
       final row = sheet.row(rowIndex);
       if (_isBlankRow(row, headerMap.values)) {
@@ -965,7 +1063,7 @@ class ModuleDataImportService {
         );
       }
       rows.add(
-        _ImportedLentSettlement(
+        ImportedLentSettlement(
           sourceId: sourceId,
           sourceSplitRecordId: sourceSplitRecordId,
           sourceSplitParticipantId: sourceSplitParticipantId,
@@ -982,7 +1080,7 @@ class ModuleDataImportService {
     return rows;
   }
 
-  List<_ImportedBorrowedSettlement> _parseBorrowedSettlementSheet(Sheet sheet) {
+  List<ImportedBorrowedSettlement> _parseBorrowedSettlementSheet(Sheet sheet) {
     final headerMap = _resolveHeaderMap(
       headerRow: sheet.row(0),
       aliases: const <String, List<String>>{
@@ -1000,7 +1098,7 @@ class ModuleDataImportService {
       ],
     );
 
-    final rows = <_ImportedBorrowedSettlement>[];
+    final rows = <ImportedBorrowedSettlement>[];
     for (var rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
       final row = sheet.row(rowIndex);
       if (_isBlankRow(row, headerMap.values)) {
@@ -1030,7 +1128,7 @@ class ModuleDataImportService {
         );
       }
       rows.add(
-        _ImportedBorrowedSettlement(
+        ImportedBorrowedSettlement(
           sourceId: sourceId,
           sourceBorrowedEntryId: sourceBorrowedEntryId,
           sourceExpenseEntryId: sourceExpenseEntryId,
@@ -1047,7 +1145,7 @@ class ModuleDataImportService {
   }
 
   Future<void> _importExpenseSplitBundle(
-    _ExpenseSplitImportBundle bundle, {
+    ExpenseSplitImportBundle bundle, {
     required Map<int, int> entryIdMap,
   }) async {
     final splitRecordIdMap = <int, int>{};
@@ -1154,7 +1252,7 @@ class ModuleDataImportService {
 
   _NormalizedExpenseImportData _normalizeExpenseImportData({
     required List<_ValidatedExpenseRow> rows,
-    required _ExpenseSplitImportBundle splitBundle,
+    required ExpenseSplitImportBundle splitBundle,
   }) {
     if (!splitBundle.hasData) {
       return _NormalizedExpenseImportData(rows: rows, splitBundle: splitBundle);
@@ -1193,7 +1291,7 @@ class ModuleDataImportService {
         })
         .toList(growable: false);
 
-    final normalizedBundle = _ExpenseSplitImportBundle(
+    final normalizedBundle = ExpenseSplitImportBundle(
       splitRecords: splitBundle.splitRecords
           .map(
             (record) => record.copyWith(
@@ -1660,7 +1758,447 @@ class ModuleDataImportService {
   String _dayLabelForDate(DateTime date) {
     return DateFormat('EEEE').format(date);
   }
+
+  Future<String> downloadInvestmentSampleExcel() async {
+    final file = await _buildOutputFile(
+      moduleFolder: 'investment',
+      fileNameLabel: 'investment-import-sample',
+    );
+    final excel = Excel.createExcel();
+    final defaultSheet = excel.getDefaultSheet();
+    if (defaultSheet != null && defaultSheet != 'Investments') {
+      excel.rename(defaultSheet, 'Investments');
+    }
+
+    final sheet = excel['Investments'];
+    final headerStyle = CellStyle(bold: true);
+
+    sheet.appendRow(<CellValue?>[
+      TextCellValue('Do not fill: Days, P/L, P/L%, Tax, PAT, PAT% — these are calculated by the app'),
+    ]);
+
+    sheet.appendRow(<CellValue?>[
+      TextCellValue('Category'),
+      TextCellValue('Symbol*'),
+      TextCellValue('Qty*'),
+      TextCellValue('Buy Date*'),
+      TextCellValue('Buy Rate*'),
+      TextCellValue('Buy Amt'),
+      TextCellValue('Sell Date'),
+      TextCellValue('Sell Rate'),
+      TextCellValue('Sell Amt'),
+      TextCellValue('Notes'),
+    ]);
+
+    sheet.appendRow(<CellValue?>[
+      TextCellValue('Share Market'),
+      TextCellValue('RELIANCE'),
+      DoubleCellValue(10.0),
+      TextCellValue('2026-05-10'),
+      DoubleCellValue(2450.00),
+      DoubleCellValue(24500.00),
+      TextCellValue('2026-05-20'),
+      DoubleCellValue(2500.00),
+      DoubleCellValue(25000.00),
+      TextCellValue('Long term hold'),
+    ]);
+
+    sheet.appendRow(<CellValue?>[
+      TextCellValue('Share Market'),
+      TextCellValue('TCS'),
+      DoubleCellValue(5.0),
+      TextCellValue('2026-05-12'),
+      DoubleCellValue(3200.00),
+      DoubleCellValue(16000.00),
+      TextCellValue(''),
+      TextCellValue(''),
+      TextCellValue(''),
+      TextCellValue('Open position'),
+    ]);
+
+    sheet.appendRow(<CellValue?>[
+      TextCellValue('IPO Allocation'),
+      TextCellValue('LIC IPO'),
+      DoubleCellValue(15.0),
+      TextCellValue('2026-05-15'),
+      DoubleCellValue(949.00),
+      DoubleCellValue(14235.00),
+      TextCellValue('2026-05-18'),
+      DoubleCellValue(900.00),
+      DoubleCellValue(13500.00),
+      TextCellValue('IPO allocation'),
+    ]);
+
+    sheet.appendRow(<CellValue?>[
+      TextCellValue('Mutual Fund'),
+      TextCellValue('HDFC Index Fund'),
+      DoubleCellValue(120.50),
+      TextCellValue('2026-05-10'),
+      DoubleCellValue(25.50),
+      DoubleCellValue(3072.75),
+      TextCellValue(''),
+      TextCellValue(''),
+      TextCellValue(''),
+      TextCellValue('Monthly SIP'),
+    ]);
+
+    _applyRowStyle(sheet, rowIndex: 1, columnCount: 10, style: headerStyle);
+
+    final bytes = excel.save();
+    if (bytes != null) {
+      await file.writeAsBytes(bytes);
+    }
+    return file.path;
+  }
+
+  Future<InvestmentImportPreviewData> importInvestmentExcel(String filePath) async {
+    final workbook = await _loadWorkbook(filePath);
+    final sheet = _resolveSheet(workbook, preferredSheetName: 'Investments');
+
+    var headerRowIndex = 0;
+    for (var i = 0; i < 5 && i < sheet.maxRows; i++) {
+      final r = sheet.row(i);
+      final values = r.map((c) => c?.value?.toString().toLowerCase() ?? '').toList();
+      if (values.contains('symbol') || values.contains('fund name') || values.contains('qty') || values.contains('quantity')) {
+        headerRowIndex = i;
+        break;
+      }
+    }
+
+    final headerRow = sheet.row(headerRowIndex);
+    final headerMap = _resolveHeaderMap(
+      headerRow: headerRow,
+      aliases: const <String, List<String>>{
+        'category': <String>['category', 'type'],
+        'symbol': <String>['symbol', 'name', 'fund name', 'fundname', 'stock', 'scrip'],
+        'qty': <String>['qty', 'quantity', 'units', 'shares'],
+        'buyDate': <String>['buy date', 'buydate', 'date', 'order date', 'orderdate'],
+        'buyRate': <String>['buy rate', 'buyrate', 'rate', 'price', 'nav'],
+        'buyAmt': <String>['buy amt', 'buyamt', 'amount', 'amt', 'value', 'buy value'],
+        'sellDate': <String>['sell date', 'selldate'],
+        'sellRate': <String>['sell rate', 'sellrate'],
+        'sellAmt': <String>['sell amt', 'sellamt'],
+        'notes': <String>['notes', 'remarks', 'comment'],
+        'type': <String>['type', 'action', 'transaction type'],
+      },
+      requiredKeys: const <String>[
+        'symbol',
+        'qty',
+        'buyDate',
+        'buyRate',
+      ],
+    );
+
+    final rows = <InvestmentImportRow>[];
+    final unrecognizedSections = <String>[];
+    var currentCategorySection = 'Equity / Stocks';
+
+    for (var rowIndex = headerRowIndex + 1; rowIndex < sheet.maxRows; rowIndex++) {
+      final row = sheet.row(rowIndex);
+      if (_isBlankRow(row, headerMap.values)) {
+        continue;
+      }
+
+      final nonBlankCells = row.where((c) => c?.value != null && c!.value.toString().trim().isNotEmpty).toList();
+      if (nonBlankCells.length == 1) {
+        final sectionText = nonBlankCells.first!.value.toString().trim();
+        final detected = _detectCategoryFromKeyword(sectionText);
+        if (detected != null) {
+          currentCategorySection = detected;
+        } else {
+          unrecognizedSections.add(sectionText);
+          currentCategorySection = sectionText;
+        }
+        continue;
+      }
+
+      try {
+        final symbol = _parseStringCell(row, headerMap['symbol']);
+        final qtyVal = _parseNumericCell(row, headerMap['qty']);
+        final buyDateVal = _parseDateCell(row, headerMap['buyDate']);
+        final buyRateVal = _parseNumericCell(row, headerMap['buyRate']);
+        final buyAmtVal = _parseNumericCell(row, headerMap['buyAmt']);
+        final sellDateVal = _parseDateCell(row, headerMap['sellDate']);
+        final sellRateVal = _parseNumericCell(row, headerMap['sellRate']);
+        final sellAmtVal = _parseNumericCell(row, headerMap['sellAmt']);
+        final notesVal = _parseStringCell(row, headerMap['notes']);
+
+        var rowCategory = currentCategorySection;
+        if (headerMap.containsKey('category')) {
+          final catCellVal = _parseStringCell(row, headerMap['category']);
+          if (catCellVal.isNotEmpty) {
+            final parsedCat = _detectCategoryFromKeyword(catCellVal) ?? catCellVal;
+            rowCategory = parsedCat;
+          }
+        }
+
+        var finalBuyDate = buyDateVal;
+        var finalBuyRate = buyRateVal;
+        var finalBuyAmt = buyAmtVal ?? ((qtyVal != null && buyRateVal != null) ? qtyVal * buyRateVal : 0.0);
+        DateTime? finalSellDate = sellDateVal;
+        double? finalSellRate = sellRateVal;
+        double? finalSellAmt = sellAmtVal;
+
+        if (headerMap.containsKey('type')) {
+          final typeCellVal = _parseStringCell(row, headerMap['type']).toLowerCase();
+          if (typeCellVal == 'sell' || typeCellVal == 'redemption') {
+            finalSellDate = buyDateVal;
+            finalSellRate = buyRateVal;
+            finalSellAmt = buyAmtVal ?? ((qtyVal != null && buyRateVal != null) ? qtyVal * buyRateVal : 0.0);
+            finalBuyDate = null;
+            finalBuyRate = null;
+            finalBuyAmt = 0.0;
+          }
+        }
+
+        final isRowValid = symbol.isNotEmpty && qtyVal != null && qtyVal > 0 && (finalBuyDate != null || finalSellDate != null);
+        String? validationError;
+        if (!isRowValid) {
+          final missing = <String>[];
+          if (symbol.isEmpty) missing.add('Symbol');
+          if (qtyVal == null || qtyVal <= 0) missing.add('Qty');
+          if (finalBuyDate == null && finalSellDate == null) missing.add('Date');
+          validationError = 'Missing required fields: ${missing.join(", ")}';
+        }
+
+        rows.add(InvestmentImportRow(
+          symbol: symbol,
+          qty: qtyVal ?? 0.0,
+          buyDate: finalBuyDate ?? finalSellDate ?? DateTime.now(),
+          buyRate: finalBuyRate ?? finalSellRate ?? 0.0,
+          buyAmt: finalBuyAmt,
+          sellDate: finalSellDate,
+          sellRate: finalSellRate,
+          sellAmt: finalSellAmt,
+          categoryName: rowCategory,
+          notes: notesVal.isEmpty ? null : notesVal,
+          isValid: isRowValid,
+          validationError: validationError,
+        ));
+      } catch (e) {
+        rows.add(InvestmentImportRow(
+          symbol: '',
+          qty: 0.0,
+          buyDate: DateTime.now(),
+          buyRate: 0.0,
+          buyAmt: 0.0,
+          categoryName: currentCategorySection,
+          isValid: false,
+          validationError: 'Error parsing row: ${e.toString()}',
+        ));
+      }
+    }
+
+    return InvestmentImportPreviewData(
+      rows: rows,
+      unrecognizedSections: unrecognizedSections.toSet().toList(),
+    );
+  }
+
+  String? _detectCategoryFromKeyword(String text) {
+    final lower = text.toLowerCase();
+    if (lower.contains('share') || lower.contains('equity') || lower.contains('stock') || lower.contains('demat')) {
+      return 'Equity / Stocks';
+    }
+    if (lower.contains('ipo')) {
+      return 'IPO (Allocation)';
+    }
+    if (lower.contains('mutual') || lower.contains('mf') || lower.contains('fund')) {
+      return 'Mutual Fund';
+    }
+    if (lower.contains('gold')) {
+      return 'Gold';
+    }
+    if (lower.contains('bond') || lower.contains('debt')) {
+      return 'Bond / Debt';
+    }
+    if (lower.contains('fd') || lower.contains('fixed') || lower.contains('savings')) {
+      return 'Fixed Deposit';
+    }
+    return null;
+  }
+
+  Future<int> saveInvestmentImport(List<InvestmentImportRow> rows) async {
+    return _database.transaction(() async {
+      final existingCategories = await (_database.select(_database.dbInvestmentCategories)).get();
+      final categoryIds = {for (final c in existingCategories) c.name.toLowerCase(): c.id};
+
+      final existingBrokers = await (_database.select(_database.dbInvestmentTaxProfiles)).get();
+      final defaultBrokerId = existingBrokers.isNotEmpty ? existingBrokers.first.id : null;
+
+      var savedCount = 0;
+
+      for (final row in rows) {
+        if (!row.isValid) continue;
+
+        final catKey = row.categoryName.toLowerCase();
+        var catId = categoryIds[catKey];
+        if (catId == null) {
+          catId = await _database.into(_database.dbInvestmentCategories).insert(
+                DbInvestmentCategoriesCompanion.insert(
+                  name: row.categoryName,
+                  iconCodePoint: 0xe62e,
+                  colorValue: 0xFF2196F3,
+                ),
+              );
+          categoryIds[catKey] = catId;
+        }
+
+        final buyId = await _database.into(_database.dbInvestmentEntries).insert(
+              DbInvestmentEntriesCompanion.insert(
+                categoryId: catId,
+                symbol: row.symbol.trim().toUpperCase(),
+                qty: row.qty,
+                buyDate: row.buyDate,
+                buyRate: row.buyRate,
+                buyAmt: row.buyAmt,
+                taxProfileId: Value(defaultBrokerId),
+                notes: Value(row.notes),
+                createdAt: Value(DateTime.now()),
+                updatedAt: Value(DateTime.now()),
+              ),
+            );
+
+        savedCount++;
+
+        if (row.sellDate != null && row.sellRate != null && row.sellQty != null) {
+          final sellAmt = row.sellAmt ?? (row.sellQty! * row.sellRate!);
+          await _database.into(_database.dbSellEntries).insert(
+                DbSellEntriesCompanion.insert(
+                  buyEntryId: buyId,
+                  symbol: row.symbol.trim().toUpperCase(),
+                  sellQty: row.sellQty!,
+                  sellDate: row.sellDate!,
+                  sellRate: row.sellRate!,
+                  sellAmt: sellAmt,
+                  createdAt: Value(DateTime.now()),
+                ),
+              );
+        }
+      }
+
+      return savedCount;
+    });
+  }
+
+  String _parseStringCell(List<Data?> row, int? index) => _cellText(_cellAt(row, index));
+  double? _parseNumericCell(List<Data?> row, int? index) => _parseAmount(_cellAt(row, index));
+  DateTime? _parseDateCell(List<Data?> row, int? index) => _parseDate(_cellAt(row, index));
 }
+
+class InvestmentImportRow {
+  InvestmentImportRow({
+    required this.symbol,
+    required this.qty,
+    required this.buyDate,
+    required this.buyRate,
+    required this.buyAmt,
+    this.sellDate,
+    this.sellRate,
+    this.sellAmt,
+    required this.categoryName,
+    this.notes,
+    this.isValid = true,
+    this.validationError,
+    this.isDuplicate = false,
+  });
+
+  String symbol;
+  double qty;
+  DateTime buyDate;
+  double buyRate;
+  double buyAmt;
+  DateTime? sellDate;
+  double? sellRate;
+  double? sellAmt;
+  String categoryName;
+  String? notes;
+  bool isValid;
+  String? validationError;
+  bool isDuplicate;
+
+  double? get sellQty => sellDate != null ? qty : null;
+}
+
+class InvestmentImportPreviewData {
+  InvestmentImportPreviewData({
+    required this.rows,
+    required this.unrecognizedSections,
+  });
+
+  final List<InvestmentImportRow> rows;
+  final List<String> unrecognizedSections;
+}
+
+class ExpenseImportRow {
+  ExpenseImportRow({
+    this.sourceEntryId,
+    required this.title,
+    required this.amount,
+    required this.type,
+    required this.categoryName,
+    this.bankName,
+    required this.date,
+    this.day,
+    required this.paymentMode,
+    this.counterparty,
+    required this.notes,
+    required this.isValid,
+    this.validationError,
+  });
+
+  final int? sourceEntryId;
+  final String title;
+  final double amount;
+  final String type;
+  final String categoryName;
+  final String? bankName;
+  final DateTime date;
+  final String? day;
+  final String paymentMode;
+  final String? counterparty;
+  final String notes;
+  final bool isValid;
+  final String? validationError;
+}
+
+class ExpenseImportPreviewData {
+  ExpenseImportPreviewData({
+    required this.rows,
+    required this.splitBundle,
+  });
+
+  final List<ExpenseImportRow> rows;
+  final ExpenseSplitImportBundle splitBundle;
+}
+
+class CredentialImportRow {
+  CredentialImportRow({
+    required this.title,
+    this.expiryDate,
+    required this.field,
+    required this.value,
+    this.isValid = true,
+    this.validationError,
+  });
+
+  final String title;
+  final DateTime? expiryDate;
+  final String field;
+  final String value;
+  final bool isValid;
+  final String? validationError;
+}
+
+class CredentialImportPreviewData {
+  CredentialImportPreviewData({
+    required this.rows,
+  });
+
+  final List<CredentialImportRow> rows;
+}
+
+
 
 class _ValidatedExpenseRow {
   const _ValidatedExpenseRow({
@@ -1720,18 +2258,18 @@ class _ValidatedExpenseRow {
   }
 }
 
-class _ExpenseSplitImportBundle {
-  const _ExpenseSplitImportBundle({
-    this.splitRecords = const <_ImportedSplitRecord>[],
-    this.splitParticipants = const <_ImportedSplitParticipant>[],
-    this.settlements = const <_ImportedLentSettlement>[],
-    this.borrowedSettlements = const <_ImportedBorrowedSettlement>[],
+class ExpenseSplitImportBundle {
+  const ExpenseSplitImportBundle({
+    this.splitRecords = const <ImportedSplitRecord>[],
+    this.splitParticipants = const <ImportedSplitParticipant>[],
+    this.settlements = const <ImportedLentSettlement>[],
+    this.borrowedSettlements = const <ImportedBorrowedSettlement>[],
   });
 
-  final List<_ImportedSplitRecord> splitRecords;
-  final List<_ImportedSplitParticipant> splitParticipants;
-  final List<_ImportedLentSettlement> settlements;
-  final List<_ImportedBorrowedSettlement> borrowedSettlements;
+  final List<ImportedSplitRecord> splitRecords;
+  final List<ImportedSplitParticipant> splitParticipants;
+  final List<ImportedLentSettlement> settlements;
+  final List<ImportedBorrowedSettlement> borrowedSettlements;
 
   bool get hasData =>
       splitRecords.isNotEmpty ||
@@ -1740,8 +2278,8 @@ class _ExpenseSplitImportBundle {
       borrowedSettlements.isNotEmpty;
 }
 
-class _ImportedSplitRecord {
-  const _ImportedSplitRecord({
+class ImportedSplitRecord {
+  const ImportedSplitRecord({
     required this.sourceId,
     required this.sourceExpenseEntryId,
     required this.sourceLentEntryId,
@@ -1755,14 +2293,14 @@ class _ImportedSplitRecord {
   final double totalAmount;
   final DateTime createdAt;
 
-  _ImportedSplitRecord copyWith({
+  ImportedSplitRecord copyWith({
     int? sourceId,
     Object? sourceExpenseEntryId = _moduleImportUnset,
     Object? sourceLentEntryId = _moduleImportUnset,
     double? totalAmount,
     DateTime? createdAt,
   }) {
-    return _ImportedSplitRecord(
+    return ImportedSplitRecord(
       sourceId: sourceId ?? this.sourceId,
       sourceExpenseEntryId: identical(sourceExpenseEntryId, _moduleImportUnset)
           ? this.sourceExpenseEntryId
@@ -1776,8 +2314,8 @@ class _ImportedSplitRecord {
   }
 }
 
-class _ImportedSplitParticipant {
-  const _ImportedSplitParticipant({
+class ImportedSplitParticipant {
+  const ImportedSplitParticipant({
     required this.sourceId,
     required this.sourceSplitRecordId,
     required this.participantName,
@@ -1807,13 +2345,13 @@ class _NormalizedExpenseImportData {
   });
 
   final List<_ValidatedExpenseRow> rows;
-  final _ExpenseSplitImportBundle splitBundle;
+  final ExpenseSplitImportBundle splitBundle;
 }
 
 const Object _moduleImportUnset = Object();
 
-class _ImportedLentSettlement {
-  const _ImportedLentSettlement({
+class ImportedLentSettlement {
+  const ImportedLentSettlement({
     required this.sourceId,
     required this.sourceSplitRecordId,
     required this.sourceSplitParticipantId,
@@ -1830,8 +2368,8 @@ class _ImportedLentSettlement {
   final DateTime createdAt;
 }
 
-class _ImportedBorrowedSettlement {
-  const _ImportedBorrowedSettlement({
+class ImportedBorrowedSettlement {
+  const ImportedBorrowedSettlement({
     required this.sourceId,
     required this.sourceBorrowedEntryId,
     required this.sourceExpenseEntryId,

@@ -33,6 +33,10 @@ import 'features/expense/presentation/blocs/expense/expense_bloc.dart';
 import 'features/tasks/data/repositories/task_repository.dart';
 import 'features/tasks/data/repositories/task_category_repository.dart';
 import 'features/tasks/presentation/blocs/tasks/task_bloc.dart';
+import 'features/investment/data/repositories/investment_repository.dart';
+import 'features/investment/presentation/blocs/investment/investment_bloc.dart';
+import 'features/investment/presentation/blocs/broker/broker_bloc.dart';
+import 'features/investment/presentation/blocs/investment_analytics/investment_analytics_bloc.dart';
 
 class DailyUseApp extends StatefulWidget {
   const DailyUseApp({super.key});
@@ -133,6 +137,9 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
         RepositoryProvider<ModuleDataImportService>.value(
           value: _session.moduleDataImportService,
         ),
+        RepositoryProvider<InvestmentRepository>.value(
+          value: _session.investmentRepository,
+        ),
       ],
       child: FutureBuilder<void>(
         future: _bootstrap,
@@ -197,6 +204,22 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
                 create: (context) =>
                     TaskBloc(context.read<TaskRepository>())
                       ..add(const TasksSubscriptionRequested()),
+              ),
+              BlocProvider<InvestmentBloc>(
+                create: (context) => InvestmentBloc(
+                  context.read<InvestmentRepository>(),
+                  context.read<AppSettingsRepository>(),
+                )..add(const InvestmentRestoreRequested()),
+              ),
+              BlocProvider<BrokerBloc>(
+                create: (context) => BrokerBloc(
+                  context.read<InvestmentRepository>(),
+                )..add(const BrokersSubscriptionRequested()),
+              ),
+              BlocProvider<InvestmentAnalyticsBloc>(
+                create: (context) => InvestmentAnalyticsBloc(
+                  context.read<InvestmentRepository>(),
+                )..add(const InvestmentAnalyticsRequested()),
               ),
             ],
             child: BlocBuilder<ThemeCubit, ThemeMode>(

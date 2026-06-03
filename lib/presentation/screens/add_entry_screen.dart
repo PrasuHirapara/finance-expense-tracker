@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_constants.dart';
 import '../../domain/entities/transaction_type.dart';
 import '../../domain/repositories/finance_repository.dart';
+import '../../shared/widgets/app_select_field.dart';
 import '../../shared/widgets/app_snackbar.dart';
 import '../controllers/add_entry_form_controller.dart';
 
@@ -116,46 +117,41 @@ class _AddEntryView extends StatelessWidget {
                       onChanged: controller.setAmount,
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<int>(
-                      initialValue: formState.selectedCategoryId,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                      decoration: InputDecoration(
-                        labelText: 'Category',
-                        errorText:
-                            formState.showValidation &&
-                                formState.selectedCategoryId == null
-                            ? 'Select a category'
-                            : null,
-                      ),
-                      items: formState.categories
+                    AppSelectField<int?>(
+                      label: 'Category',
+                      value: formState.selectedCategoryId,
+                      errorText: formState.showValidation &&
+                              formState.selectedCategoryId == null
+                          ? 'Select a category'
+                          : null,
+                      options: formState.categories
                           .map(
-                            (category) => DropdownMenuItem<int>(
+                            (category) => AppSelectOption<int?>(
                               value: category.id,
-                              child: Text(category.name),
+                              label: category.name,
                             ),
                           )
                           .toList(growable: false),
-                      onChanged: controller.setCategory,
+                      onChanged: (val) {
+                        if (val != null) {
+                          controller.setCategory(val);
+                        }
+                      },
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      initialValue: formState.paymentMode,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                      decoration: const InputDecoration(
-                        labelText: 'Payment Mode',
-                      ),
-                      items: AppConstants.paymentModes
+                    AppSelectField<String>(
+                      label: 'Payment Mode',
+                      value: formState.paymentMode,
+                      options: AppConstants.paymentModes
                           .map(
-                            (mode) => DropdownMenuItem<String>(
+                            (mode) => AppSelectOption<String>(
                               value: mode,
-                              child: Text(mode),
+                              label: mode,
                             ),
                           )
                           .toList(growable: false),
                       onChanged: (value) {
-                        if (value != null) {
-                          controller.setPaymentMode(value);
-                        }
+                        controller.setPaymentMode(value);
                       },
                     ),
                     const SizedBox(height: 16),

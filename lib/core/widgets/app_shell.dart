@@ -10,6 +10,7 @@ import '../../features/expense/presentation/pages/expense_module_page.dart';
 import '../../features/settings/presentation/pages/settings_module_page.dart';
 import '../../features/settings/presentation/widgets/privacy_policy_consent_dialog.dart';
 import '../../features/tasks/presentation/pages/tasks_module_page.dart';
+import '../../features/investment/presentation/pages/investment_module_page.dart';
 import '../blocs/module_navigation_bloc.dart';
 
 class AppShell extends StatefulWidget {
@@ -86,6 +87,7 @@ class _AppShellState extends State<AppShell> {
             CredentialModulePage(),
             ExpenseModulePage(),
             TasksModulePage(),
+            InvestmentModulePage(),
             SettingsModulePage(),
           ],
         );
@@ -118,6 +120,11 @@ class _AppShellState extends State<AppShell> {
                           icon: Icon(Icons.task_alt_outlined),
                           selectedIcon: Icon(Icons.task_alt_rounded),
                           label: Text('Task'),
+                        ),
+                        NavigationRailDestination(
+                          icon: Icon(Icons.show_chart_outlined),
+                          selectedIcon: Icon(Icons.show_chart_rounded),
+                          label: Text('Investment'),
                         ),
                         NavigationRailDestination(
                           icon: Icon(Icons.settings_outlined),
@@ -165,6 +172,11 @@ class _AppShellState extends State<AppShell> {
                 label: 'Task',
               ),
               NavigationDestination(
+                icon: Icon(Icons.show_chart_outlined),
+                selectedIcon: Icon(Icons.show_chart_rounded),
+                label: 'Investment',
+              ),
+              NavigationDestination(
                 icon: Icon(Icons.settings_outlined),
                 selectedIcon: Icon(Icons.settings_rounded),
                 label: 'Settings',
@@ -181,7 +193,8 @@ class _AppShellState extends State<AppShell> {
       AppModule.credential => 0,
       AppModule.expense => 1,
       AppModule.tasks => 2,
-      AppModule.settings => 3,
+      AppModule.investment => 3,
+      AppModule.settings => 4,
     };
   }
 
@@ -190,6 +203,7 @@ class _AppShellState extends State<AppShell> {
       0 => AppModule.credential,
       1 => AppModule.expense,
       2 => AppModule.tasks,
+      3 => AppModule.investment,
       _ => AppModule.settings,
     };
   }

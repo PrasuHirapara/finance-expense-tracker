@@ -168,6 +168,7 @@ class CloudSyncService {
         expensePayload: bundle.expensePayload,
         taskPayload: bundle.taskPayload,
         settingsPayload: bundle.settingsPayload,
+        investmentPayload: bundle.investmentPayload,
         credentialEncryptionKey:
             credentialEncryptionKey ??
             await _credentialSecurityService.readEncryptionKey(),
@@ -182,6 +183,7 @@ class CloudSyncService {
         expensePayload: localRollback.expensePayload,
         taskPayload: localRollback.taskPayload,
         settingsPayload: localRollback.settingsPayload,
+        investmentPayload: localRollback.investmentPayload,
         restoreCredentials: true,
         restoreSettings: true,
       );

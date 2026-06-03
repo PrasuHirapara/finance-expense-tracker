@@ -16,6 +16,7 @@ class FirestoreCloudSyncStoreService {
   static const String _expenseDocId = 'expense';
   static const String _taskDocId = 'task';
   static const String _settingsDocId = 'settings';
+  static const String _investmentDocId = 'investment';
 
   final FirebaseFirestore _firestore;
 
@@ -24,7 +25,6 @@ class FirestoreCloudSyncStoreService {
     required CloudBackupBundle bundle,
     AppCancellationToken? cancellationToken,
   }) async {
-    cancellationToken?.throwIfCancelled();
     final collection = _collection(userId);
     final snapshots =
         await Future.wait<DocumentSnapshot<Map<String, dynamic>>>([
@@ -33,6 +33,7 @@ class FirestoreCloudSyncStoreService {
           collection.doc(_expenseDocId).get(),
           collection.doc(_taskDocId).get(),
           collection.doc(_settingsDocId).get(),
+          collection.doc(_investmentDocId).get(),
         ]);
     cancellationToken?.throwIfCancelled();
 
@@ -41,11 +42,13 @@ class FirestoreCloudSyncStoreService {
     final expenseSnapshot = snapshots[2];
     final taskSnapshot = snapshots[3];
     final settingsSnapshot = snapshots[4];
+    final investmentSnapshot = snapshots[5];
     final manifestData = manifestSnapshot.data();
     final credentialData = credentialSnapshot.data();
     final expenseData = expenseSnapshot.data();
     final taskData = taskSnapshot.data();
     final settingsData = settingsSnapshot.data();
+    final investmentData = investmentSnapshot.data();
     final currentManifest = manifestSnapshot.exists && manifestData != null
         ? CloudSyncManifest.fromJson(_normalizeMap(manifestData))
         : null;
@@ -104,6 +107,21 @@ class FirestoreCloudSyncStoreService {
             )
           : false,
     );
+    final shouldUpdateInvestment = _shouldUpdateDomain(
+      currentManifest: currentManifest,
+      domain: CloudSyncDomain.investment,
+      remoteDocExists: investmentSnapshot.exists,
+      shouldExistRemotely: bundle.containsInvestmentPayload,
+      nextHash: bundle.manifest.domainHashFor(
+        CloudSyncDomain.investment.folderName,
+      ),
+      payloadFormatChanged: bundle.containsInvestmentPayload
+          ? _hasProtectedPayloadFormatChanged(
+              currentPayload: investmentData?['payload'] as String?,
+              nextPayload: bundle.investmentPayload,
+            )
+          : false,
+    );
 
     final shouldUpdateManifest =
         currentManifest == null ||
@@ -111,13 +129,15 @@ class FirestoreCloudSyncStoreService {
         shouldUpdateExpense ||
         shouldUpdateTask ||
         shouldUpdateSettings ||
+        shouldUpdateInvestment ||
         !_matchesStoredManifest(currentManifest, bundle.manifest);
 
     if (!shouldUpdateManifest &&
         !shouldUpdateCredential &&
         !shouldUpdateExpense &&
         !shouldUpdateTask &&
-        !shouldUpdateSettings) {
+        !shouldUpdateSettings &&
+        !shouldUpdateInvestment) {
       return CloudUploadResult(
         manifest: currentManifest,
         didWriteRemoteData: false,
@@ -175,6 +195,18 @@ class FirestoreCloudSyncStoreService {
       updatedDomains.add(CloudSyncDomain.settings.folderName);
     }
 
+    if (shouldUpdateInvestment) {
+      if (bundle.containsInvestmentPayload) {
+        batch.set(collection.doc(_investmentDocId), <String, dynamic>{
+          'payload': bundle.investmentPayload,
+          'updatedAt': timestamp,
+        });
+      } else {
+        batch.delete(collection.doc(_investmentDocId));
+      }
+      updatedDomains.add(CloudSyncDomain.investment.folderName);
+    }
+
     await batch.commit();
     cancellationToken?.throwIfCancelled();
     updatedDomains.sort();
@@ -212,6 +244,7 @@ class FirestoreCloudSyncStoreService {
           collection.doc(_expenseDocId).get(),
           collection.doc(_taskDocId).get(),
           collection.doc(_settingsDocId).get(),
+          collection.doc(_investmentDocId).get(),
         ]);
     cancellationToken?.throwIfCancelled();
     final manifestSnapshot = snapshots[0];
@@ -219,12 +252,14 @@ class FirestoreCloudSyncStoreService {
     final expenseSnapshot = snapshots[2];
     final taskSnapshot = snapshots[3];
     final settingsSnapshot = snapshots[4];
+    final investmentSnapshot = snapshots[5];
 
     final manifestData = manifestSnapshot.data();
     final credentialData = credentialSnapshot.data();
     final expenseData = expenseSnapshot.data();
     final taskData = taskSnapshot.data();
     final settingsData = settingsSnapshot.data();
+    final investmentData = investmentSnapshot.data();
     if (!manifestSnapshot.exists ||
         !expenseSnapshot.exists ||
         !taskSnapshot.exists ||
@@ -237,6 +272,7 @@ class FirestoreCloudSyncStoreService {
     final hasCredentialPayload =
         credentialSnapshot.exists && credentialData != null;
     final hasSettingsPayload = settingsSnapshot.exists && settingsData != null;
+    final hasInvestmentPayload = investmentSnapshot.exists && investmentData != null;
 
     return CloudBackupBundle(
       manifest: CloudSyncManifest.fromJson(_normalizeMap(manifestData)),
@@ -250,6 +286,10 @@ class FirestoreCloudSyncStoreService {
           ? settingsData['payload'] as String? ?? ''
           : _emptySettingsPayload(),
       containsSettingsPayload: hasSettingsPayload,
+      investmentPayload: hasInvestmentPayload
+          ? investmentData['payload'] as String? ?? ''
+          : _emptyInvestmentPayload(),
+      containsInvestmentPayload: hasInvestmentPayload,
     );
   }
 
@@ -266,6 +306,7 @@ class FirestoreCloudSyncStoreService {
         _expenseDocId,
         _taskDocId,
         _settingsDocId,
+        _investmentDocId,
       ]) {
         batch.delete(collection.doc(docId));
       }
@@ -277,6 +318,7 @@ class FirestoreCloudSyncStoreService {
       'Credential' => _credentialDocId,
       'Expense' => _expenseDocId,
       'Task' => _taskDocId,
+      'Investment' => _investmentDocId,
       'Settings' => _settingsDocId,
       _ => null,
     };
@@ -345,6 +387,10 @@ class FirestoreCloudSyncStoreService {
 
   String _emptySettingsPayload() {
     return '{"schemaVersion":0,"exportedAt":"","appSettings":{},"reminderSettings":{}}';
+  }
+
+  String _emptyInvestmentPayload() {
+    return '{"schemaVersion":0,"exportedAt":"","categories":[],"taxProfiles":[],"entries":[],"sellEntries":[]}';
   }
 
   bool _shouldUpdateDomain({

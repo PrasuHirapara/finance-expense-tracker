@@ -91,6 +91,16 @@ class AppSettingsRepository {
     await _commit(settings.copyWith(selectedExpenseBankId: bankId));
   }
 
+  Future<void> updateSelectedInvestmentBrokerId(int? brokerId) async {
+    final settings = await getSettings();
+    await _commit(settings.copyWith(selectedInvestmentBrokerId: brokerId));
+  }
+
+  Future<void> updateSelectedInvestmentCategoryId(int? categoryId) async {
+    final settings = await getSettings();
+    await _commit(settings.copyWith(selectedInvestmentCategoryId: categoryId));
+  }
+
   Future<Map<String, dynamic>> exportForCloud() async {
     final settings = await getSettings();
     return _toCloudJson(settings);
@@ -146,6 +156,8 @@ class AppSettingsRepository {
       'exportDirectoryPath': settings.exportDirectoryPath,
       'acceptedPrivacyPolicyVersion': settings.acceptedPrivacyPolicyVersion,
       'selectedExpenseBankId': settings.selectedExpenseBankId,
+      'selectedInvestmentBrokerId': settings.selectedInvestmentBrokerId,
+      'selectedInvestmentCategoryId': settings.selectedInvestmentCategoryId,
       'cloudSync': _cloudSyncToJson(settings.cloudSync),
     };
   }
@@ -159,6 +171,8 @@ class AppSettingsRepository {
       'exportDirectoryPath': settings.exportDirectoryPath,
       'acceptedPrivacyPolicyVersion': settings.acceptedPrivacyPolicyVersion,
       'selectedExpenseBankId': settings.selectedExpenseBankId,
+      'selectedInvestmentBrokerId': settings.selectedInvestmentBrokerId,
+      'selectedInvestmentCategoryId': settings.selectedInvestmentCategoryId,
       'cloudSync': _cloudSyncToCloudJson(settings.cloudSync),
     };
   }
@@ -184,6 +198,8 @@ class AppSettingsRepository {
         json['acceptedPrivacyPolicyVersion'],
       ),
       selectedExpenseBankId: _intFromJson(json['selectedExpenseBankId']),
+      selectedInvestmentBrokerId: _intFromJson(json['selectedInvestmentBrokerId']),
+      selectedInvestmentCategoryId: _intFromJson(json['selectedInvestmentCategoryId']),
       cloudSync: _cloudSyncFromJson(json['cloudSync']),
     );
   }
@@ -220,9 +236,19 @@ class AppSettingsRepository {
       selectedExpenseBankId: json.containsKey('selectedExpenseBankId')
           ? _intFromJson(json['selectedExpenseBankId'])
           : fallback.selectedExpenseBankId,
+      selectedInvestmentBrokerId: json.containsKey('selectedInvestmentBrokerId')
+          ? _intFromJson(json['selectedInvestmentBrokerId'])
+          : fallback.selectedInvestmentBrokerId,
+      selectedInvestmentCategoryId: json.containsKey('selectedInvestmentCategoryId')
+          ? _intFromJson(json['selectedInvestmentCategoryId'])
+          : fallback.selectedInvestmentCategoryId,
       cloudSync: fallback.cloudSync.copyWith(
         enabled: restoredCloudSync.enabled,
         syncCredentials: restoredCloudSync.syncCredentials,
+        syncExpense: restoredCloudSync.syncExpense,
+        syncTasks: restoredCloudSync.syncTasks,
+        syncInvestment: restoredCloudSync.syncInvestment,
+        syncDefaults: restoredCloudSync.syncDefaults,
       ),
     );
   }
@@ -255,6 +281,10 @@ class AppSettingsRepository {
     return <String, dynamic>{
       'enabled': preferences.enabled,
       'syncCredentials': preferences.syncCredentials,
+      'syncExpense': preferences.syncExpense,
+      'syncTasks': preferences.syncTasks,
+      'syncInvestment': preferences.syncInvestment,
+      'syncDefaults': preferences.syncDefaults,
       'autoBackupEnabled': preferences.autoBackupEnabled,
       'autoBackupTime': preferences.autoBackupTime.toJson(),
       'lastSuccessfulSyncAt': preferences.lastSuccessfulSyncAt
@@ -270,6 +300,10 @@ class AppSettingsRepository {
     return <String, dynamic>{
       'enabled': preferences.enabled,
       'syncCredentials': preferences.syncCredentials,
+      'syncExpense': preferences.syncExpense,
+      'syncTasks': preferences.syncTasks,
+      'syncInvestment': preferences.syncInvestment,
+      'syncDefaults': preferences.syncDefaults,
     };
   }
 
@@ -282,6 +316,18 @@ class AppSettingsRepository {
       enabled: value['enabled'] is bool ? value['enabled'] as bool : false,
       syncCredentials: value['syncCredentials'] is bool
           ? value['syncCredentials'] as bool
+          : true,
+      syncExpense: value['syncExpense'] is bool
+          ? value['syncExpense'] as bool
+          : true,
+      syncTasks: value['syncTasks'] is bool
+          ? value['syncTasks'] as bool
+          : true,
+      syncInvestment: value['syncInvestment'] is bool
+          ? value['syncInvestment'] as bool
+          : true,
+      syncDefaults: value['syncDefaults'] is bool
+          ? value['syncDefaults'] as bool
           : true,
       autoBackupEnabled: value['autoBackupEnabled'] is bool
           ? value['autoBackupEnabled'] as bool
@@ -318,6 +364,18 @@ class AppSettingsRepository {
       syncCredentials: value['syncCredentials'] is bool
           ? value['syncCredentials'] as bool
           : fallback.syncCredentials,
+      syncExpense: value['syncExpense'] is bool
+          ? value['syncExpense'] as bool
+          : fallback.syncExpense,
+      syncTasks: value['syncTasks'] is bool
+          ? value['syncTasks'] as bool
+          : fallback.syncTasks,
+      syncInvestment: value['syncInvestment'] is bool
+          ? value['syncInvestment'] as bool
+          : fallback.syncInvestment,
+      syncDefaults: value['syncDefaults'] is bool
+          ? value['syncDefaults'] as bool
+          : fallback.syncDefaults,
     );
   }
 

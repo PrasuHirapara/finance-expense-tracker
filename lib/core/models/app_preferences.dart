@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum AppModule { credential, expense, tasks, settings }
+enum AppModule { credential, expense, tasks, investment, settings }
 
 class AppBackupTime {
   const AppBackupTime({required this.hour, required this.minute});
@@ -50,6 +50,10 @@ class CloudSyncPreferences {
   const CloudSyncPreferences({
     this.enabled = false,
     this.syncCredentials = true,
+    this.syncExpense = true,
+    this.syncTasks = true,
+    this.syncInvestment = true,
+    this.syncDefaults = true,
     this.autoBackupEnabled = false,
     this.autoBackupTime = AppBackupTime.defaultAutoBackup,
     this.lastSuccessfulSyncAt,
@@ -60,6 +64,10 @@ class CloudSyncPreferences {
 
   final bool enabled;
   final bool syncCredentials;
+  final bool syncExpense;
+  final bool syncTasks;
+  final bool syncInvestment;
+  final bool syncDefaults;
   final bool autoBackupEnabled;
   final AppBackupTime autoBackupTime;
   final DateTime? lastSuccessfulSyncAt;
@@ -70,6 +78,10 @@ class CloudSyncPreferences {
   CloudSyncPreferences copyWith({
     bool? enabled,
     bool? syncCredentials,
+    bool? syncExpense,
+    bool? syncTasks,
+    bool? syncInvestment,
+    bool? syncDefaults,
     bool? autoBackupEnabled,
     AppBackupTime? autoBackupTime,
     Object? lastSuccessfulSyncAt = _appPreferenceUnset,
@@ -80,6 +92,10 @@ class CloudSyncPreferences {
     return CloudSyncPreferences(
       enabled: enabled ?? this.enabled,
       syncCredentials: syncCredentials ?? this.syncCredentials,
+      syncExpense: syncExpense ?? this.syncExpense,
+      syncTasks: syncTasks ?? this.syncTasks,
+      syncInvestment: syncInvestment ?? this.syncInvestment,
+      syncDefaults: syncDefaults ?? this.syncDefaults,
       autoBackupEnabled: autoBackupEnabled ?? this.autoBackupEnabled,
       autoBackupTime: autoBackupTime ?? this.autoBackupTime,
       lastSuccessfulSyncAt: identical(lastSuccessfulSyncAt, _appPreferenceUnset)
@@ -108,6 +124,8 @@ class AppPreferences {
     this.exportDirectoryPath,
     this.acceptedPrivacyPolicyVersion,
     this.selectedExpenseBankId,
+    this.selectedInvestmentBrokerId,
+    this.selectedInvestmentCategoryId,
     this.cloudSync = const CloudSyncPreferences(),
   });
 
@@ -117,6 +135,8 @@ class AppPreferences {
   final String? exportDirectoryPath;
   final String? acceptedPrivacyPolicyVersion;
   final int? selectedExpenseBankId;
+  final int? selectedInvestmentBrokerId;
+  final int? selectedInvestmentCategoryId;
   final CloudSyncPreferences cloudSync;
 
   AppPreferences copyWith({
@@ -126,6 +146,8 @@ class AppPreferences {
     Object? exportDirectoryPath = _appPreferenceUnset,
     Object? acceptedPrivacyPolicyVersion = _appPreferenceUnset,
     Object? selectedExpenseBankId = _appPreferenceUnset,
+    Object? selectedInvestmentBrokerId = _appPreferenceUnset,
+    Object? selectedInvestmentCategoryId = _appPreferenceUnset,
     CloudSyncPreferences? cloudSync,
   }) {
     return AppPreferences(
@@ -145,6 +167,14 @@ class AppPreferences {
           identical(selectedExpenseBankId, _appPreferenceUnset)
           ? this.selectedExpenseBankId
           : selectedExpenseBankId as int?,
+      selectedInvestmentBrokerId:
+          identical(selectedInvestmentBrokerId, _appPreferenceUnset)
+          ? this.selectedInvestmentBrokerId
+          : selectedInvestmentBrokerId as int?,
+      selectedInvestmentCategoryId:
+          identical(selectedInvestmentCategoryId, _appPreferenceUnset)
+          ? this.selectedInvestmentCategoryId
+          : selectedInvestmentCategoryId as int?,
       cloudSync: cloudSync ?? this.cloudSync,
     );
   }

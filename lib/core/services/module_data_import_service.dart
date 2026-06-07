@@ -1577,6 +1577,25 @@ class ModuleDataImportService {
     return names;
   }
 
+  Future<List<String>> _loadInvestmentSampleCategories() async {
+    final existing = await (_database.select(
+      _database.dbInvestmentCategories,
+    )).get();
+    final defaultNames = const <String>[
+      'Equity / Stocks',
+      'IPO (Allocation)',
+      'Mutual Fund',
+      'Gold',
+      'Bond / Debt',
+      'Fixed Deposit',
+    ];
+    final names = <String>{
+      ...defaultNames,
+      ...existing.map((category) => category.name),
+    };
+    return names.toList(growable: false)..sort();
+  }
+
   _ExcelReferenceRange _appendReferenceList(
     Sheet sheet, {
     required String title,
@@ -1803,6 +1822,7 @@ class ModuleDataImportService {
       moduleFolder: 'investment',
       fileNameLabel: 'investment-import-sample',
     );
+    final categories = await _loadInvestmentSampleCategories();
     final excel = Excel.createExcel();
     final defaultSheet = excel.getDefaultSheet();
     if (defaultSheet != null && defaultSheet != 'Investments') {
@@ -1810,6 +1830,7 @@ class ModuleDataImportService {
     }
 
     final sheet = excel['Investments'];
+    final referenceSheet = excel['Reference'];
     final headerStyle = CellStyle(bold: true);
 
     sheet.appendRow(<CellValue?>[
@@ -1832,7 +1853,7 @@ class ModuleDataImportService {
     ]);
 
     sheet.appendRow(<CellValue?>[
-      TextCellValue('Share Market'),
+      TextCellValue('Equity / Stocks'),
       TextCellValue('RELIANCE'),
       DoubleCellValue(10.0),
       TextCellValue('2026-05-10'),
@@ -1845,7 +1866,7 @@ class ModuleDataImportService {
     ]);
 
     sheet.appendRow(<CellValue?>[
-      TextCellValue('Share Market'),
+      TextCellValue('Equity / Stocks'),
       TextCellValue('TCS'),
       DoubleCellValue(5.0),
       TextCellValue('2026-05-12'),
@@ -1858,7 +1879,7 @@ class ModuleDataImportService {
     ]);
 
     sheet.appendRow(<CellValue?>[
-      TextCellValue('IPO Allocation'),
+      TextCellValue('IPO (Allocation)'),
       TextCellValue('LIC IPO'),
       DoubleCellValue(15.0),
       TextCellValue('2026-05-15'),
@@ -1884,11 +1905,100 @@ class ModuleDataImportService {
     ]);
 
     _applyRowStyle(sheet, rowIndex: 1, columnCount: 10, style: headerStyle);
+    _setColumnWidths(sheet, <double>[
+      18, // Category
+      18, // Symbol
+      12, // Qty
+      14, // Buy Date
+      14, // Buy Rate
+      14, // Buy Amt
+      14, // Sell Date
+      14, // Sell Rate
+      14, // Sell Amt
+      24, // Notes
+    ]);
+
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Field'),
+      TextCellValue('Requirement'),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Category'),
+      TextCellValue(
+        'Required. Select from the dropdown list or use custom names. Default: Equity / Stocks, IPO (Allocation), Mutual Fund, Gold, Bond / Debt, Fixed Deposit.',
+      ),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Symbol*'),
+      TextCellValue('Required. Symbol or fund name.'),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Qty*'),
+      TextCellValue('Required. Quantity/Units bought or sold.'),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Buy Date*'),
+      TextCellValue('Required. Purchase date. Format: yyyy-MM-dd.'),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Buy Rate*'),
+      TextCellValue('Required. Purchase price/NAV per unit.'),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Buy Amt'),
+      TextCellValue('Optional. Calculated automatically if left empty.'),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Sell Date'),
+      TextCellValue('Optional. Sale date. Format: yyyy-MM-dd.'),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Sell Rate'),
+      TextCellValue('Optional. Sale price/NAV per unit.'),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Sell Amt'),
+      TextCellValue('Optional. Calculated automatically if left empty.'),
+    ]);
+    referenceSheet.appendRow(<CellValue?>[
+      TextCellValue('Notes'),
+      TextCellValue('Optional. Additional comments/remarks.'),
+    ]);
+    referenceSheet.appendRow(const <CellValue?>[]);
+
+    final categoryRange = _appendReferenceList(
+      referenceSheet,
+      title: 'Category Dropdown',
+      values: categories,
+    );
+
+    _applyRowStyle(
+      referenceSheet,
+      rowIndex: 0,
+      columnCount: 2,
+      style: headerStyle,
+    );
+    _setColumnWidths(referenceSheet, <double>[20, 72]);
 
     final bytes = excel.save();
-    if (bytes != null) {
-      await file.writeAsBytes(bytes);
+    if (bytes == null) {
+      throw const ModuleImportException(
+        'Unable to generate the investment sample Excel file.',
+      );
     }
+
+    final workbookWithDropdowns = _applyExcelDropdowns(
+      Uint8List.fromList(bytes),
+      rules: <_ExcelDropdownRule>[
+        _ExcelDropdownRule(
+          sheetName: 'Investments',
+          targetRange: 'A3:A200',
+          formula: categoryRange.asFormula,
+        ),
+      ],
+    );
+
+    await file.writeAsBytes(workbookWithDropdowns);
     return file.path;
   }
 
@@ -2015,18 +2125,21 @@ class ModuleDataImportService {
         double? finalSellRate = sellRateVal;
         double? finalSellAmt = sellAmtVal;
 
+        bool isSellOnlyRow = false;
         if (headerMap.containsKey('type')) {
           final typeCellVal = _parseStringCell(
             row,
             headerMap['type'],
           ).toLowerCase();
           if (typeCellVal == 'sell' || typeCellVal == 'redemption') {
-            finalSellDate = buyDateVal;
-            finalSellRate = buyRateVal;
+            isSellOnlyRow = true;
+            finalSellDate = buyDateVal ?? sellDateVal;
+            finalSellRate = sellRateVal ?? buyRateVal;
             finalSellAmt =
+                sellAmtVal ??
                 buyAmtVal ??
-                ((qtyVal != null && buyRateVal != null)
-                    ? qtyVal * buyRateVal
+                ((qtyVal != null && (sellRateVal ?? buyRateVal) != null)
+                    ? qtyVal * (sellRateVal ?? buyRateVal)!
                     : 0.0);
             finalBuyDate = null;
             finalBuyRate = null;
@@ -2044,8 +2157,9 @@ class ModuleDataImportService {
           final missing = <String>[];
           if (symbol.isEmpty) missing.add('Symbol');
           if (qtyVal == null || qtyVal <= 0) missing.add('Qty');
-          if (finalBuyDate == null && finalSellDate == null)
+          if (finalBuyDate == null && finalSellDate == null) {
             missing.add('Date');
+          }
           validationError = 'Missing required fields: ${missing.join(", ")}';
         }
 
@@ -2063,6 +2177,7 @@ class ModuleDataImportService {
             notes: notesVal.isEmpty ? null : notesVal,
             isValid: isRowValid,
             validationError: validationError,
+            isSellOnly: isSellOnlyRow,
           ),
         );
       } catch (e) {
@@ -2154,40 +2269,130 @@ class ModuleDataImportService {
             categoryIds[catKey] = catId;
           }
 
-          final buyId = await _database
-              .into(_database.dbInvestmentEntries)
-              .insert(
-                DbInvestmentEntriesCompanion.insert(
-                  categoryId: catId,
-                  symbol: row.symbol.trim().toUpperCase(),
-                  qty: row.qty,
-                  buyDate: row.buyDate,
-                  buyRate: row.buyRate,
-                  buyAmt: row.buyAmt,
-                  taxProfileId: Value(defaultBrokerId),
-                  notes: Value(row.notes),
-                  createdAt: Value(DateTime.now()),
-                  updatedAt: Value(DateTime.now()),
-                ),
-              );
+          if (row.isSellOnly) {
+            final symbol = row.symbol.trim().toUpperCase();
+            final existingBuys =
+                await (_database.select(_database.dbInvestmentEntries)
+                      ..where((tbl) => tbl.symbol.equals(symbol))
+                      ..orderBy([
+                        (tbl) => OrderingTerm(
+                          expression: tbl.buyDate,
+                          mode: OrderingMode.asc,
+                        ),
+                      ]))
+                    .get();
 
-          if (row.sellDate != null &&
-              row.sellRate != null &&
-              row.sellQty != null) {
-            final sellAmt = row.sellAmt ?? (row.sellQty! * row.sellRate!);
-            await _database
-                .into(_database.dbSellEntries)
+            final buyIds = existingBuys.map((b) => b.id).toList();
+            final existingSells = buyIds.isEmpty
+                ? <DbSellEntry>[]
+                : await (_database.select(
+                    _database.dbSellEntries,
+                  )..where((tbl) => tbl.buyEntryId.isIn(buyIds))).get();
+
+            final sellsByBuyId = <int, double>{};
+            for (final s in existingSells) {
+              sellsByBuyId[s.buyEntryId] =
+                  (sellsByBuyId[s.buyEntryId] ?? 0.0) + s.sellQty;
+            }
+
+            var remainingSellQty = row.qty;
+
+            for (final buy in existingBuys) {
+              if (remainingSellQty <= 0) break;
+              final soldQty = sellsByBuyId[buy.id] ?? 0.0;
+              final availableQty = buy.qty - soldQty;
+              if (availableQty <= 0) continue;
+
+              final sellQtyForThisBuy = remainingSellQty < availableQty
+                  ? remainingSellQty
+                  : availableQty;
+              final sellAmtForThisBuy = sellQtyForThisBuy * row.sellRate!;
+
+              await _database
+                  .into(_database.dbSellEntries)
+                  .insert(
+                    DbSellEntriesCompanion.insert(
+                      buyEntryId: buy.id,
+                      symbol: symbol,
+                      sellQty: sellQtyForThisBuy,
+                      sellDate: row.sellDate!,
+                      sellRate: row.sellRate!,
+                      sellAmt: sellAmtForThisBuy,
+                      createdAt: Value(DateTime.now()),
+                    ),
+                  );
+
+              remainingSellQty -= sellQtyForThisBuy;
+            }
+
+            if (remainingSellQty > 0.001) {
+              final dummyBuyId = await _database
+                  .into(_database.dbInvestmentEntries)
+                  .insert(
+                    DbInvestmentEntriesCompanion.insert(
+                      categoryId: catId,
+                      symbol: symbol,
+                      qty: remainingSellQty,
+                      buyDate: row.sellDate!,
+                      buyRate: row.sellRate!,
+                      buyAmt: 0.0,
+                      taxProfileId: Value(defaultBrokerId),
+                      notes: Value(row.notes),
+                      createdAt: Value(DateTime.now()),
+                      updatedAt: Value(DateTime.now()),
+                    ),
+                  );
+
+              await _database
+                  .into(_database.dbSellEntries)
+                  .insert(
+                    DbSellEntriesCompanion.insert(
+                      buyEntryId: dummyBuyId,
+                      symbol: symbol,
+                      sellQty: remainingSellQty,
+                      sellDate: row.sellDate!,
+                      sellRate: row.sellRate!,
+                      sellAmt: remainingSellQty * row.sellRate!,
+                      createdAt: Value(DateTime.now()),
+                    ),
+                  );
+            }
+          } else {
+            final buyId = await _database
+                .into(_database.dbInvestmentEntries)
                 .insert(
-                  DbSellEntriesCompanion.insert(
-                    buyEntryId: buyId,
+                  DbInvestmentEntriesCompanion.insert(
+                    categoryId: catId,
                     symbol: row.symbol.trim().toUpperCase(),
-                    sellQty: row.sellQty!,
-                    sellDate: row.sellDate!,
-                    sellRate: row.sellRate!,
-                    sellAmt: sellAmt,
+                    qty: row.qty,
+                    buyDate: row.buyDate,
+                    buyRate: row.buyRate,
+                    buyAmt: row.buyAmt,
+                    taxProfileId: Value(defaultBrokerId),
+                    notes: Value(row.notes),
                     createdAt: Value(DateTime.now()),
+                    updatedAt: Value(DateTime.now()),
                   ),
                 );
+
+            if (row.sellDate != null &&
+                row.sellRate != null &&
+                row.sellQty != null) {
+              final sellAmt = row.sellAmt ?? (row.sellQty! * row.sellRate!);
+              await _database
+                  .into(_database.dbSellEntries)
+                  .insert(
+                    DbSellEntriesCompanion.insert(
+                      buyEntryId: buyId,
+                      symbol: row.symbol.trim().toUpperCase(),
+                      sellQty: row.sellQty!,
+                      sellDate: row.sellDate!,
+                      sellRate: row.sellRate!,
+                      sellAmt: sellAmt,
+                      createdAt: Value(DateTime.now()),
+                    ),
+                  );
+            }
           }
           savedCount++;
         });
@@ -2511,6 +2716,7 @@ class InvestmentImportRow {
     this.isValid = true,
     this.validationError,
     this.isDuplicate = false,
+    this.isSellOnly = false,
   });
 
   String symbol;
@@ -2526,6 +2732,7 @@ class InvestmentImportRow {
   bool isValid;
   String? validationError;
   bool isDuplicate;
+  bool isSellOnly;
 
   double? get sellQty => sellDate != null ? qty : null;
 }

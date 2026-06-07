@@ -717,25 +717,20 @@ class InvestmentRepository {
 
     // 3. P/L % by Symbol (Top symbols by P/L%)
     final symbolPL = <String, double>{};
-    final symbolInvested = <String, double>{};
+    final symbolSoldCost = <String, double>{};
     for (final sell in filteredSells) {
       final buyRate = buyRates[sell.buyEntryId] ?? 0.0;
       final pl = sell.sellAmt - (buyRate * sell.sellQty);
+      final cost = buyRate * sell.sellQty;
       symbolPL.update(sell.symbol, (v) => v + pl, ifAbsent: () => pl);
-    }
-    for (final buy in filteredBuys) {
-      symbolInvested.update(
-        buy.symbol,
-        (v) => v + buy.buyAmt,
-        ifAbsent: () => buy.buyAmt,
-      );
+      symbolSoldCost.update(sell.symbol, (v) => v + cost, ifAbsent: () => cost);
     }
 
     final symbolPLBreakdown = symbolPL.entries.map((e) {
       final symbol = e.key;
       final pl = e.value;
-      final invested = symbolInvested[symbol] ?? 1.0;
-      final plPct = (pl / invested) * 100;
+      final cost = symbolSoldCost[symbol] ?? 1.0;
+      final plPct = cost == 0 ? 0.0 : (pl / cost) * 100;
       return InvestmentSymbolPLAnalysis(
         symbol: symbol,
         plPct: plPct.letRound(),

@@ -60,6 +60,14 @@ class InvestmentEntryDetailPage extends StatelessWidget {
           for (final b in group.buyEntries) b.id: b.taxProfile,
         };
 
+        final buys = List<InvestmentEntry>.from(group.buyEntries)
+          ..sort((a, b) => b.buyDate.compareTo(a.buyDate));
+        final oldestBuyDate = group.buyEntries.isEmpty
+            ? DateTime.now()
+            : group.buyEntries
+                  .map((b) => b.buyDate)
+                  .reduce((a, b) => a.isBefore(b) ? a : b);
+
         // Sell list
         final sells = List<SellEntry>.from(group.sellEntries)
           ..sort((a, b) => b.sellDate.compareTo(a.sellDate));
@@ -112,9 +120,7 @@ class InvestmentEntryDetailPage extends StatelessWidget {
                     ),
                     _InfoRow(
                       label: 'First Buy Date',
-                      value: AppConstants.shortDateFormat.format(
-                        firstBuy.buyDate,
-                      ),
+                      value: AppConstants.shortDateFormat.format(oldestBuyDate),
                     ),
                     _InfoRow(
                       label: 'Average Buy Rate',
@@ -131,6 +137,140 @@ class InvestmentEntryDetailPage extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
+
+              // Section: Summary
+              if (sells.isNotEmpty) ...[
+                Text(
+                  'Summary',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                AppPanel(
+                  child: Column(
+                    children: <Widget>[
+                      _InfoRow(
+                        label: 'Total Sold Qty',
+                        value: group.totalSoldQty.toStringAsFixed(2),
+                      ),
+                      _InfoRow(
+                        label: 'Total Sell Value',
+                        value: IndianNumberFormatter.formatFull(
+                          group.totalSellValue,
+                        ),
+                      ),
+                      _InfoRow(
+                        label: 'Total P/L',
+                        value:
+                            '${totalPL >= 0 ? "+" : ""}${IndianNumberFormatter.formatFull(totalPL)}',
+                        valueColor: totalPL >= 0 ? Colors.green : Colors.red,
+                      ),
+                      _InfoRow(
+                        label: 'Total P/L %',
+                        value:
+                            '${totalPLPct >= 0 ? "+" : ""}${totalPLPct.toStringAsFixed(2)}%',
+                        valueColor: totalPLPct >= 0 ? Colors.green : Colors.red,
+                      ),
+                      _InfoRow(
+                        label: 'Total Tax',
+                        value: IndianNumberFormatter.formatFull(totalTax),
+                      ),
+                      _InfoRow(
+                        label: 'Total PAT',
+                        value:
+                            '${totalPAT >= 0 ? "+" : ""}${IndianNumberFormatter.formatFull(totalPAT)}',
+                        valueColor: totalPAT >= 0 ? Colors.green : Colors.red,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+
+              // Section: Buy History
+              Text(
+                'Buy History',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...buys.map((buy) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: AppPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: <Widget>[
+                            Text(
+                              AppConstants.shortDateFormat.format(buy.buyDate),
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Row(
+                              children: <Widget>[
+                                IconButton(
+                                  constraints: const BoxConstraints(),
+                                  padding: EdgeInsets.zero,
+                                  icon: Icon(
+                                    Icons.edit_outlined,
+                                    color: theme.colorScheme.primary,
+                                    size: 20,
+                                  ),
+                                  onPressed: () {
+                                    Navigator.of(context).pushNamed(
+                                      AppRoutes.investmentAdd,
+                                      arguments: InvestmentEditorArgs(
+                                        entry: buy,
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  constraints: const BoxConstraints(),
+                                  padding: EdgeInsets.zero,
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                    size: 20,
+                                  ),
+                                  onPressed: () => _confirmDeleteSingleBuy(
+                                    context,
+                                    repo,
+                                    buy,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const Divider(),
+                        _InfoRow(
+                          label: 'Qty Bought',
+                          value: buy.qty.toStringAsFixed(2),
+                        ),
+                        _InfoRow(
+                          label: 'Rate',
+                          value: IndianNumberFormatter.formatFull(buy.buyRate),
+                        ),
+                        _InfoRow(
+                          label: 'Amount',
+                          value: IndianNumberFormatter.formatFull(buy.buyAmt),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
               const SizedBox(height: 24),
 
               // Section: Sell History
@@ -241,95 +381,24 @@ class InvestmentEntryDetailPage extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              // Section: Summary
-              if (sells.isNotEmpty) ...[
-                Text(
-                  'Summary',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                AppPanel(
-                  child: Column(
-                    children: <Widget>[
-                      _InfoRow(
-                        label: 'Total Sold Qty',
-                        value: group.totalSoldQty.toStringAsFixed(2),
-                      ),
-                      _InfoRow(
-                        label: 'Total Sell Value',
-                        value: IndianNumberFormatter.formatFull(
-                          group.totalSellValue,
-                        ),
-                      ),
-                      _InfoRow(
-                        label: 'Total P/L',
-                        value:
-                            '${totalPL >= 0 ? "+" : ""}${IndianNumberFormatter.formatFull(totalPL)}',
-                        valueColor: totalPL >= 0 ? Colors.green : Colors.red,
-                      ),
-                      _InfoRow(
-                        label: 'Total P/L %',
-                        value:
-                            '${totalPLPct >= 0 ? "+" : ""}${totalPLPct.toStringAsFixed(2)}%',
-                        valueColor: totalPLPct >= 0 ? Colors.green : Colors.red,
-                      ),
-                      _InfoRow(
-                        label: 'Total Tax',
-                        value: IndianNumberFormatter.formatFull(totalTax),
-                      ),
-                      _InfoRow(
-                        label: 'Total PAT',
-                        value:
-                            '${totalPAT >= 0 ? "+" : ""}${IndianNumberFormatter.formatFull(totalPAT)}',
-                        valueColor: totalPAT >= 0 ? Colors.green : Colors.red,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-
               // Bottom Action Buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: <Widget>[
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        // scroll/view
-                      },
-                      child: const Text('View'),
-                    ),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.red),
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                onPressed: () => _confirmDeleteBuy(context, repo, group),
+                icon: const Icon(
+                  Icons.delete_forever_outlined,
+                  color: Colors.red,
+                ),
+                label: const Text(
+                  'Delete Entire Position',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.of(context).pushNamed(
-                          AppRoutes.investmentAdd,
-                          arguments: InvestmentEditorArgs(entry: firstBuy),
-                        );
-                      },
-                      child: const Text('Edit'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.red),
-                      ),
-                      onPressed: () => _confirmDeleteBuy(context, repo, group),
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
               const SizedBox(height: 20),
 
@@ -399,6 +468,45 @@ class InvestmentEntryDetailPage extends StatelessWidget {
     }
   }
 
+  Future<void> _confirmDeleteSingleBuy(
+    BuildContext context,
+    InvestmentRepository repo,
+    InvestmentEntry buy,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Buy Entry'),
+          content: Text(
+            'Are you sure you want to delete this purchase of ${buy.symbol} on ${AppConstants.shortDateFormat.format(buy.buyDate)}? All linked sell records will also be deleted.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      await repo.deleteBuyEntry(buy.id);
+      if (context.mounted) {
+        showAppSnackBar(
+          context,
+          message: 'Buy entry deleted successfully.',
+          type: AppSnackBarType.info,
+        );
+      }
+    }
+  }
+
   Future<void> _confirmDeleteSell(
     BuildContext context,
     InvestmentRepository repo,
@@ -460,11 +568,15 @@ class _InfoRow extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: valueColor,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: valueColor,
+              ),
             ),
           ),
         ],

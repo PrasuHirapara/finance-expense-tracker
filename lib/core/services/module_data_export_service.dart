@@ -1498,6 +1498,10 @@ class ModuleDataExportService {
     final numberStyle = CellStyle(
       numberFormat: const CustomNumericNumFormat(formatCode: '#,##,##0.00'),
     );
+    final boldNumberStyle = CellStyle(
+      bold: true,
+      numberFormat: const CustomNumericNumFormat(formatCode: '#,##,##0.00'),
+    );
 
     sheet.appendRow(<CellValue?>[
       TextCellValue('Category'),
@@ -1509,86 +1513,243 @@ class ModuleDataExportService {
       TextCellValue('Sell Date'),
       TextCellValue('Sell Rate'),
       TextCellValue('Sell Amt'),
+      TextCellValue('P/L'),
+      TextCellValue('P/L %'),
+      TextCellValue('Tax'),
+      TextCellValue('PAT'),
+      TextCellValue('PAT %'),
       TextCellValue('Notes'),
     ]);
-    _applyRowStyle(sheet, rowIndex: 0, columnCount: 10, style: headerStyle);
+    _applyRowStyle(sheet, rowIndex: 0, columnCount: 15, style: headerStyle);
 
-    var rowIndex = 1;
-    for (final buy in buys) {
-      final linkedSells = sells.where((s) => s.buyEntryId == buy.id).toList()
-        ..sort((a, b) => a.sellDate.compareTo(b.sellDate));
+    // Calculate Combined Grand Totals
+    var grandInvested = 0.0;
+    var grandSellValue = 0.0;
+    var grandPL = 0.0;
+    var grandTax = 0.0;
 
-      if (linkedSells.isEmpty) {
-        sheet.appendRow(<CellValue?>[
-          TextCellValue(buy.categoryName),
-          TextCellValue(buy.symbol),
-          DoubleCellValue(buy.qty),
-          TextCellValue(AppConstants.shortDateFormat.format(buy.buyDate)),
-          DoubleCellValue(buy.buyRate),
-          DoubleCellValue(buy.buyAmt),
-          null,
-          null,
-          null,
-          TextCellValue(buy.notes ?? ''),
-        ]);
-        _applyRowStyle(
-          sheet,
-          rowIndex: rowIndex,
-          columnCount: 10,
-          style: numberStyle,
+    final buyRates = {for (final b in buys) b.id: b.buyRate};
+    for (final b in buys) {
+      grandInvested += b.buyAmt;
+    }
+    for (final s in sells) {
+      grandSellValue += s.sellAmt;
+      final buyRate = buyRates[s.buyEntryId] ?? 0.0;
+      final pl = s.sellAmt - (buyRate * s.sellQty);
+      grandPL += pl;
+      final bEntry = buys.firstWhere((b) => b.id == s.buyEntryId);
+      if (bEntry.taxProfile != null) {
+        grandTax += repo.computeLiveTax(
+          bEntry.taxProfile!,
+          buyRate * s.sellQty,
+          s.sellAmt,
         );
-        rowIndex++;
-      } else {
-        for (final sell in linkedSells) {
-          sheet.appendRow(<CellValue?>[
-            TextCellValue(buy.categoryName),
-            TextCellValue(buy.symbol),
-            DoubleCellValue(sell.sellQty),
-            TextCellValue(AppConstants.shortDateFormat.format(buy.buyDate)),
-            DoubleCellValue(buy.buyRate),
-            DoubleCellValue(buy.buyRate * sell.sellQty),
-            TextCellValue(AppConstants.shortDateFormat.format(sell.sellDate)),
-            DoubleCellValue(sell.sellRate),
-            DoubleCellValue(sell.sellAmt),
-            TextCellValue(buy.notes ?? ''),
-          ]);
-          _applyRowStyle(
-            sheet,
-            rowIndex: rowIndex,
-            columnCount: 10,
-            style: numberStyle,
-          );
-          rowIndex++;
-        }
-
-        final totalSoldQtyForBuy = linkedSells.fold<double>(
-          0.0,
-          (sum, s) => sum + s.sellQty,
-        );
-        if (totalSoldQtyForBuy < buy.qty) {
-          final openQty = buy.qty - totalSoldQtyForBuy;
-          sheet.appendRow(<CellValue?>[
-            TextCellValue(buy.categoryName),
-            TextCellValue(buy.symbol),
-            DoubleCellValue(openQty),
-            TextCellValue(AppConstants.shortDateFormat.format(buy.buyDate)),
-            DoubleCellValue(buy.buyRate),
-            DoubleCellValue(buy.buyRate * openQty),
-            null,
-            null,
-            null,
-            TextCellValue(buy.notes ?? ''),
-          ]);
-          _applyRowStyle(
-            sheet,
-            rowIndex: rowIndex,
-            columnCount: 10,
-            style: numberStyle,
-          );
-          rowIndex++;
-        }
       }
     }
+    final grandPLPct = grandInvested == 0.0
+        ? 0.0
+        : (grandPL / grandInvested) * 100;
+    final grandPAT = grandPL - grandTax;
+    final grandPATPct = grandInvested == 0.0
+        ? 0.0
+        : (grandPAT / grandInvested) * 100;
+
+    // Append Combined Grand Total Row at the top
+    sheet.appendRow(<CellValue?>[
+      TextCellValue('COMBINED TOTAL'),
+      null,
+      null,
+      null,
+      null,
+      DoubleCellValue(grandInvested),
+      null,
+      null,
+      DoubleCellValue(grandSellValue),
+      DoubleCellValue(grandPL),
+      DoubleCellValue(grandPLPct),
+      DoubleCellValue(grandTax),
+      DoubleCellValue(grandPAT),
+      DoubleCellValue(grandPATPct),
+      TextCellValue('Combined Summary'),
+    ]);
+    _applyRowStyle(sheet, rowIndex: 1, columnCount: 15, style: boldNumberStyle);
+    // Blank separator row after combined total
+    sheet.appendRow(const <CellValue?>[]);
+
+    var rowIndex = 3;
+
+    // Group by category (sorted alphabetically)
+    final categories = buys.map((b) => b.categoryName).toSet().toList()..sort();
+
+    for (final catName in categories) {
+      final catBuys = buys.where((b) => b.categoryName == catName).toList()
+        ..sort((a, b) => a.symbol.compareTo(b.symbol));
+
+      var catTotalInvested = 0.0;
+      var catTotalSell = 0.0;
+      var catTotalPL = 0.0;
+      var catTotalTax = 0.0;
+
+      for (final buy in catBuys) {
+        catTotalInvested += buy.buyAmt;
+        final linkedSells = sells.where((s) => s.buyEntryId == buy.id).toList()
+          ..sort((a, b) => a.sellDate.compareTo(b.sellDate));
+
+        if (linkedSells.isEmpty) {
+          sheet.appendRow(<CellValue?>[
+            TextCellValue(buy.categoryName),
+            TextCellValue(buy.symbol),
+            DoubleCellValue(buy.qty),
+            TextCellValue(AppConstants.shortDateFormat.format(buy.buyDate)),
+            DoubleCellValue(buy.buyRate),
+            DoubleCellValue(buy.buyAmt),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            TextCellValue(buy.notes ?? ''),
+          ]);
+          _applyRowStyle(
+            sheet,
+            rowIndex: rowIndex,
+            columnCount: 15,
+            style: numberStyle,
+          );
+          rowIndex++;
+        } else {
+          for (final sell in linkedSells) {
+            final buyAmt = buy.buyRate * sell.sellQty;
+            final pl = sell.sellAmt - buyAmt;
+            final plPct = buyAmt == 0.0 ? 0.0 : (pl / buyAmt) * 100;
+            final tax = buy.taxProfile != null
+                ? repo.computeLiveTax(buy.taxProfile!, buyAmt, sell.sellAmt)
+                : 0.0;
+            final pat = pl - tax;
+            final patPct = buyAmt == 0.0 ? 0.0 : (pat / buyAmt) * 100;
+
+            catTotalSell += sell.sellAmt;
+            catTotalPL += pl;
+            catTotalTax += tax;
+
+            sheet.appendRow(<CellValue?>[
+              TextCellValue(buy.categoryName),
+              TextCellValue(buy.symbol),
+              DoubleCellValue(sell.sellQty),
+              TextCellValue(AppConstants.shortDateFormat.format(buy.buyDate)),
+              DoubleCellValue(buy.buyRate),
+              DoubleCellValue(buyAmt),
+              TextCellValue(AppConstants.shortDateFormat.format(sell.sellDate)),
+              DoubleCellValue(sell.sellRate),
+              DoubleCellValue(sell.sellAmt),
+              DoubleCellValue(pl),
+              DoubleCellValue(plPct),
+              DoubleCellValue(tax),
+              DoubleCellValue(pat),
+              DoubleCellValue(patPct),
+              TextCellValue(buy.notes ?? ''),
+            ]);
+            _applyRowStyle(
+              sheet,
+              rowIndex: rowIndex,
+              columnCount: 15,
+              style: numberStyle,
+            );
+            rowIndex++;
+          }
+
+          final totalSoldQtyForBuy = linkedSells.fold<double>(
+            0.0,
+            (sum, s) => sum + s.sellQty,
+          );
+          if (totalSoldQtyForBuy < buy.qty) {
+            final openQty = buy.qty - totalSoldQtyForBuy;
+            sheet.appendRow(<CellValue?>[
+              TextCellValue(buy.categoryName),
+              TextCellValue(buy.symbol),
+              DoubleCellValue(openQty),
+              TextCellValue(AppConstants.shortDateFormat.format(buy.buyDate)),
+              DoubleCellValue(buy.buyRate),
+              DoubleCellValue(buy.buyRate * openQty),
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              TextCellValue(buy.notes ?? ''),
+            ]);
+            _applyRowStyle(
+              sheet,
+              rowIndex: rowIndex,
+              columnCount: 15,
+              style: numberStyle,
+            );
+            rowIndex++;
+          }
+        }
+      }
+
+      // Append Category Total Row
+      final catPLPct = catTotalInvested == 0.0
+          ? 0.0
+          : (catTotalPL / catTotalInvested) * 100;
+      final catPAT = catTotalPL - catTotalTax;
+      final catPATPct = catTotalInvested == 0.0
+          ? 0.0
+          : (catPAT / catTotalInvested) * 100;
+
+      sheet.appendRow(<CellValue?>[
+        TextCellValue('TOTAL $catName'),
+        null,
+        null,
+        null,
+        null,
+        DoubleCellValue(catTotalInvested),
+        null,
+        null,
+        DoubleCellValue(catTotalSell),
+        DoubleCellValue(catTotalPL),
+        DoubleCellValue(catPLPct),
+        DoubleCellValue(catTotalTax),
+        DoubleCellValue(catPAT),
+        DoubleCellValue(catPATPct),
+        TextCellValue('Category Summary'),
+      ]);
+      _applyRowStyle(
+        sheet,
+        rowIndex: rowIndex,
+        columnCount: 15,
+        style: boldNumberStyle,
+      );
+      rowIndex++;
+      // Blank separator row between categories
+      sheet.appendRow(const <CellValue?>[]);
+      rowIndex++;
+    }
+
+    _setColumnWidths(sheet, <double>[
+      18,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      24,
+    ]);
 
     final bytes = excel.save();
     if (bytes != null) {
@@ -1625,6 +1786,7 @@ class ModuleDataExportService {
     var grandInvested = 0.0;
     var grandSellValue = 0.0;
     var grandPL = 0.0;
+    var grandTax = 0.0;
 
     final buyRates = {for (final b in buys) b.id: b.buyRate};
     for (final b in buys) {
@@ -1633,18 +1795,31 @@ class ModuleDataExportService {
     for (final s in sells) {
       grandSellValue += s.sellAmt;
       final buyRate = buyRates[s.buyEntryId] ?? 0.0;
-      grandPL += s.sellAmt - (buyRate * s.sellQty);
+      final pl = s.sellAmt - (buyRate * s.sellQty);
+      grandPL += pl;
+      final bEntry = buys.firstWhere((b) => b.id == s.buyEntryId);
+      if (bEntry.taxProfile != null) {
+        grandTax += repo.computeLiveTax(
+          bEntry.taxProfile!,
+          buyRate * s.sellQty,
+          s.sellAmt,
+        );
+      }
     }
     final grandPLPct = grandInvested == 0.0
         ? 0.0
         : (grandPL / grandInvested) * 100;
+    final grandPAT = grandPL - grandTax;
+    final grandPATPct = grandInvested == 0.0
+        ? 0.0
+        : (grandPAT / grandInvested) * 100;
 
     final document = pw.Document();
 
     document.addPage(
       pw.MultiPage(
         pageTheme: pw.PageTheme(
-          pageFormat: PdfPageFormat.a4.portrait,
+          pageFormat: PdfPageFormat.a4.landscape,
           margin: const pw.EdgeInsets.all(24),
         ),
         build: (context) => <pw.Widget>[
@@ -1659,28 +1834,125 @@ class ModuleDataExportService {
           ),
           pw.SizedBox(height: 18),
           pw.Text(
-            'Summary',
+            'Combined Summary',
             style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 8),
           pw.TableHelper.fromTextArray(
-            headers: <String>['Metric', 'Value'],
-            data: <List<String>>[
-              <String>[
-                'Total Invested',
-                IndianNumberFormatter.formatFull(grandInvested),
-              ],
-              <String>[
-                'Total Sell Value',
-                IndianNumberFormatter.formatFull(grandSellValue),
-              ],
-              <String>['Total P/L', IndianNumberFormatter.formatFull(grandPL)],
-              <String>[
-                'Total P/L %',
-                '${IndianNumberFormatter.formatFull(grandPLPct)}%',
+            headers: const <String>[
+              'Symbol',
+              'Qty',
+              'Buy Date',
+              'Buy Rate',
+              'Buy Amt',
+              'Sell Date',
+              'Sell Rate',
+              'Sell Amt',
+              'P/L',
+              'P/L %',
+              'Tax',
+              'PAT',
+              'PAT %',
+            ],
+            data: <List<dynamic>>[
+              <dynamic>[
+                pw.Text(
+                  'COMBINED TOTAL',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
+                pw.Text(
+                  '',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
+                pw.Text(
+                  '',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
+                pw.Text(
+                  '',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
+                pw.Text(
+                  IndianNumberFormatter.formatFull(grandInvested),
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
+                pw.Text(
+                  '',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
+                pw.Text(
+                  '',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
+                pw.Text(
+                  IndianNumberFormatter.formatFull(grandSellValue),
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
+                pw.Text(
+                  IndianNumberFormatter.formatFull(grandPL),
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
+                pw.Text(
+                  '${grandPLPct.toStringAsFixed(2)}%',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
+                pw.Text(
+                  IndianNumberFormatter.formatFull(grandTax),
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
+                pw.Text(
+                  IndianNumberFormatter.formatFull(grandPAT),
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
+                pw.Text(
+                  '${grandPATPct.toStringAsFixed(2)}%',
+                  style: pw.TextStyle(
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 7.0,
+                  ),
+                ),
               ],
             ],
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 7.0,
+            ),
             cellAlignment: pw.Alignment.centerLeft,
           ),
           pw.SizedBox(height: 24),
@@ -1711,9 +1983,14 @@ class ModuleDataExportService {
       final catBuys = buys.where((b) => b.categoryName == catName).toList()
         ..sort((a, b) => a.symbol.compareTo(b.symbol));
 
-      final tableRows = <List<String>>[];
+      final tableRows = <List<dynamic>>[];
+      var catTotalInvested = 0.0;
+      var catTotalSell = 0.0;
+      var catTotalPL = 0.0;
+      var catTotalTax = 0.0;
 
       for (final buy in catBuys) {
+        catTotalInvested += buy.buyAmt;
         final linkedSells = sells.where((s) => s.buyEntryId == buy.id).toList()
           ..sort((a, b) => a.sellDate.compareTo(b.sellDate));
 
@@ -1727,20 +2004,41 @@ class ModuleDataExportService {
             'OPEN',
             '',
             '',
+            '',
+            '',
+            '',
+            '',
+            '',
           ]);
         } else {
           for (final sell in linkedSells) {
-            final pl = sell.sellAmt - (buy.buyRate * sell.sellQty);
+            final buyAmt = buy.buyRate * sell.sellQty;
+            final pl = sell.sellAmt - buyAmt;
+            final plPct = buyAmt == 0.0 ? 0.0 : (pl / buyAmt) * 100;
+            final tax = buy.taxProfile != null
+                ? repo.computeLiveTax(buy.taxProfile!, buyAmt, sell.sellAmt)
+                : 0.0;
+            final pat = pl - tax;
+            final patPct = buyAmt == 0.0 ? 0.0 : (pat / buyAmt) * 100;
+
+            catTotalSell += sell.sellAmt;
+            catTotalPL += pl;
+            catTotalTax += tax;
 
             tableRows.add(<String>[
               buy.symbol,
               sell.sellQty.toStringAsFixed(2),
               AppConstants.shortDateFormat.format(buy.buyDate),
               IndianNumberFormatter.formatFull(buy.buyRate),
-              IndianNumberFormatter.formatFull(buy.buyRate * sell.sellQty),
+              IndianNumberFormatter.formatFull(buyAmt),
               AppConstants.shortDateFormat.format(sell.sellDate),
+              IndianNumberFormatter.formatFull(sell.sellRate),
               IndianNumberFormatter.formatFull(sell.sellAmt),
               IndianNumberFormatter.formatFull(pl),
+              '${plPct.toStringAsFixed(2)}%',
+              IndianNumberFormatter.formatFull(tax),
+              IndianNumberFormatter.formatFull(pat),
+              '${patPct.toStringAsFixed(2)}%',
             ]);
           }
 
@@ -1750,19 +2048,89 @@ class ModuleDataExportService {
           );
           if (totalSoldQtyForBuy < buy.qty) {
             final openQty = buy.qty - totalSoldQtyForBuy;
+            final buyAmt = buy.buyRate * openQty;
             tableRows.add(<String>[
               buy.symbol,
               openQty.toStringAsFixed(2),
               AppConstants.shortDateFormat.format(buy.buyDate),
               IndianNumberFormatter.formatFull(buy.buyRate),
-              IndianNumberFormatter.formatFull(buy.buyRate * openQty),
+              IndianNumberFormatter.formatFull(buyAmt),
               'OPEN',
+              '',
+              '',
+              '',
+              '',
+              '',
               '',
               '',
             ]);
           }
         }
       }
+
+      // Add Category summary row
+      final catPLPct = catTotalInvested == 0.0
+          ? 0.0
+          : (catTotalPL / catTotalInvested) * 100;
+      final catPAT = catTotalPL - catTotalTax;
+      final catPATPct = catTotalInvested == 0.0
+          ? 0.0
+          : (catPAT / catTotalInvested) * 100;
+
+      tableRows.add(<dynamic>[
+        pw.Text(
+          'TOTAL $catName',
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+        pw.Text(
+          '',
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+        pw.Text(
+          '',
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+        pw.Text(
+          '',
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+        pw.Text(
+          IndianNumberFormatter.formatFull(catTotalInvested),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+        pw.Text(
+          '',
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+        pw.Text(
+          '',
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+        pw.Text(
+          IndianNumberFormatter.formatFull(catTotalSell),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+        pw.Text(
+          IndianNumberFormatter.formatFull(catTotalPL),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+        pw.Text(
+          '${catPLPct.toStringAsFixed(2)}%',
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+        pw.Text(
+          IndianNumberFormatter.formatFull(catTotalTax),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+        pw.Text(
+          IndianNumberFormatter.formatFull(catPAT),
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+        pw.Text(
+          '${catPATPct.toStringAsFixed(2)}%',
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 7.0),
+        ),
+      ]);
 
       widgets.addAll(<pw.Widget>[
         pw.SizedBox(height: 12),
@@ -1772,7 +2140,7 @@ class ModuleDataExportService {
         ),
         pw.SizedBox(height: 6),
         pw.TableHelper.fromTextArray(
-          headers: <String>[
+          headers: const <String>[
             'Symbol',
             'Qty',
             'Buy Date',
@@ -1780,10 +2148,19 @@ class ModuleDataExportService {
             'Buy Amt',
             'Sell Date',
             'Sell Rate',
+            'Sell Amt',
             'P/L',
+            'P/L %',
+            'Tax',
+            'PAT',
+            'PAT %',
           ],
           data: tableRows,
-          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          headerStyle: pw.TextStyle(
+            fontWeight: pw.FontWeight.bold,
+            fontSize: 7.0,
+          ),
+          cellStyle: const pw.TextStyle(fontSize: 7.0),
           cellAlignment: pw.Alignment.centerLeft,
         ),
       ]);

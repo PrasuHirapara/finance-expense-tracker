@@ -13,7 +13,7 @@ class TrendLineChart extends StatelessWidget {
     this.xAxisTitle = 'Period',
     this.yAxisTitle = 'Amount',
     this.bottomTitleBuilder,
-    this.bottomTitlesReservedSize = 38,
+    this.bottomTitlesReservedSize = 52,
   });
 
   final List<TrendPoint> points;
@@ -123,24 +123,52 @@ class TrendLineChart extends StatelessWidget {
                   return const SizedBox.shrink();
                 }
 
+                final int step;
+                if (points.length <= 6) {
+                  step = 1;
+                } else if (points.length <= 12) {
+                  step = 2;
+                } else if (points.length <= 24) {
+                  step = 4;
+                } else if (points.length <= 60) {
+                  step = 6;
+                } else {
+                  step = (points.length / 6).ceil();
+                }
+
+                if (index % step != 0 && index != points.length - 1) {
+                  return const SizedBox.shrink();
+                }
+
+                if (index == points.length - 1 &&
+                    (index % step != 0) &&
+                    (index % step < step / 2)) {
+                  return const SizedBox.shrink();
+                }
+
                 final customLabel = bottomTitleBuilder?.call(
                   context,
                   points[index],
                   index,
                 );
+
+                final Widget labelWidget;
                 if (customLabel != null) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: customLabel,
+                  labelWidget = customLabel;
+                } else {
+                  labelWidget = Text(
+                    points[index].label,
+                    textAlign: TextAlign.center,
+                    style: axisLabelStyle,
                   );
                 }
 
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    points[index].label,
-                    textAlign: TextAlign.center,
-                    style: axisLabelStyle,
+                  child: Transform.rotate(
+                    angle: -math.pi / 6,
+                    alignment: Alignment.center,
+                    child: labelWidget,
                   ),
                 );
               },

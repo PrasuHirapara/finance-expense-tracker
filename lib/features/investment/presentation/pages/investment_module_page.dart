@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/extensions/date_time_x.dart';
+
 import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_select_field.dart';
-import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../core/formatters/indian_number_formatter.dart';
 import '../../domain/models/investment_models.dart';
 import '../../data/repositories/investment_repository.dart';
@@ -25,7 +24,6 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
   InvestmentStatusBadge? _selectedStatusFilter;
   int _visibleGroupCount = 10;
   static const int _initialVisibleGroups = 10;
-  DateTime? _expandedDate;
 
   @override
   void initState() {
@@ -102,9 +100,12 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
           return true;
         }).toList()..sort((a, b) => b.buyDate.compareTo(a.buyDate));
 
-        final groupedEntries = _groupBuyEntries(filteredEntries);
+        final groupedEntries = _groupBuyEntries(
+          filteredEntries,
+          dashboard.symbolGroups,
+        );
         final visibleGroupedEntries =
-            Map<DateTime, List<InvestmentEntry>>.fromEntries(
+            Map<String, List<InvestmentEntry>>.fromEntries(
               groupedEntries.entries.take(_visibleGroupCount),
             );
 
@@ -312,10 +313,19 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
                         child: TextField(
                           controller: _searchController,
                           focusNode: _searchFocusNode,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Search investments',
                             hintText: 'Search by symbol',
-                            prefixIcon: Icon(Icons.search_rounded),
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear_rounded),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      _searchFocusNode.unfocus();
+                                    },
+                                  )
+                                : null,
                           ),
                         ),
                       ),
@@ -367,57 +377,17 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
                           ...visibleGroupedEntries.entries.map(
                             (group) => Padding(
                               padding: const EdgeInsets.only(top: 12),
-                              child: _DateInvestmentGroup(
-                                date: group.key,
+                              child: _SymbolInvestmentGroup(
+                                symbol: group.key,
                                 entries: group.value,
                                 dashboard: dashboard,
-                                expanded: _expandedDate == group.key,
                                 onTap: () {
-                                  setState(() {
-                                    _expandedDate = _expandedDate == group.key
-                                        ? null
-                                        : group.key;
-                                  });
-                                },
-                                onView: (entry) {
                                   Navigator.of(context).pushNamed(
                                     AppRoutes.investmentDetail,
                                     arguments: InvestmentDetailArgs(
-                                      symbol: entry.symbol,
+                                      symbol: group.key,
                                     ),
                                   );
-                                },
-                                onEdit: (entry) {
-                                  Navigator.of(context).pushNamed(
-                                    AppRoutes.investmentAdd,
-                                    arguments: InvestmentEditorArgs(
-                                      entry: entry,
-                                    ),
-                                  );
-                                },
-                                onSell: (entry) {
-                                  final entrySells = dashboard.symbolGroups
-                                      .firstWhere(
-                                        (g) => g.symbol == entry.symbol,
-                                      )
-                                      .sellEntries
-                                      .where((s) => s.buyEntryId == entry.id)
-                                      .toList();
-                                  final soldQty = entrySells.fold<double>(
-                                    0.0,
-                                    (sum, s) => sum + s.sellQty,
-                                  );
-                                  Navigator.of(context).pushNamed(
-                                    AppRoutes.investmentSellAdd,
-                                    arguments: SellEditorArgs(
-                                      buyEntryId: entry.id,
-                                      symbol: entry.symbol,
-                                      remainingUnsoldQty: entry.qty - soldQty,
-                                    ),
-                                  );
-                                },
-                                onDelete: (entry) {
-                                  _confirmDeleteEntry(context, entry);
                                 },
                               ),
                             ),
@@ -551,54 +521,44 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
     }
   }
 
-  Map<DateTime, List<InvestmentEntry>> _groupBuyEntries(
+  Map<String, List<InvestmentEntry>> _groupBuyEntries(
     List<InvestmentEntry> entries,
+    List<SymbolGroup> symbolGroups,
   ) {
-    final Map<DateTime, List<InvestmentEntry>> grouped = {};
+    final Map<String, List<InvestmentEntry>> grouped = {};
     for (final entry in entries) {
-      grouped
-          .putIfAbsent(entry.buyDate.startOfDay, () => <InvestmentEntry>[])
-          .add(entry);
+      grouped.putIfAbsent(entry.symbol, () => <InvestmentEntry>[]).add(entry);
     }
-    return grouped;
-  }
 
-  Future<void> _confirmDeleteEntry(
-    BuildContext context,
-    InvestmentEntry entry,
-  ) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete Entry'),
-          content: Text(
-            'Are you sure you want to delete this purchase of ${entry.symbol} on ${AppConstants.shortDateFormat.format(entry.buyDate)}? All linked sell records will also be deleted.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
-    );
+    for (final symbol in grouped.keys) {
+      grouped[symbol]!.sort((a, b) => b.buyDate.compareTo(a.buyDate));
+    }
 
-    if (shouldDelete == true) {
-      if (context.mounted) {
-        context.read<InvestmentBloc>().add(InvestmentDeleted(entry.id));
-        showAppSnackBar(
-          context,
-          message: 'Entry deleted successfully.',
-          type: AppSnackBarType.info,
-        );
+    final symbolWithLatestDate = grouped.keys.map((symbol) {
+      final buys = grouped[symbol]!;
+      DateTime latestDate = buys.first.buyDate;
+
+      final group = symbolGroups.firstWhere(
+        (g) => g.symbol == symbol,
+        orElse: () => SymbolGroup(
+          symbol: symbol,
+          buyEntries: buys,
+          sellEntries: const [],
+        ),
+      );
+      for (final sell in group.sellEntries) {
+        if (sell.sellDate.isAfter(latestDate)) {
+          latestDate = sell.sellDate;
+        }
       }
+      return MapEntry(symbol, latestDate);
+    }).toList()..sort((a, b) => b.value.compareTo(a.value));
+
+    final Map<String, List<InvestmentEntry>> sortedGrouped = {};
+    for (final entry in symbolWithLatestDate) {
+      sortedGrouped[entry.key] = grouped[entry.key]!;
     }
+    return sortedGrouped;
   }
 }
 
@@ -748,172 +708,43 @@ class _NetSummaryRow extends StatelessWidget {
   }
 }
 
-class _DateInvestmentGroup extends StatelessWidget {
-  const _DateInvestmentGroup({
-    required this.date,
+class _SymbolInvestmentGroup extends StatelessWidget {
+  const _SymbolInvestmentGroup({
+    required this.symbol,
     required this.entries,
     required this.dashboard,
-    required this.expanded,
     required this.onTap,
-    required this.onView,
-    required this.onEdit,
-    required this.onSell,
-    required this.onDelete,
   });
 
-  final DateTime date;
+  final String symbol;
   final List<InvestmentEntry> entries;
   final InvestmentDashboardData dashboard;
-  final bool expanded;
   final VoidCallback onTap;
-  final ValueChanged<InvestmentEntry> onView;
-  final ValueChanged<InvestmentEntry> onEdit;
-  final ValueChanged<InvestmentEntry> onSell;
-  final ValueChanged<InvestmentEntry> onDelete;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.32,
-        ),
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        children: <Widget>[
-          InkWell(
-            borderRadius: BorderRadius.circular(22),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          _labelForDate(date),
-                          style: theme.textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${entries.length} entry${entries.length == 1 ? '' : 'ies'}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    expanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (expanded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: entries.map((entry) {
-                  final group = dashboard.symbolGroups.firstWhere(
-                    (g) => g.symbol == entry.symbol,
-                  );
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _InvestmentEntryCard(
-                      entry: entry,
-                      allSells: group.sellEntries,
-                      onView: () => onView(entry),
-                      onEdit: () => onEdit(entry),
-                      onSell: () => onSell(entry),
-                      onDelete: () => onDelete(entry),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-        ],
+    final group = dashboard.symbolGroups.firstWhere(
+      (g) => g.symbol == symbol,
+      orElse: () => SymbolGroup(
+        symbol: symbol,
+        buyEntries: entries,
+        sellEntries: const [],
       ),
     );
-  }
 
-  String _labelForDate(DateTime date) {
-    final today = DateTime.now().startOfDay;
-    final yesterday = today.subtract(const Duration(days: 1));
-    if (date == today) {
-      return 'Today';
-    }
-    if (date == yesterday) {
-      return 'Yesterday';
-    }
-    return AppConstants.shortDateFormat.format(date);
-  }
-}
-
-class _InvestmentEntryCard extends StatelessWidget {
-  const _InvestmentEntryCard({
-    required this.entry,
-    required this.allSells,
-    required this.onView,
-    required this.onEdit,
-    required this.onSell,
-    required this.onDelete,
-  });
-
-  final InvestmentEntry entry;
-  final List<SellEntry> allSells;
-  final VoidCallback onView;
-  final VoidCallback onEdit;
-  final VoidCallback onSell;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    // Calculate sold quantity for this entry
-    final entrySells = allSells.where((s) => s.buyEntryId == entry.id).toList();
-    final soldQty = entrySells.fold<double>(0.0, (sum, s) => sum + s.sellQty);
-
-    // Calculate realized P/L for this entry
-    // P/L = sellAmt - (buyRate * sellQty)
-    final totalPL = entrySells.fold<double>(
+    final buyRates = {for (final buy in group.buyEntries) buy.id: buy.buyRate};
+    final totalPL = group.sellEntries.fold<double>(
       0.0,
-      (sum, s) => sum + (s.sellAmt - (entry.buyRate * s.sellQty)),
+      (sum, s) =>
+          sum + (s.sellAmt - ((buyRates[s.buyEntryId] ?? 0.0) * s.sellQty)),
     );
     final isPositive = totalPL >= 0;
 
-    // Determine status badge
-    final InvestmentStatusBadge status;
-    if (soldQty == 0) {
-      status = InvestmentStatusBadge.open;
-    } else if (soldQty < entry.qty) {
-      status = InvestmentStatusBadge.partial;
-    } else {
-      status = InvestmentStatusBadge.sold;
-    }
-
-    final badgeColor = switch (status) {
-      InvestmentStatusBadge.open => Colors.grey,
-      InvestmentStatusBadge.partial => Colors.orange,
-      InvestmentStatusBadge.sold => Colors.green,
-    };
-
-    final badgeText = switch (status) {
-      InvestmentStatusBadge.open => 'Open',
-      InvestmentStatusBadge.partial => 'Partial',
-      InvestmentStatusBadge.sold => 'Sold',
-    };
+    final latestDate = entries.isNotEmpty
+        ? entries.first.buyDate
+        : DateTime.now();
 
     return Card(
       margin: EdgeInsets.zero,
@@ -922,44 +753,24 @@ class _InvestmentEntryCard extends StatelessWidget {
       color: theme.colorScheme.surface,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onView,
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              // Row 1: Symbol + Status Badge & P/L on right
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  Row(
-                    children: [
-                      Text(
-                        entry.symbol,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                  Expanded(
+                    child: Text(
+                      symbol,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: badgeColor.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          badgeText,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: badgeColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     '${isPositive ? "+" : ""}${IndianNumberFormatter.formatFull(totalPL)}',
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -970,31 +781,31 @@ class _InvestmentEntryCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              // Row 2: Stock Qty & Avg Price Paid
-              Text(
-                'Qty: ${entry.qty.toStringAsFixed(2)} | Avg Price: ${IndianNumberFormatter.formatFull(entry.buyRate)}',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      'Qty: ${group.totalBoughtQty.toStringAsFixed(2)} | Date: ${AppConstants.shortDateFormat.format(latestDate)}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'P/L',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
-              // Row 3: Action Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: <Widget>[
-                  TextButton(onPressed: onEdit, child: const Text('Edit')),
-                  if (status != InvestmentStatusBadge.sold) ...[
-                    const SizedBox(width: 8),
-                    TextButton(onPressed: onSell, child: const Text('Sell')),
-                  ],
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: onDelete,
-                    child: const Text(
-                      'Delete',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ),
+                  TextButton(onPressed: onTap, child: const Text('View')),
                 ],
               ),
             ],

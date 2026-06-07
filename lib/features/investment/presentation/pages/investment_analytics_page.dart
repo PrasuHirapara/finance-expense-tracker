@@ -212,78 +212,6 @@ class _InvestmentAnalyticsPageState extends State<InvestmentAnalyticsPage> {
                 ),
                 const SizedBox(height: 16),
 
-                // Chart 3: P/L % by Symbol (Horizontal bar list)
-                AppPanel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'P/L % by Symbol',
-                        style: theme.textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 18),
-                      if (analytics.symbolPLBreakdown.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Text('No P/L data per symbol.'),
-                        )
-                      else
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: analytics.symbolPLBreakdown.length,
-                          itemBuilder: (context, index) {
-                            final item = analytics.symbolPLBreakdown[index];
-                            final isPos = item.plPct >= 0;
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: <Widget>[
-                                      Text(
-                                        item.symbol,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Text(
-                                        '${isPos ? "+" : ""}${item.plPct.toStringAsFixed(2)}% (${isPos ? "+" : ""}${IndianNumberFormatter.formatFull(item.pl)})',
-                                        style: TextStyle(
-                                          color: isPos
-                                              ? Colors.green
-                                              : Colors.red,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  LinearProgressIndicator(
-                                    value: (item.plPct.abs() / 100.0).clamp(
-                                      0.0,
-                                      1.0,
-                                    ),
-                                    color: isPos ? Colors.green : Colors.red,
-                                    backgroundColor: theme
-                                        .colorScheme
-                                        .surfaceContainerHighest,
-                                    minHeight: 8,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
                 // Chart 4: Category Summary Table
                 AppPanel(
                   child: Column(
@@ -359,6 +287,81 @@ class _InvestmentAnalyticsPageState extends State<InvestmentAnalyticsPage> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Chart 3: P/L % by Symbol (Horizontal bar list)
+                AppPanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'P/L % by Symbol',
+                        style: theme.textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 18),
+                      if (analytics.symbolPLBreakdown.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Text('No P/L data per symbol.'),
+                        )
+                      else
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: analytics.symbolPLBreakdown.length,
+                          itemBuilder: (context, index) {
+                            final item = analytics.symbolPLBreakdown[index];
+                            final isPos = item.plPct >= 0;
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: <Widget>[
+                                      Expanded(
+                                        child: Text(
+                                          item.symbol,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '${isPos ? "+" : ""}${item.plPct.toStringAsFixed(2)}% (${isPos ? "+" : ""}${IndianNumberFormatter.formatFull(item.pl)})',
+                                        style: TextStyle(
+                                          color: isPos
+                                              ? Colors.green
+                                              : Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  LinearProgressIndicator(
+                                    value: (item.plPct.abs() / 100.0).clamp(
+                                      0.0,
+                                      1.0,
+                                    ),
+                                    color: isPos ? Colors.green : Colors.red,
+                                    backgroundColor: theme
+                                        .colorScheme
+                                        .surfaceContainerHighest,
+                                    minHeight: 8,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                ),
               ] else
                 const Padding(
                   padding: EdgeInsets.all(32),
@@ -393,8 +396,6 @@ class _AnalyticsCard extends StatelessWidget {
         children: <Widget>[
           Text(
             label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: theme.textTheme.titleMedium?.copyWith(
               color: color,
               fontWeight: FontWeight.bold,
@@ -403,7 +404,6 @@ class _AnalyticsCard extends StatelessWidget {
           const Spacer(),
           Text(
             value,
-            maxLines: 1,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
             ),

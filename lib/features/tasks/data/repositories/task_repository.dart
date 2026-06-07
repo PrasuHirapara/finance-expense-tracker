@@ -323,8 +323,10 @@ class TaskRepository {
         .toSet();
 
     final existingTitlesAndCategories = currentTasks
-        .map((task) =>
-            '${task.title.trim().toLowerCase()}|${task.category.trim().toLowerCase()}')
+        .map(
+          (task) =>
+              '${task.title.trim().toLowerCase()}|${task.category.trim().toLowerCase()}',
+        )
         .toSet();
 
     final clones = <DbTasksCompanion>[];

@@ -524,12 +524,11 @@ class InvestmentRepository {
     int? categoryId,
     DateTimeRange? dateRange,
   ) {
-    // 1. Filter buy entries by category and date range
+    // 1. Filter buy entries by category and date range (for summary totals only)
     var filteredBuys = buys;
     if (categoryId != null) {
-      filteredBuys = filteredBuys
-          .where((b) => b.categoryId == categoryId)
-          .toList();
+      filteredBuys =
+          filteredBuys.where((b) => b.categoryId == categoryId).toList();
     }
     if (dateRange != null) {
       filteredBuys = filteredBuys
@@ -541,58 +540,83 @@ class InvestmentRepository {
           .toList();
     }
 
-    final buyIds = filteredBuys.map((b) => b.id).toSet();
-    final filteredSells = sells
-        .where((s) => buyIds.contains(s.buyEntryId))
-        .toList();
+    final filteredBuyIds = filteredBuys.map((b) => b.id).toSet();
+    final filteredSells =
+        sells.where((s) => filteredBuyIds.contains(s.buyEntryId)).toList();
 
-    // 2. Group by symbol
-    final buysBySymbol = <String, List<InvestmentEntry>>{};
-    for (final buy in filteredBuys) {
-      buysBySymbol.putIfAbsent(buy.symbol, () => []).add(buy);
-    }
+    // 2. Which symbols are visible under the current filters?
+    final visibleSymbols =
+        filteredBuys.map((b) => b.symbol).toSet().toList()..sort();
 
-    final sellsBySymbol = <String, List<SellEntry>>{};
-    for (final sell in filteredSells) {
-      sellsBySymbol.putIfAbsent(sell.symbol, () => []).add(sell);
-    }
-
-    final allSymbols = buysBySymbol.keys.toSet().toList()..sort();
-    final groups = allSymbols.map((symbol) {
-      return SymbolGroup(
-        symbol: symbol,
-        buyEntries: buysBySymbol[symbol] ?? [],
-        sellEntries: sellsBySymbol[symbol] ?? [],
-      );
-    }).toList();
-
-    // 3. Totals
+    // 3. Summary totals use filtered data
     var totalInvested = 0.0;
     var totalSellValue = 0.0;
     var totalPL = 0.0;
     int openPositions = 0;
 
-    for (final g in groups) {
-      totalInvested += g.totalInvested;
-      totalSellValue += g.totalSellValue;
-      if (g.statusBadge == InvestmentStatusBadge.open) {
+    final filteredBuysBySymbol = <String, List<InvestmentEntry>>{};
+    for (final buy in filteredBuys) {
+      filteredBuysBySymbol.putIfAbsent(buy.symbol, () => []).add(buy);
+    }
+    final filteredSellsBySymbol = <String, List<SellEntry>>{};
+    for (final sell in filteredSells) {
+      filteredSellsBySymbol.putIfAbsent(sell.symbol, () => []).add(sell);
+    }
+
+    for (final symbol in visibleSymbols) {
+      final symBuys = filteredBuysBySymbol[symbol] ?? [];
+      final symSells = filteredSellsBySymbol[symbol] ?? [];
+      final symGroup = SymbolGroup(
+        symbol: symbol,
+        buyEntries: symBuys,
+        sellEntries: symSells,
+      );
+      totalInvested += symGroup.totalInvested;
+      totalSellValue += symGroup.totalSellValue;
+      if (symGroup.statusBadge == InvestmentStatusBadge.open) {
         openPositions += 1;
       }
-
-      // Live calculation: PL = sellAmt - (buyRate * sellQty)
-      // Since sell entries are linked to buyEntryId, we look up the buyRate from the buyEntry
-      final buyRates = {for (final buy in g.buyEntries) buy.id: buy.buyRate};
-      for (final sell in g.sellEntries) {
+      final buyRates = {for (final buy in symBuys) buy.id: buy.buyRate};
+      for (final sell in symSells) {
         final buyRate = buyRates[sell.buyEntryId] ?? 0.0;
-        final pl = sell.sellAmt - (buyRate * sell.sellQty);
-        totalPL += pl;
+        totalPL += sell.sellAmt - (buyRate * sell.sellQty);
       }
     }
 
-    final totalPLPct = totalInvested == 0
-        ? 0.0
-        : (totalPL / totalInvested) * 100;
-    final totalActiveInvested = groups.fold<double>(
+    final totalPLPct =
+        totalInvested == 0 ? 0.0 : (totalPL / totalInvested) * 100;
+
+    // 4. Build FULL (unfiltered by date) symbol groups for per-symbol display.
+    //    The detail page always shows complete history; list cards must match.
+    //    Only the category filter is applied here — NOT the date range filter.
+    var fullBuys = buys;
+    if (categoryId != null) {
+      fullBuys = fullBuys.where((b) => b.categoryId == categoryId).toList();
+    }
+    final fullBuyIds = fullBuys.map((b) => b.id).toSet();
+    final fullSells =
+        sells.where((s) => fullBuyIds.contains(s.buyEntryId)).toList();
+
+    final fullBuysBySymbol = <String, List<InvestmentEntry>>{};
+    for (final buy in fullBuys) {
+      fullBuysBySymbol.putIfAbsent(buy.symbol, () => []).add(buy);
+    }
+    final fullSellsBySymbol = <String, List<SellEntry>>{};
+    for (final sell in fullSells) {
+      fullSellsBySymbol.putIfAbsent(sell.symbol, () => []).add(sell);
+    }
+
+    // Only show symbols that are visible under the date filter, but with
+    // complete all-time buy/sell data so P/L matches the detail page.
+    final fullGroups = visibleSymbols.map((symbol) {
+      return SymbolGroup(
+        symbol: symbol,
+        buyEntries: fullBuysBySymbol[symbol] ?? [],
+        sellEntries: fullSellsBySymbol[symbol] ?? [],
+      );
+    }).toList();
+
+    final totalActiveInvested = fullGroups.fold<double>(
       0.0,
       (sum, g) => sum + g.remainingInvested,
     );
@@ -604,7 +628,7 @@ class InvestmentRepository {
       totalPLPct: totalPLPct.letRound(),
       openPositionsCount: openPositions,
       totalActiveInvested: totalActiveInvested.letRound(),
-      symbolGroups: groups,
+      symbolGroups: fullGroups,
     );
   }
 

@@ -355,9 +355,9 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
                               ),
                             ),
                             TextButton(
-                              onPressed: () {
-                                // show all rows or do nothing
-                              },
+                              onPressed: () => Navigator.of(
+                                context,
+                              ).pushNamed(AppRoutes.investmentAllEntries),
                               child: const Text('All Entries'),
                             ),
                           ],
@@ -530,33 +530,17 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
       grouped.putIfAbsent(entry.symbol, () => <InvestmentEntry>[]).add(entry);
     }
 
+    // Sort buy lots within each symbol by date desc
     for (final symbol in grouped.keys) {
       grouped[symbol]!.sort((a, b) => b.buyDate.compareTo(a.buyDate));
     }
 
-    final symbolWithLatestDate = grouped.keys.map((symbol) {
-      final buys = grouped[symbol]!;
-      DateTime latestDate = buys.first.buyDate;
-
-      final group = symbolGroups.firstWhere(
-        (g) => g.symbol == symbol,
-        orElse: () => SymbolGroup(
-          symbol: symbol,
-          buyEntries: buys,
-          sellEntries: const [],
-        ),
-      );
-      for (final sell in group.sellEntries) {
-        if (sell.sellDate.isAfter(latestDate)) {
-          latestDate = sell.sellDate;
-        }
-      }
-      return MapEntry(symbol, latestDate);
-    }).toList()..sort((a, b) => b.value.compareTo(a.value));
+    // Sort symbols A → Z
+    final sortedSymbols = grouped.keys.toList()..sort((a, b) => a.compareTo(b));
 
     final Map<String, List<InvestmentEntry>> sortedGrouped = {};
-    for (final entry in symbolWithLatestDate) {
-      sortedGrouped[entry.key] = grouped[entry.key]!;
+    for (final symbol in sortedSymbols) {
+      sortedGrouped[symbol] = grouped[symbol]!;
     }
     return sortedGrouped;
   }

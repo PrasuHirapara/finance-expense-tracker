@@ -33,6 +33,7 @@ import '../../features/investment/presentation/pages/investment_settings_page.da
 import '../../features/expense/presentation/pages/expense_import_preview_page.dart';
 import '../../features/credentials/presentation/pages/credential_import_preview_page.dart';
 import '../../features/investment/presentation/pages/investment_import_preview_page.dart';
+import '../../features/investment/presentation/pages/investment_all_entries_page.dart';
 import '../../features/tasks/presentation/pages/task_import_preview_page.dart';
 import '../../core/services/module_data_import_service.dart';
 import '../../core/services/app_settings_repository.dart';
@@ -55,6 +56,7 @@ class AppRoutes {
   static const String investmentDetail = '/investment/detail';
   static const String investmentAnalytics = '/investment/analytics';
   static const String investmentSettings = '/investment/settings';
+  static const String investmentAllEntries = '/investment/all-entries';
   static const String expenseImportPreview = '/expense/import/preview';
   static const String credentialImportPreview = '/credential/import/preview';
   static const String investmentImportPreview = '/investment/import/preview';
@@ -257,6 +259,10 @@ class AppRouter {
       case AppRoutes.investmentSettings:
         return MaterialPageRoute<void>(
           builder: (context) => const InvestmentSettingsPage(),
+        );
+      case AppRoutes.investmentAllEntries:
+        return MaterialPageRoute<void>(
+          builder: (context) => const InvestmentAllEntriesPage(),
         );
       case AppRoutes.expenseImportPreview:
         final args = settings.arguments as ExpenseImportPreviewArgs;

@@ -527,8 +527,9 @@ class InvestmentRepository {
     // 1. Filter buy entries by category and date range (for summary totals only)
     var filteredBuys = buys;
     if (categoryId != null) {
-      filteredBuys =
-          filteredBuys.where((b) => b.categoryId == categoryId).toList();
+      filteredBuys = filteredBuys
+          .where((b) => b.categoryId == categoryId)
+          .toList();
     }
     if (dateRange != null) {
       filteredBuys = filteredBuys
@@ -541,12 +542,13 @@ class InvestmentRepository {
     }
 
     final filteredBuyIds = filteredBuys.map((b) => b.id).toSet();
-    final filteredSells =
-        sells.where((s) => filteredBuyIds.contains(s.buyEntryId)).toList();
+    final filteredSells = sells
+        .where((s) => filteredBuyIds.contains(s.buyEntryId))
+        .toList();
 
     // 2. Which symbols are visible under the current filters?
-    final visibleSymbols =
-        filteredBuys.map((b) => b.symbol).toSet().toList()..sort();
+    final visibleSymbols = filteredBuys.map((b) => b.symbol).toSet().toList()
+      ..sort();
 
     // 3. Summary totals use filtered data
     var totalInvested = 0.0;
@@ -583,8 +585,9 @@ class InvestmentRepository {
       }
     }
 
-    final totalPLPct =
-        totalInvested == 0 ? 0.0 : (totalPL / totalInvested) * 100;
+    final totalPLPct = totalInvested == 0
+        ? 0.0
+        : (totalPL / totalInvested) * 100;
 
     // 4. Build FULL (unfiltered by date) symbol groups for per-symbol display.
     //    The detail page always shows complete history; list cards must match.
@@ -594,8 +597,9 @@ class InvestmentRepository {
       fullBuys = fullBuys.where((b) => b.categoryId == categoryId).toList();
     }
     final fullBuyIds = fullBuys.map((b) => b.id).toSet();
-    final fullSells =
-        sells.where((s) => fullBuyIds.contains(s.buyEntryId)).toList();
+    final fullSells = sells
+        .where((s) => fullBuyIds.contains(s.buyEntryId))
+        .toList();
 
     final fullBuysBySymbol = <String, List<InvestmentEntry>>{};
     for (final buy in fullBuys) {

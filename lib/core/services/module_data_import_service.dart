@@ -642,10 +642,10 @@ class ModuleDataImportService {
       if (value.isEmpty) {
         rowErrors.add('Value is required.');
       }
-      final parsedExpiryDate = expiryText.isEmpty
+      final parsedExpiryDate = (expiryText.isEmpty || expiryText == '-')
           ? null
           : _parseDate(expiryCell);
-      if (expiryText.isNotEmpty && parsedExpiryDate == null) {
+      if (expiryText.isNotEmpty && expiryText != '-' && parsedExpiryDate == null) {
         rowErrors.add(
           'Expiry Date must be a valid Excel date or text date like yyyy-MM-dd.',
         );
@@ -2011,13 +2011,13 @@ class ModuleDataImportService {
     var headerRowIndex = 0;
     for (var i = 0; i < 5 && i < sheet.maxRows; i++) {
       final r = sheet.row(i);
-      final values = r
-          .map((c) => c?.value?.toString().toLowerCase() ?? '')
+      final normalizedValues = r
+          .map((c) => _normalizeHeader(_cellText(c)))
           .toList();
-      if (values.contains('symbol') ||
-          values.contains('fund name') ||
-          values.contains('qty') ||
-          values.contains('quantity')) {
+      if (normalizedValues.contains('symbol') ||
+          normalizedValues.contains('fundname') ||
+          normalizedValues.contains('qty') ||
+          normalizedValues.contains('quantity')) {
         headerRowIndex = i;
         break;
       }
@@ -2074,6 +2074,16 @@ class ModuleDataImportService {
       final row = sheet.row(rowIndex);
       if (_isBlankRow(row, headerMap.values)) {
         continue;
+      }
+
+      // Skip summary / total rows
+      if (headerMap.containsKey('category')) {
+        final categoryVal = _parseStringCell(row, headerMap['category']).trim().toUpperCase();
+        if (categoryVal.startsWith('COMBINED TOTAL') ||
+            categoryVal.startsWith('TOTAL ') ||
+            categoryVal == 'TOTAL') {
+          continue;
+        }
       }
 
       final nonBlankCells = row

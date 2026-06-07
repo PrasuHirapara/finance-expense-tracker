@@ -2,6 +2,7 @@
 
 import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:excel/excel.dart';
 import 'package:finance_analytics_app/core/models/module_export_models.dart';
 import 'package:finance_analytics_app/core/services/app_settings_repository.dart';
@@ -197,6 +198,73 @@ void main() {
         expect(exportedDescription, '-');
       },
     );
+
+    test('imports and exports investment Excel data correctly, skipping summary rows', () async {
+      final exportDirectory = Directory(
+        '${testRoot.path}${Platform.pathSeparator}exports',
+      );
+      await appSettingsRepository.updateExportDirectoryPath(
+        exportDirectory.path,
+      );
+
+      final categoryId = await database.into(database.dbInvestmentCategories).insert(
+        DbInvestmentCategoriesCompanion.insert(
+          name: 'Equity / Stocks',
+          iconCodePoint: 0xe62e,
+          colorValue: 0xFF2196F3,
+        ),
+      );
+
+      final buyId = await database.into(database.dbInvestmentEntries).insert(
+        DbInvestmentEntriesCompanion.insert(
+          categoryId: categoryId,
+          symbol: 'RELIANCE',
+          qty: 10,
+          buyDate: DateTime(2026, 5, 10),
+          buyRate: 2450.00,
+          buyAmt: 24500.00,
+          createdAt: Value(DateTime.now()),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+      await database.into(database.dbSellEntries).insert(
+        DbSellEntriesCompanion.insert(
+          buyEntryId: buyId,
+          symbol: 'RELIANCE',
+          sellQty: 4,
+          sellDate: DateTime(2026, 5, 20),
+          sellRate: 2500.00,
+          sellAmt: 10000.00,
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      final exportPath = await exportService.exportInvestmentData(
+        range: null,
+        format: ModuleExportFormat.excel,
+      );
+
+      expect(File(exportPath).existsSync(), isTrue);
+
+      final exportedWorkbook = Excel.decodeBytes(File(exportPath).readAsBytesSync());
+      expect(exportedWorkbook.tables.keys, contains('Investments'));
+
+      await (database.delete(database.dbSellEntries)).go();
+      await (database.delete(database.dbInvestmentEntries)).go();
+      await (database.delete(database.dbInvestmentCategories)).go();
+
+      final importResult = await importService.importInvestmentExcel(exportPath);
+      final validRows = importResult.rows.where((r) => r.isValid).toList();
+      final savedCount = await importService.saveInvestmentImport(validRows);
+
+      expect(savedCount, 2);
+
+      final importedBuys = await (database.select(database.dbInvestmentEntries)).get();
+      expect(importedBuys.length, 2);
+      expect(importedBuys.any((b) => b.qty == 4), isTrue);
+      expect(importedBuys.any((b) => b.qty == 6), isTrue);
+    });
 
     test('rejects invalid imports and unusable export destinations', () async {
       await expenseRepository.seedDefaults();

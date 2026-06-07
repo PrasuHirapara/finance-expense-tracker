@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/services/cloud_sync_service.dart';
 
 import '../../../../core/services/app_data_reset_service.dart';
 import '../../../../core/services/cancellable_task.dart';
@@ -113,14 +115,31 @@ class _UserSettingsSectionState extends State<UserSettingsSection> {
                       label: const Text('Login or Sign Up'),
                     ),
                   if (authService.isAvailable && account != null)
-                    FilledButton.tonalIcon(
-                      onPressed: _isSigningOut
-                          ? null
-                          : () => _signOutFirebaseAccount(context),
-                      icon: const Icon(Icons.logout_rounded),
-                      label: Text(
-                        _isSigningOut ? 'Signing Out...' : 'Sign Out',
-                      ),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: <Widget>[
+                        FilledButton.tonalIcon(
+                          onPressed: _isSigningOut
+                              ? null
+                              : () => _signOutFirebaseAccount(context),
+                          icon: const Icon(Icons.logout_rounded),
+                          label: Text(
+                            _isSigningOut ? 'Signing Out...' : 'Sign Out',
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _isSigningOut
+                              ? null
+                              : () => _deleteFirebaseAccount(context),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: theme.colorScheme.error,
+                            side: BorderSide(color: theme.colorScheme.error),
+                          ),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: const Text('Delete Account'),
+                        ),
+                      ],
                     ),
                 ],
               );
@@ -190,6 +209,109 @@ class _UserSettingsSectionState extends State<UserSettingsSection> {
           _isSigningOut = false;
         });
       }
+    }
+  }
+
+  Future<void> _deleteFirebaseAccount(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Firebase Account'),
+        content: const Text(
+          'Are you sure you want to permanently delete your Firebase account?\n\n'
+          'This will permanently destroy all your Firestore cloud sync and backup data, and delete your profile. This action cannot be undone.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            child: const Text('Delete Account'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    final cloudSyncService = context.read<CloudSyncService>();
+    final authService = context.read<FirebaseCloudSyncAuthService>();
+
+    try {
+      await runWithCancellableBlockingOverlay<void>(
+        context: context,
+        title: 'Deleting Account',
+        statusText: 'Deleting cloud backups and account profile...',
+        task: (token) async {
+          // 1. Delete all Firestore data for this user
+          await cloudSyncService.deleteCloudDataForce('Daily Use');
+          token.throwIfCancelled();
+
+          // 2. Delete the user profile document and the Auth user account
+          await authService.deleteAccount(cancellationToken: token);
+        },
+      );
+
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: 'Your Firebase account was successfully deleted.',
+      );
+    } on AppTaskCancelledException {
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: 'Account deletion canceled.',
+        type: AppSnackBarType.warning,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!context.mounted) {
+        return;
+      }
+      if (e.code == 'requires-recent-login') {
+        showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Recent Login Required'),
+            content: const Text(
+              'Deleting your account is a sensitive operation. For security reasons, you must sign out, sign back in, and then try deleting the account again immediately.',
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        showAppSnackBar(
+          context,
+          message: 'Unable to delete account: ${e.message}',
+          type: AppSnackBarType.error,
+        );
+      }
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: 'Unable to delete account: $error',
+        type: AppSnackBarType.error,
+      );
     }
   }
 

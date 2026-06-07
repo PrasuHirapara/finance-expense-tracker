@@ -61,6 +61,70 @@ class CloudSyncService {
     );
   }
 
+  Future<void> setExpenseSyncEnabled(bool enabled) async {
+    final settings = await _appSettingsRepository.getSettings();
+    final current = settings.cloudSync;
+    if (current.syncExpense == enabled) {
+      return;
+    }
+
+    if (!enabled && current.enabled) {
+      await deleteCloudData('Expense');
+    }
+
+    await _appSettingsRepository.updateCloudSyncPreferences(
+      current.copyWith(syncExpense: enabled),
+    );
+  }
+
+  Future<void> setTasksSyncEnabled(bool enabled) async {
+    final settings = await _appSettingsRepository.getSettings();
+    final current = settings.cloudSync;
+    if (current.syncTasks == enabled) {
+      return;
+    }
+
+    if (!enabled && current.enabled) {
+      await deleteCloudData('Task');
+    }
+
+    await _appSettingsRepository.updateCloudSyncPreferences(
+      current.copyWith(syncTasks: enabled),
+    );
+  }
+
+  Future<void> setInvestmentSyncEnabled(bool enabled) async {
+    final settings = await _appSettingsRepository.getSettings();
+    final current = settings.cloudSync;
+    if (current.syncInvestment == enabled) {
+      return;
+    }
+
+    if (!enabled && current.enabled) {
+      await deleteCloudData('Investment');
+    }
+
+    await _appSettingsRepository.updateCloudSyncPreferences(
+      current.copyWith(syncInvestment: enabled),
+    );
+  }
+
+  Future<void> setSettingsSyncEnabled(bool enabled) async {
+    final settings = await _appSettingsRepository.getSettings();
+    final current = settings.cloudSync;
+    if (current.syncDefaults == enabled) {
+      return;
+    }
+
+    if (!enabled && current.enabled) {
+      await deleteCloudData('Settings');
+    }
+
+    await _appSettingsRepository.updateCloudSyncPreferences(
+      current.copyWith(syncDefaults: enabled),
+    );
+  }
+
   Future<void> uploadDataToCloud({
     bool interactive = true,
     String? credentialEncryptionKey,
@@ -81,6 +145,10 @@ class CloudSyncService {
           await _credentialSecurityService.readEncryptionKey(),
       nonCredentialEncryptionKey: nonCredentialEncryptionKey,
       includeCredentialsInBundle: settings.cloudSync.syncCredentials,
+      includeExpenseInBundle: settings.cloudSync.syncExpense,
+      includeTasksInBundle: settings.cloudSync.syncTasks,
+      includeInvestmentInBundle: settings.cloudSync.syncInvestment,
+      includeSettingsInBundle: settings.cloudSync.syncDefaults,
       cancellationToken: cancellationToken,
     );
     cancellationToken?.throwIfCancelled();
@@ -173,8 +241,16 @@ class CloudSyncService {
             credentialEncryptionKey ??
             await _credentialSecurityService.readEncryptionKey(),
         nonCredentialEncryptionKey: nonCredentialEncryptionKey,
-        restoreCredentials: bundle.containsCredentialPayload,
-        restoreSettings: bundle.containsSettingsPayload,
+        restoreCredentials:
+            bundle.containsCredentialPayload &&
+            settings.cloudSync.syncCredentials,
+        restoreSettings:
+            bundle.containsSettingsPayload && settings.cloudSync.syncDefaults,
+        restoreInvestment:
+            bundle.containsInvestmentPayload &&
+            settings.cloudSync.syncInvestment,
+        restoreExpense: settings.cloudSync.syncExpense,
+        restoreTasks: settings.cloudSync.syncTasks,
         cancellationToken: cancellationToken,
       );
     } catch (error) {
@@ -208,6 +284,14 @@ class CloudSyncService {
       return;
     }
 
+    final account = await _authService.requireUser(interactive: false);
+    await _remoteStoreService.deleteCloudData(
+      userId: account.uid,
+      folderName: folderName,
+    );
+  }
+
+  Future<void> deleteCloudDataForce(String folderName) async {
     final account = await _authService.requireUser(interactive: false);
     await _remoteStoreService.deleteCloudData(
       userId: account.uid,

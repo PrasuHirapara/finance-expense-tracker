@@ -13,10 +13,12 @@ class CredentialImportPreviewPage extends StatefulWidget {
   final CredentialImportPreviewArgs args;
 
   @override
-  State<CredentialImportPreviewPage> createState() => _CredentialImportPreviewPageState();
+  State<CredentialImportPreviewPage> createState() =>
+      _CredentialImportPreviewPageState();
 }
 
-class _CredentialImportPreviewPageState extends State<CredentialImportPreviewPage> {
+class _CredentialImportPreviewPageState
+    extends State<CredentialImportPreviewPage> {
   bool _isSaving = false;
 
   @override
@@ -36,9 +38,7 @@ class _CredentialImportPreviewPageState extends State<CredentialImportPreviewPag
     final groupKeys = groupedRows.keys.toList()..sort();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Import Preview'),
-      ),
+      appBar: AppBar(title: const Text('Import Preview')),
       body: Column(
         children: [
           Expanded(
@@ -49,9 +49,11 @@ class _CredentialImportPreviewPageState extends State<CredentialImportPreviewPag
                 final title = groupKeys[index];
                 final rows = groupedRows[title]!;
                 final isGroupValid = rows.every((r) => r.isValid);
-                
+
                 final cardColor = isGroupValid
-                    ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
+                    ? theme.colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.3,
+                      )
                     : theme.colorScheme.errorContainer.withValues(alpha: 0.15);
                 final borderColor = isGroupValid
                     ? Colors.transparent
@@ -59,7 +61,9 @@ class _CredentialImportPreviewPageState extends State<CredentialImportPreviewPag
 
                 // Expiry Date (taken from first row with an expiry date)
                 final firstExpiryRow = rows.where((r) => r.expiryDate != null);
-                final expiryDate = firstExpiryRow.isNotEmpty ? firstExpiryRow.first.expiryDate : null;
+                final expiryDate = firstExpiryRow.isNotEmpty
+                    ? firstExpiryRow.first.expiryDate
+                    : null;
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -86,9 +90,13 @@ class _CredentialImportPreviewPageState extends State<CredentialImportPreviewPag
                             ),
                             if (expiryDate != null)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                                  color: theme.colorScheme.outlineVariant
+                                      .withValues(alpha: 0.3),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -101,11 +109,16 @@ class _CredentialImportPreviewPageState extends State<CredentialImportPreviewPag
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      DateFormat('yyyy-MM-dd').format(expiryDate),
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      DateFormat(
+                                        'yyyy-MM-dd',
+                                      ).format(expiryDate),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
                                   ],
                                 ),
@@ -147,8 +160,11 @@ class _CredentialImportPreviewPageState extends State<CredentialImportPreviewPag
                             padding: const EdgeInsets.only(top: 8),
                             child: Row(
                               children: [
-                                Icon(Icons.error_outline_rounded,
-                                    color: theme.colorScheme.error, size: 16),
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  color: theme.colorScheme.error,
+                                  size: 16,
+                                ),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
@@ -199,7 +215,9 @@ class _CredentialImportPreviewPageState extends State<CredentialImportPreviewPag
                         onPressed: _isSaving || validRowsCount == 0
                             ? null
                             : _handleConfirmImport,
-                        child: Text(_isSaving ? 'Importing...' : 'Confirm Import'),
+                        child: Text(
+                          _isSaving ? 'Importing...' : 'Confirm Import',
+                        ),
                       ),
                     ],
                   ),
@@ -219,7 +237,9 @@ class _CredentialImportPreviewPageState extends State<CredentialImportPreviewPag
 
     try {
       final importService = context.read<ModuleDataImportService>();
-      final validRows = widget.args.previewData.rows.where((r) => r.isValid).toList();
+      final validRows = widget.args.previewData.rows
+          .where((r) => r.isValid)
+          .toList();
       final result = await importService.saveCredentialImport(
         validRows,
         encryptionKey: widget.args.encryptionKey,

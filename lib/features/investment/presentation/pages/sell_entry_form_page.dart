@@ -63,13 +63,9 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
       listenWhen: (previous, current) => previous.status != current.status,
       listener: (context, state) {
         if (state.status == InvestmentFormStatus.success) {
-          showAppSnackBar(
-            context,
-            message: 'Sell entry saved successfully.',
-            type: AppSnackBarType.info,
-          );
           Navigator.of(context).pop();
-        } else if (state.status == InvestmentFormStatus.failure && state.errorMessage != null) {
+        } else if (state.status == InvestmentFormStatus.failure &&
+            state.errorMessage != null) {
           showAppSnackBar(
             context,
             message: state.errorMessage!,
@@ -78,9 +74,7 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Add Sell Entry'),
-        ),
+        appBar: AppBar(title: const Text('Add Sell Entry')),
         body: _loadingBuyEntry
             ? const Center(child: CircularProgressIndicator())
             : BlocBuilder<InvestmentFormBloc, InvestmentFormState>(
@@ -95,17 +89,23 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
                   double estTax = 0.0;
                   double estPAT = 0.0;
 
-                  if (_buyEntry != null && state.sellQty != null && state.sellRate != null) {
+                  if (_buyEntry != null &&
+                      state.sellQty != null &&
+                      state.sellRate != null) {
                     final qty = state.sellQty!;
                     final rate = state.sellRate!;
                     final sellAmt = state.sellAmt ?? (qty * rate);
                     final buyRate = _buyEntry!.buyRate;
 
                     estPL = sellAmt - (buyRate * qty);
-                    estPLPct = (buyRate * qty) == 0.0 ? 0.0 : (estPL / (buyRate * qty)) * 100;
+                    estPLPct = (buyRate * qty) == 0.0
+                        ? 0.0
+                        : (estPL / (buyRate * qty)) * 100;
 
                     if (_buyEntry!.taxProfile != null) {
-                      estTax = context.read<InvestmentRepository>().computeLiveTax(
+                      estTax = context
+                          .read<InvestmentRepository>()
+                          .computeLiveTax(
                             _buyEntry!.taxProfile!,
                             buyRate * qty,
                             sellAmt,
@@ -129,13 +129,19 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
                               lastDate: DateTime.now(),
                             );
                             if (picked != null && context.mounted) {
-                              context.read<InvestmentFormBloc>().add(InvestmentFormSellDateChanged(picked));
+                              context.read<InvestmentFormBloc>().add(
+                                InvestmentFormSellDateChanged(picked),
+                              );
                             }
                           },
                           child: InputDecorator(
-                            decoration: const InputDecoration(labelText: 'Sell Date'),
+                            decoration: const InputDecoration(
+                              labelText: 'Sell Date',
+                            ),
                             child: Text(
-                              AppConstants.shortDateFormat.format(state.sellDate ?? DateTime.now()),
+                              AppConstants.shortDateFormat.format(
+                                state.sellDate ?? DateTime.now(),
+                              ),
                             ),
                           ),
                         ),
@@ -144,16 +150,23 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
                         // Sell Quantity
                         TextFormField(
                           initialValue: state.sellQty?.toString() ?? '',
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           decoration: InputDecoration(
                             labelText: 'Sell Quantity',
-                            errorText: state.showValidation && (state.sellQty == null || state.sellQty! <= 0)
+                            errorText:
+                                state.showValidation &&
+                                    (state.sellQty == null ||
+                                        state.sellQty! <= 0)
                                 ? 'Enter valid quantity'
                                 : null,
                           ),
                           onChanged: (value) {
                             final val = double.tryParse(value);
-                            context.read<InvestmentFormBloc>().add(InvestmentFormSellQtyChanged(val));
+                            context.read<InvestmentFormBloc>().add(
+                              InvestmentFormSellQtyChanged(val),
+                            );
                           },
                         ),
                         const SizedBox(height: 16),
@@ -161,16 +174,23 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
                         // Sell Rate
                         TextFormField(
                           initialValue: state.sellRate?.toString() ?? '',
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                           decoration: InputDecoration(
                             labelText: 'Sell Rate',
-                            errorText: state.showValidation && (state.sellRate == null || state.sellRate! < 0)
+                            errorText:
+                                state.showValidation &&
+                                    (state.sellRate == null ||
+                                        state.sellRate! < 0)
                                 ? 'Enter sell rate'
                                 : null,
                           ),
                           onChanged: (value) {
                             final val = double.tryParse(value);
-                            context.read<InvestmentFormBloc>().add(InvestmentFormSellRateChanged(val));
+                            context.read<InvestmentFormBloc>().add(
+                              InvestmentFormSellRateChanged(val),
+                            );
                           },
                         ),
                         const SizedBox(height: 16),
@@ -182,27 +202,39 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
                               child: TextFormField(
                                 key: ValueKey<bool>(state.isSellAmtOverridden),
                                 initialValue:
-                                    state.sellAmt?.toStringAsFixed(2) ?? state.computedSellAmt.toStringAsFixed(2),
+                                    state.sellAmt?.toStringAsFixed(2) ??
+                                    state.computedSellAmt.toStringAsFixed(2),
                                 enabled: state.isSellAmtOverridden,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 decoration: InputDecoration(
                                   labelText: 'Sell Amount',
-                                  helperText: state.isSellAmtOverridden ? 'Manual override active' : 'Auto-calculated',
+                                  helperText: state.isSellAmtOverridden
+                                      ? 'Manual override active'
+                                      : 'Auto-calculated',
                                 ),
                                 onChanged: (value) {
                                   final val = double.tryParse(value);
-                                  context.read<InvestmentFormBloc>().add(InvestmentFormSellAmtChanged(val));
+                                  context.read<InvestmentFormBloc>().add(
+                                    InvestmentFormSellAmtChanged(val),
+                                  );
                                 },
                               ),
                             ),
                             const SizedBox(width: 8),
                             IconButton(
                               icon: Icon(
-                                state.isSellAmtOverridden ? Icons.lock_open_rounded : Icons.lock_rounded,
+                                state.isSellAmtOverridden
+                                    ? Icons.lock_open_rounded
+                                    : Icons.lock_rounded,
                                 color: theme.colorScheme.primary,
                               ),
                               onPressed: () {
-                                context.read<InvestmentFormBloc>().add(const InvestmentFormSellAmtOverrideToggled());
+                                context.read<InvestmentFormBloc>().add(
+                                  const InvestmentFormSellAmtOverrideToggled(),
+                                );
                               },
                             ),
                           ],
@@ -223,13 +255,17 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
                             children: <Widget>[
                               _PreviewRow(
                                 label: 'Estimated P/L',
-                                value: '${estPL >= 0 ? "+" : ""}${IndianNumberFormatter.formatFull(estPL)}',
+                                value:
+                                    '${estPL >= 0 ? "+" : ""}${IndianNumberFormatter.formatFull(estPL)}',
                                 color: estPL >= 0 ? Colors.green : Colors.red,
                               ),
                               _PreviewRow(
                                 label: 'Estimated P/L %',
-                                value: '${estPLPct >= 0 ? "+" : ""}${estPLPct.toStringAsFixed(2)}%',
-                                color: estPLPct >= 0 ? Colors.green : Colors.red,
+                                value:
+                                    '${estPLPct >= 0 ? "+" : ""}${estPLPct.toStringAsFixed(2)}%',
+                                color: estPLPct >= 0
+                                    ? Colors.green
+                                    : Colors.red,
                               ),
                               _PreviewRow(
                                 label: 'Estimated Tax',
@@ -238,7 +274,8 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
                               ),
                               _PreviewRow(
                                 label: 'Estimated PAT',
-                                value: '${estPAT >= 0 ? "+" : ""}${IndianNumberFormatter.formatFull(estPAT)}',
+                                value:
+                                    '${estPAT >= 0 ? "+" : ""}${IndianNumberFormatter.formatFull(estPAT)}',
                                 color: estPAT >= 0 ? Colors.green : Colors.red,
                               ),
                             ],
@@ -248,20 +285,23 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
 
                         // Save Button
                         FilledButton(
-                          onPressed: state.status == InvestmentFormStatus.submitting
+                          onPressed:
+                              state.status == InvestmentFormStatus.submitting
                               ? null
                               : () {
                                   context.read<InvestmentFormBloc>().add(
-                                        InvestmentFormSellSubmitted(
-                                          buyEntryId: args.buyEntryId,
-                                          symbol: args.symbol,
-                                        ),
-                                      );
+                                    InvestmentFormSellSubmitted(
+                                      buyEntryId: args.buyEntryId,
+                                      symbol: args.symbol,
+                                    ),
+                                  );
                                 },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             child: Text(
-                              state.status == InvestmentFormStatus.submitting ? 'Saving...' : 'Save Sell Entry',
+                              state.status == InvestmentFormStatus.submitting
+                                  ? 'Saving...'
+                                  : 'Save Sell Entry',
                             ),
                           ),
                         ),
@@ -276,11 +316,7 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
 }
 
 class _PreviewRow extends StatelessWidget {
-  const _PreviewRow({
-    required this.label,
-    required this.value,
-    this.color,
-  });
+  const _PreviewRow({required this.label, required this.value, this.color});
 
   final String label;
   final String value;

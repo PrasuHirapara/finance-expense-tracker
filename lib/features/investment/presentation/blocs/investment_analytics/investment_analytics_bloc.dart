@@ -36,7 +36,9 @@ class InvestmentAnalyticsState extends Equatable {
     return InvestmentAnalyticsState(
       status: status ?? this.status,
       window: window ?? this.window,
-      selectedCategoryId: clearCategory ? null : selectedCategoryId ?? this.selectedCategoryId,
+      selectedCategoryId: clearCategory
+          ? null
+          : selectedCategoryId ?? this.selectedCategoryId,
       customStartDate: customStartDate ?? this.customStartDate,
       customEndDate: customEndDate ?? this.customEndDate,
       analytics: analytics ?? this.analytics,
@@ -46,14 +48,14 @@ class InvestmentAnalyticsState extends Equatable {
 
   @override
   List<Object?> get props => <Object?>[
-        status,
-        window,
-        selectedCategoryId,
-        customStartDate,
-        customEndDate,
-        analytics,
-        errorMessage,
-      ];
+    status,
+    window,
+    selectedCategoryId,
+    customStartDate,
+    customEndDate,
+    analytics,
+    errorMessage,
+  ];
 }
 
 enum InvestmentAnalyticsStatus { initial, loading, success, failure }
@@ -103,7 +105,7 @@ class InvestmentAnalyticsCustomRangeChanged extends InvestmentAnalyticsEvent {
 class InvestmentAnalyticsBloc
     extends Bloc<InvestmentAnalyticsEvent, InvestmentAnalyticsState> {
   InvestmentAnalyticsBloc(this._repository)
-      : super(const InvestmentAnalyticsState()) {
+    : super(const InvestmentAnalyticsState()) {
     on<InvestmentAnalyticsRequested>(_onRequested);
     on<InvestmentAnalyticsWindowChanged>(_onWindowChanged);
     on<InvestmentAnalyticsCategoryChanged>(_onCategoryChanged);

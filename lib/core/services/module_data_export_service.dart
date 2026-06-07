@@ -966,7 +966,9 @@ class ModuleDataExportService {
         TextCellValue(task.isDaily ? 'Yes' : 'No'),
         TextCellValue(task.isCompleted ? 'Yes' : 'No'),
         TextCellValue(_formatTaskChecklist(task)),
-        TextCellValue(task.description),
+        TextCellValue(
+          task.description.trim().isNotEmpty ? task.description.trim() : '-',
+        ),
       ]);
       _applyCellStyle(
         tasksSheet,
@@ -1447,7 +1449,8 @@ class ModuleDataExportService {
                     updatedAt: credential.updatedAt,
                   ),
                 ),
-        ).toList();
+        )
+        .toList();
   }
 
   Future<String> exportInvestmentData({
@@ -1460,9 +1463,7 @@ class ModuleDataExportService {
     };
   }
 
-  Future<String> _exportInvestmentExcel({
-    required DateTimeRange? range,
-  }) async {
+  Future<String> _exportInvestmentExcel({required DateTimeRange? range}) async {
     final file = await _buildExportFile(
       moduleFolder: 'investment',
       fileNameLabel: 'investment',
@@ -1470,11 +1471,11 @@ class ModuleDataExportService {
     );
     final excel = Excel.createExcel();
     final defaultSheet = excel.getDefaultSheet();
-    if (defaultSheet != null && defaultSheet != 'Summary') {
-      excel.rename(defaultSheet, 'Summary');
+    if (defaultSheet != null && defaultSheet != 'Investments') {
+      excel.rename(defaultSheet, 'Investments');
     }
 
-    final summarySheet = excel['Summary'];
+    final sheet = excel['Investments'];
 
     final repo = InvestmentRepository(_database);
     final allBuys = await repo.getBuyEntries();
@@ -1483,7 +1484,11 @@ class ModuleDataExportService {
     var buys = allBuys;
     if (range != null) {
       buys = buys
-          .where((b) => !b.buyDate.isBefore(range.start) && !b.buyDate.isAfter(range.end))
+          .where(
+            (b) =>
+                !b.buyDate.isBefore(range.start) &&
+                !b.buyDate.isAfter(range.end),
+          )
           .toList();
     }
     final buyIds = buys.map((b) => b.id).toSet();
@@ -1491,187 +1496,96 @@ class ModuleDataExportService {
 
     final headerStyle = CellStyle(bold: true);
     final numberStyle = CellStyle(
-      numberFormat: const CustomNumericNumFormat(
-        formatCode: '#,##,##0.00',
-      ),
+      numberFormat: const CustomNumericNumFormat(formatCode: '#,##,##0.00'),
     );
 
-    summarySheet.appendRow(<CellValue?>[
-      TextCellValue('Investment Export'),
-    ]);
-    summarySheet.appendRow(<CellValue?>[
-      TextCellValue('Range'),
-      TextCellValue(_formatRange(range)),
-    ]);
-    summarySheet.appendRow(<CellValue?>[
-      TextCellValue('Exported At'),
-      TextCellValue(AppConstants.longDateFormat.format(DateTime.now())),
-    ]);
-    summarySheet.appendRow(const <CellValue?>[]);
-
-    summarySheet.appendRow(<CellValue?>[
+    sheet.appendRow(<CellValue?>[
       TextCellValue('Category'),
-      TextCellValue('Total Invested'),
-      TextCellValue('Total Sell Value'),
-      TextCellValue('P/L'),
-      TextCellValue('P/L %'),
+      TextCellValue('Symbol'),
+      TextCellValue('Qty'),
+      TextCellValue('Buy Date'),
+      TextCellValue('Buy Rate'),
+      TextCellValue('Buy Amt'),
+      TextCellValue('Sell Date'),
+      TextCellValue('Sell Rate'),
+      TextCellValue('Sell Amt'),
+      TextCellValue('Notes'),
     ]);
-    _applyRowStyle(summarySheet, rowIndex: 0, columnCount: 1, style: headerStyle);
-    _applyRowStyle(summarySheet, rowIndex: 4, columnCount: 5, style: headerStyle);
+    _applyRowStyle(sheet, rowIndex: 0, columnCount: 10, style: headerStyle);
 
-    final categoryNames = buys.map((b) => b.categoryName).toSet().toList()..sort();
-    final buyRates = {for (final b in buys) b.id: b.buyRate};
+    var rowIndex = 1;
+    for (final buy in buys) {
+      final linkedSells = sells.where((s) => s.buyEntryId == buy.id).toList()
+        ..sort((a, b) => a.sellDate.compareTo(b.sellDate));
 
-    var grandInvested = 0.0;
-    var grandSellValue = 0.0;
-    var grandPL = 0.0;
-
-    var rowIndex = 5;
-    for (final catName in categoryNames) {
-      final catBuys = buys.where((b) => b.categoryName == catName).toList();
-      final catBuyIds = catBuys.map((b) => b.id).toSet();
-      final catSells = sells.where((s) => catBuyIds.contains(s.buyEntryId)).toList();
-
-      var totalInvested = 0.0;
-      var totalSellValue = 0.0;
-      var totalPL = 0.0;
-
-      for (final b in catBuys) {
-        totalInvested += b.buyAmt;
-      }
-      for (final s in catSells) {
-        totalSellValue += s.sellAmt;
-        final buyRate = buyRates[s.buyEntryId] ?? 0.0;
-        totalPL += s.sellAmt - (buyRate * s.sellQty);
-      }
-
-      final plPct = totalInvested == 0.0 ? 0.0 : (totalPL / totalInvested) * 100;
-
-      grandInvested += totalInvested;
-      grandSellValue += totalSellValue;
-      grandPL += totalPL;
-
-      summarySheet.appendRow(<CellValue?>[
-        TextCellValue(catName),
-        DoubleCellValue(totalInvested),
-        DoubleCellValue(totalSellValue),
-        DoubleCellValue(totalPL),
-        DoubleCellValue(plPct),
-      ]);
-      _applyRowStyle(summarySheet, rowIndex: rowIndex, columnCount: 5, style: numberStyle);
-      rowIndex++;
-    }
-
-    final grandPLPct = grandInvested == 0.0 ? 0.0 : (grandPL / grandInvested) * 100;
-    summarySheet.appendRow(<CellValue?>[
-      TextCellValue('Grand Total'),
-      DoubleCellValue(grandInvested),
-      DoubleCellValue(grandSellValue),
-      DoubleCellValue(grandPL),
-      DoubleCellValue(grandPLPct),
-    ]);
-    _applyRowStyle(summarySheet, rowIndex: rowIndex, columnCount: 5, style: CellStyle(bold: true));
-
-    for (final catName in categoryNames) {
-      final catSheet = excel[catName];
-      catSheet.appendRow(<CellValue?>[
-        TextCellValue('Symbol'),
-        TextCellValue('Qty'),
-        TextCellValue('Buy Date'),
-        TextCellValue('Buy Rate'),
-        TextCellValue('Buy Amt'),
-        TextCellValue('Sell Date'),
-        TextCellValue('Sell Rate'),
-        TextCellValue('Sell Amt'),
-        TextCellValue('Days'),
-        TextCellValue('P/L'),
-        TextCellValue('P/L %'),
-        TextCellValue('Tax'),
-        TextCellValue('PAT'),
-        TextCellValue('PAT %'),
-      ]);
-      _applyRowStyle(catSheet, rowIndex: 0, columnCount: 14, style: headerStyle);
-
-      final catBuys = buys.where((b) => b.categoryName == catName).toList()
-        ..sort((a, b) => a.symbol.compareTo(b.symbol));
-
-      var catRowIndex = 1;
-      for (final buy in catBuys) {
-        final linkedSells = sells.where((s) => s.buyEntryId == buy.id).toList()
-          ..sort((a, b) => a.sellDate.compareTo(b.sellDate));
-
-        if (linkedSells.isEmpty) {
-          catSheet.appendRow(<CellValue?>[
+      if (linkedSells.isEmpty) {
+        sheet.appendRow(<CellValue?>[
+          TextCellValue(buy.categoryName),
+          TextCellValue(buy.symbol),
+          DoubleCellValue(buy.qty),
+          TextCellValue(AppConstants.shortDateFormat.format(buy.buyDate)),
+          DoubleCellValue(buy.buyRate),
+          DoubleCellValue(buy.buyAmt),
+          null,
+          null,
+          null,
+          TextCellValue(buy.notes ?? ''),
+        ]);
+        _applyRowStyle(
+          sheet,
+          rowIndex: rowIndex,
+          columnCount: 10,
+          style: numberStyle,
+        );
+        rowIndex++;
+      } else {
+        for (final sell in linkedSells) {
+          sheet.appendRow(<CellValue?>[
+            TextCellValue(buy.categoryName),
             TextCellValue(buy.symbol),
-            DoubleCellValue(buy.qty),
+            DoubleCellValue(sell.sellQty),
             TextCellValue(AppConstants.shortDateFormat.format(buy.buyDate)),
             DoubleCellValue(buy.buyRate),
-            DoubleCellValue(buy.buyAmt),
-            TextCellValue(''),
-            TextCellValue(''),
-            TextCellValue(''),
-            TextCellValue(''),
-            TextCellValue(''),
-            TextCellValue(''),
-            TextCellValue(''),
-            TextCellValue(''),
-            TextCellValue(''),
+            DoubleCellValue(buy.buyRate * sell.sellQty),
+            TextCellValue(AppConstants.shortDateFormat.format(sell.sellDate)),
+            DoubleCellValue(sell.sellRate),
+            DoubleCellValue(sell.sellAmt),
+            TextCellValue(buy.notes ?? ''),
           ]);
-          _applyRowStyle(catSheet, rowIndex: catRowIndex, columnCount: 14, style: numberStyle);
-          catRowIndex++;
-        } else {
-          for (final sell in linkedSells) {
-            final days = sell.sellDate.difference(buy.buyDate).inDays;
-            final pl = sell.sellAmt - (buy.buyRate * sell.sellQty);
-            final plPct = (buy.buyRate * sell.sellQty) == 0 ? 0.0 : (pl / (buy.buyRate * sell.sellQty)) * 100;
-            final tax = buy.taxProfile != null
-                ? repo.computeLiveTax(buy.taxProfile!, buy.buyRate * sell.sellQty, sell.sellAmt)
-                : 0.0;
-            final pat = pl - tax;
-            final patPct = (buy.buyRate * sell.sellQty) == 0 ? 0.0 : (pat / (buy.buyRate * sell.sellQty)) * 100;
+          _applyRowStyle(
+            sheet,
+            rowIndex: rowIndex,
+            columnCount: 10,
+            style: numberStyle,
+          );
+          rowIndex++;
+        }
 
-            catSheet.appendRow(<CellValue?>[
-              TextCellValue(buy.symbol),
-              DoubleCellValue(sell.sellQty),
-              TextCellValue(AppConstants.shortDateFormat.format(buy.buyDate)),
-              DoubleCellValue(buy.buyRate),
-              DoubleCellValue(buy.buyRate * sell.sellQty),
-              TextCellValue(AppConstants.shortDateFormat.format(sell.sellDate)),
-              DoubleCellValue(sell.sellRate),
-              DoubleCellValue(sell.sellAmt),
-              IntCellValue(days),
-              DoubleCellValue(pl),
-              DoubleCellValue(plPct),
-              DoubleCellValue(tax),
-              DoubleCellValue(pat),
-              DoubleCellValue(patPct),
-            ]);
-            _applyRowStyle(catSheet, rowIndex: catRowIndex, columnCount: 14, style: numberStyle);
-            catRowIndex++;
-          }
-
-          final totalSoldQtyForBuy = linkedSells.fold<double>(0.0, (sum, s) => sum + s.sellQty);
-          if (totalSoldQtyForBuy < buy.qty) {
-            final openQty = buy.qty - totalSoldQtyForBuy;
-            catSheet.appendRow(<CellValue?>[
-              TextCellValue(buy.symbol),
-              DoubleCellValue(openQty),
-              TextCellValue(AppConstants.shortDateFormat.format(buy.buyDate)),
-              DoubleCellValue(buy.buyRate),
-              DoubleCellValue(buy.buyRate * openQty),
-              TextCellValue(''),
-              TextCellValue(''),
-              TextCellValue(''),
-              TextCellValue(''),
-              TextCellValue(''),
-              TextCellValue(''),
-              TextCellValue(''),
-              TextCellValue(''),
-              TextCellValue(''),
-            ]);
-            _applyRowStyle(catSheet, rowIndex: catRowIndex, columnCount: 14, style: numberStyle);
-            catRowIndex++;
-          }
+        final totalSoldQtyForBuy = linkedSells.fold<double>(
+          0.0,
+          (sum, s) => sum + s.sellQty,
+        );
+        if (totalSoldQtyForBuy < buy.qty) {
+          final openQty = buy.qty - totalSoldQtyForBuy;
+          sheet.appendRow(<CellValue?>[
+            TextCellValue(buy.categoryName),
+            TextCellValue(buy.symbol),
+            DoubleCellValue(openQty),
+            TextCellValue(AppConstants.shortDateFormat.format(buy.buyDate)),
+            DoubleCellValue(buy.buyRate),
+            DoubleCellValue(buy.buyRate * openQty),
+            null,
+            null,
+            null,
+            TextCellValue(buy.notes ?? ''),
+          ]);
+          _applyRowStyle(
+            sheet,
+            rowIndex: rowIndex,
+            columnCount: 10,
+            style: numberStyle,
+          );
+          rowIndex++;
         }
       }
     }
@@ -1683,9 +1597,7 @@ class ModuleDataExportService {
     return file.path;
   }
 
-  Future<String> _exportInvestmentPdf({
-    required DateTimeRange? range,
-  }) async {
+  Future<String> _exportInvestmentPdf({required DateTimeRange? range}) async {
     final file = await _buildExportFile(
       moduleFolder: 'investment',
       fileNameLabel: 'investment',
@@ -1700,7 +1612,11 @@ class ModuleDataExportService {
     var buys = allBuys;
     if (range != null) {
       buys = buys
-          .where((b) => !b.buyDate.isBefore(range.start) && !b.buyDate.isAfter(range.end))
+          .where(
+            (b) =>
+                !b.buyDate.isBefore(range.start) &&
+                !b.buyDate.isAfter(range.end),
+          )
           .toList();
     }
     final buyIds = buys.map((b) => b.id).toSet();
@@ -1719,7 +1635,9 @@ class ModuleDataExportService {
       final buyRate = buyRates[s.buyEntryId] ?? 0.0;
       grandPL += s.sellAmt - (buyRate * s.sellQty);
     }
-    final grandPLPct = grandInvested == 0.0 ? 0.0 : (grandPL / grandInvested) * 100;
+    final grandPLPct = grandInvested == 0.0
+        ? 0.0
+        : (grandPL / grandInvested) * 100;
 
     final document = pw.Document();
 
@@ -1746,15 +1664,21 @@ class ModuleDataExportService {
           ),
           pw.SizedBox(height: 8),
           pw.TableHelper.fromTextArray(
-            headers: <String>[
-              'Metric',
-              'Value',
-            ],
+            headers: <String>['Metric', 'Value'],
             data: <List<String>>[
-              <String>['Total Invested', IndianNumberFormatter.formatFull(grandInvested)],
-              <String>['Total Sell Value', IndianNumberFormatter.formatFull(grandSellValue)],
+              <String>[
+                'Total Invested',
+                IndianNumberFormatter.formatFull(grandInvested),
+              ],
+              <String>[
+                'Total Sell Value',
+                IndianNumberFormatter.formatFull(grandSellValue),
+              ],
               <String>['Total P/L', IndianNumberFormatter.formatFull(grandPL)],
-              <String>['Total P/L %', '${IndianNumberFormatter.formatFull(grandPLPct)}%'],
+              <String>[
+                'Total P/L %',
+                '${IndianNumberFormatter.formatFull(grandPLPct)}%',
+              ],
             ],
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
             cellAlignment: pw.Alignment.centerLeft,
@@ -1780,7 +1704,8 @@ class ModuleDataExportService {
     InvestmentRepository repo,
   ) {
     final widgets = <pw.Widget>[];
-    final categoryNames = buys.map((b) => b.categoryName).toSet().toList()..sort();
+    final categoryNames = buys.map((b) => b.categoryName).toSet().toList()
+      ..sort();
 
     for (final catName in categoryNames) {
       final catBuys = buys.where((b) => b.categoryName == catName).toList()
@@ -1819,7 +1744,10 @@ class ModuleDataExportService {
             ]);
           }
 
-          final totalSoldQtyForBuy = linkedSells.fold<double>(0.0, (sum, s) => sum + s.sellQty);
+          final totalSoldQtyForBuy = linkedSells.fold<double>(
+            0.0,
+            (sum, s) => sum + s.sellQty,
+          );
           if (totalSoldQtyForBuy < buy.qty) {
             final openQty = buy.qty - totalSoldQtyForBuy;
             tableRows.add(<String>[
@@ -1864,7 +1792,6 @@ class ModuleDataExportService {
     return widgets;
   }
 }
-
 
 class _ExpenseExportSummary {
   const _ExpenseExportSummary({

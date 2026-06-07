@@ -115,8 +115,14 @@ class BrokerBloc extends Bloc<BrokerEvent, BrokerState> {
     );
   }
 
-  Future<void> _onBrokerAdded(BrokerAdded event, Emitter<BrokerState> emit) async {
-    await _performMutation(emit, () => _repository.insertTaxProfile(event.profile));
+  Future<void> _onBrokerAdded(
+    BrokerAdded event,
+    Emitter<BrokerState> emit,
+  ) async {
+    await _performMutation(
+      emit,
+      () => _repository.insertTaxProfile(event.profile),
+    );
   }
 
   Future<void> _onBrokerUpdated(

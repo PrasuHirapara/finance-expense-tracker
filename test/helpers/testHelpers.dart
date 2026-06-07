@@ -234,6 +234,40 @@ Future<String> writeCredentialWorkbook(Directory root) async {
   return writeWorkbook(root, 'credential-import.xlsx', excel);
 }
 
+Future<String> writeTaskWorkbook(
+  Directory root, {
+  required String description,
+  required String checklist,
+}) async {
+  final excel = Excel.createExcel();
+  final defaultSheet = excel.getDefaultSheet();
+  if (defaultSheet != null && defaultSheet != 'Tasks') {
+    excel.rename(defaultSheet, 'Tasks');
+  }
+  final sheet = excel['Tasks'];
+  sheet.appendRow(<CellValue?>[
+    TextCellValue('Date'),
+    TextCellValue('Title'),
+    TextCellValue('Category'),
+    TextCellValue('Priority'),
+    TextCellValue('Daily'),
+    TextCellValue('Completed'),
+    TextCellValue('Checklist'),
+    TextCellValue('Description'),
+  ]);
+  sheet.appendRow(<CellValue?>[
+    TextCellValue('2026-05-23'),
+    TextCellValue('Test import task'),
+    TextCellValue('Personal'),
+    IntCellValue(3),
+    TextCellValue('No'),
+    TextCellValue('No'),
+    TextCellValue(checklist),
+    TextCellValue(description),
+  ]);
+  return writeWorkbook(root, 'task-import.xlsx', excel);
+}
+
 Future<String> writeWorkbook(
   Directory root,
   String fileName,

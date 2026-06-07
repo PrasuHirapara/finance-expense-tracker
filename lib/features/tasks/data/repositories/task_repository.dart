@@ -322,10 +322,20 @@ class TaskRepository {
         .map((task) => task.sourceTaskId ?? task.id)
         .toSet();
 
+    final existingTitlesAndCategories = currentTasks
+        .map((task) =>
+            '${task.title.trim().toLowerCase()}|${task.category.trim().toLowerCase()}')
+        .toSet();
+
     final clones = <DbTasksCompanion>[];
     for (final task in previousDailyTasks) {
       final sourceId = task.sourceTaskId ?? task.id;
       if (existingSources.contains(sourceId)) {
+        continue;
+      }
+      final key =
+          '${task.title.trim().toLowerCase()}|${task.category.trim().toLowerCase()}';
+      if (existingTitlesAndCategories.contains(key)) {
         continue;
       }
       clones.add(

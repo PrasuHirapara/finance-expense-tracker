@@ -147,13 +147,15 @@ class DbInvestmentTaxProfiles extends Table {
 
 class DbInvestmentEntries extends Table {
   IntColumn get id => integer().autoIncrement()();
-  IntColumn get categoryId => integer().references(DbInvestmentCategories, #id)();
+  IntColumn get categoryId =>
+      integer().references(DbInvestmentCategories, #id)();
   TextColumn get symbol => text()();
   RealColumn get qty => real()();
   DateTimeColumn get buyDate => dateTime()();
   RealColumn get buyRate => real()();
   RealColumn get buyAmt => real()();
-  IntColumn get taxProfileId => integer().nullable().references(DbInvestmentTaxProfiles, #id)();
+  IntColumn get taxProfileId =>
+      integer().nullable().references(DbInvestmentTaxProfiles, #id)();
   TextColumn get notes => text().nullable()();
   DateTimeColumn get createdAt =>
       dateTime().clientDefault(() => DateTime.now())();

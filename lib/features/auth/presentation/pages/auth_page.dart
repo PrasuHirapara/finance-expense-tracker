@@ -1,12 +1,18 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/models/cloud_sync_models.dart';
 import '../../../../core/services/cancellable_task.dart';
+import '../../../../core/services/cloud_sync_service.dart';
 import '../../../../core/services/firebase_cloud_sync_auth_service.dart';
-import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../core/services/firebase_runtime_service.dart';
+import '../../../../features/credentials/data/services/credential_service.dart';
+import '../../../../features/credentials/presentation/widgets/credential_key_entry_dialog.dart';
 import '../../../../shared/widgets/app_panel.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
 
 class AuthPage extends StatefulWidget {
@@ -466,11 +472,133 @@ class _AuthPageState extends State<AuthPage> {
       return;
     }
 
+    try {
+      await _restoreDataAfterSignIn();
+    } catch (e) {
+      _showMessage('Cloud restore failed: $e');
+    }
+
+    if (!mounted) {
+      return;
+    }
+
     if (widget.closeOnSuccess && Navigator.of(context).canPop()) {
       Navigator.of(context).pop(true);
       return;
     }
 
     _showMessage('Firebase account connected.');
+  }
+
+  Future<void> _restoreDataAfterSignIn() async {
+    final cloudSyncService = context.read<CloudSyncService>();
+    final credentialService = context.read<CredentialService>();
+
+    // 1. Enable Cloud Sync in settings
+    await cloudSyncService.setCloudSyncEnabled(true);
+
+    // 2. Perform restore from cloud with forceOverwrite: true
+    try {
+      await _performCloudRestore(forceOverwrite: true);
+      _showMessage('Cloud restore completed successfully.');
+    } on FileSystemException catch (e) {
+      // If there is no cloud backup found, that's not an error for a new user/device.
+      if (e.message.contains('No cloud backup was found') ||
+          e.message.contains('No cloud backup manifest was found')) {
+        _showMessage(
+          'Firebase account connected. No cloud backup found to restore.',
+        );
+        return;
+      }
+      rethrow;
+    } on CloudCredentialEncryptionKeyRequiredException {
+      final requireConfirmation = !(await credentialService.hasEncryptionKey());
+      if (!mounted) return;
+      await _promptForCredentialKeyAndRestore(
+        forceOverwrite: true,
+        requireConfirmation: requireConfirmation,
+        reason:
+            'Enter your credential encryption key to restore encrypted credential titles from Firestore.',
+      );
+    } on CloudCredentialEncryptionKeyInvalidException {
+      if (!mounted) return;
+      await _promptForCredentialKeyAndRestore(
+        forceOverwrite: true,
+        requireConfirmation: false,
+        reason:
+            'The saved encryption key did not match the cloud credential backup. Enter the correct key to restore those records.',
+      );
+    }
+  }
+
+  Future<void> _performCloudRestore({
+    required bool forceOverwrite,
+    String? credentialEncryptionKey,
+  }) async {
+    final cloudSyncService = context.read<CloudSyncService>();
+    await runWithCancellableBlockingOverlay<void>(
+      context: context,
+      title: 'Restoring data',
+      statusText: 'Restoring your cloud backup...',
+      task: (token) => cloudSyncService.downloadDataFromCloud(
+        forceOverwrite: forceOverwrite,
+        credentialEncryptionKey: credentialEncryptionKey,
+        cancellationToken: token,
+      ),
+    );
+  }
+
+  Future<bool> _promptForCredentialKeyAndRestore({
+    required bool forceOverwrite,
+    required bool requireConfirmation,
+    required String reason,
+  }) async {
+    final credentialService = context.read<CredentialService>();
+    final enteredKey = await showCredentialKeyEntryDialog(
+      context,
+      title: 'Credential Key Required',
+      reason: reason,
+      requireConfirmation: requireConfirmation,
+      submitLabel: requireConfirmation ? 'Save & Restore' : 'Restore',
+    );
+
+    if (enteredKey == null || !mounted) {
+      return false;
+    }
+
+    try {
+      await _performCloudRestore(
+        forceOverwrite: forceOverwrite,
+        credentialEncryptionKey: enteredKey,
+      );
+      await credentialService.configureEncryptionKey(enteredKey);
+      _showMessage('Cloud restore completed successfully.');
+      return true;
+    } on FileSystemException catch (e) {
+      if (e.message.contains('No cloud backup was found') ||
+          e.message.contains('No cloud backup manifest was found')) {
+        _showMessage(
+          'Firebase account connected. No cloud backup found to restore.',
+        );
+        return true;
+      }
+      rethrow;
+    } on CloudCredentialEncryptionKeyRequiredException {
+      if (!mounted) return false;
+      return _promptForCredentialKeyAndRestore(
+        forceOverwrite: forceOverwrite,
+        requireConfirmation: requireConfirmation,
+        reason:
+            'Enter your credential encryption key to restore encrypted credential titles from Firestore.',
+      );
+    } on CloudCredentialEncryptionKeyInvalidException {
+      if (!mounted) return false;
+      return _promptForCredentialKeyAndRestore(
+        forceOverwrite: forceOverwrite,
+        requireConfirmation: false,
+        reason:
+            'The entered encryption key did not match the cloud credential backup. Please try again.',
+      );
+    }
   }
 }

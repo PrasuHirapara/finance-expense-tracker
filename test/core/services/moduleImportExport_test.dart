@@ -152,6 +152,52 @@ void main() {
       );
     });
 
+    test(
+      'imports task with hyphens for empty description and checklist, and exports them as hyphens',
+      () async {
+        final exportDirectory = Directory(
+          '${testRoot.path}${Platform.pathSeparator}exports',
+        );
+        await appSettingsRepository.updateExportDirectoryPath(
+          exportDirectory.path,
+        );
+
+        final taskImportPath = await writeTaskWorkbook(
+          testRoot,
+          description: '-',
+          checklist: '-',
+        );
+
+        final importResult = await importService.importTaskExcel(
+          taskImportPath,
+        );
+        expect(importResult.savedItems, 1);
+
+        final importedTasks = await taskRepository.loadAllTasks();
+        expect(importedTasks.length, 1);
+        expect(importedTasks.single.title, 'Test import task');
+        expect(importedTasks.single.description, isEmpty);
+        expect(importedTasks.single.checklist, isEmpty);
+
+        final taskExportPath = await exportService.exportTaskData(
+          range: null,
+          format: ModuleExportFormat.excel,
+          tasks: importedTasks,
+        );
+
+        expect(File(taskExportPath).existsSync(), isTrue);
+
+        final excel = Excel.decodeBytes(File(taskExportPath).readAsBytesSync());
+        final sheet = excel['Tasks'];
+        final row = sheet.row(1);
+        final exportedChecklist = row[6]?.value?.toString();
+        final exportedDescription = row[7]?.value?.toString();
+
+        expect(exportedChecklist, '-');
+        expect(exportedDescription, '-');
+      },
+    );
+
     test('rejects invalid imports and unusable export destinations', () async {
       await expenseRepository.seedDefaults();
       final invalidImportPath = await writeInvalidExpenseWorkbook(testRoot);

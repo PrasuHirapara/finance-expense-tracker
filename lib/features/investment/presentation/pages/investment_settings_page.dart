@@ -179,9 +179,7 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Investment Settings'),
-      ),
+      appBar: AppBar(title: const Text('Investment Settings')),
       body: BlocBuilder<BrokerBloc, BrokerState>(
         builder: (context, brokerState) {
           return StreamBuilder<List<InvestmentCategory>>(
@@ -189,8 +187,12 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
             builder: (context, snapshot) {
               final categories = snapshot.data ?? const <InvestmentCategory>[];
               final brokers = brokerState.profiles;
-              final visibleCategories = _showAllCategories ? categories : const <InvestmentCategory>[];
-              final visibleBrokers = _showAllBrokers ? brokers : const <TaxProfile>[];
+              final visibleCategories = _showAllCategories
+                  ? categories
+                  : const <InvestmentCategory>[];
+              final visibleBrokers = _showAllBrokers
+                  ? brokers
+                  : const <TaxProfile>[];
 
               return ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
@@ -200,27 +202,41 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text('Investment Export', style: theme.textTheme.titleLarge),
+                        Text(
+                          'Investment Export',
+                          style: theme.textTheme.titleLarge,
+                        ),
                         const SizedBox(height: 16),
                         AppSelectField<String>(
                           label: 'Time Range',
                           value: _selectedRangeOption,
                           options: const [
                             AppSelectOption(value: 'All', label: 'All Time'),
-                            AppSelectOption(value: 'Month', label: 'This Month'),
+                            AppSelectOption(
+                              value: 'Month',
+                              label: 'This Month',
+                            ),
                             AppSelectOption(value: 'Year', label: 'This Year'),
-                            AppSelectOption(value: 'Custom', label: 'Custom Range...'),
+                            AppSelectOption(
+                              value: 'Custom',
+                              label: 'Custom Range...',
+                            ),
                           ],
                           onChanged: (value) async {
                             if (value == 'Custom') {
                               final picked = await showDateRangePicker(
                                 context: context,
                                 firstDate: DateTime(2020),
-                                lastDate: DateTime.now().add(const Duration(days: 365)),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 365),
+                                ),
                               );
                               if (picked != null) {
                                 setState(() {
-                                  _customExportRange = DateTimeRange(start: picked.start, end: picked.end);
+                                  _customExportRange = DateTimeRange(
+                                    start: picked.start,
+                                    end: picked.end,
+                                  );
                                   _selectedRangeOption = value;
                                 });
                               }
@@ -237,7 +253,10 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                           value: _selectedFormatOption,
                           options: const [
                             AppSelectOption(value: 'PDF', label: 'PDF Report'),
-                            AppSelectOption(value: 'Excel', label: 'Excel Sheet'),
+                            AppSelectOption(
+                              value: 'Excel',
+                              label: 'Excel Sheet',
+                            ),
                           ],
                           onChanged: (value) {
                             setState(() {
@@ -249,7 +268,11 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                         FilledButton.icon(
                           onPressed: _isExporting ? null : _handleExport,
                           icon: const Icon(Icons.download_rounded),
-                          label: Text(_isExporting ? 'Exporting...' : 'Download $_selectedFormatOption'),
+                          label: Text(
+                            _isExporting
+                                ? 'Exporting...'
+                                : 'Download $_selectedFormatOption',
+                          ),
                         ),
                       ],
                     ),
@@ -261,7 +284,10 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text('Investment Import', style: theme.textTheme.titleLarge),
+                        Text(
+                          'Investment Import',
+                          style: theme.textTheme.titleLarge,
+                        ),
                         const SizedBox(height: 6),
                         Text(
                           'Download a sample Excel file, fill it row by row, then import it. Nothing is saved unless every filled row is valid.',
@@ -275,14 +301,24 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                           runSpacing: 10,
                           children: <Widget>[
                             OutlinedButton.icon(
-                              onPressed: _isDownloadingSample || _isImporting ? null : _downloadSampleExcel,
+                              onPressed: _isDownloadingSample || _isImporting
+                                  ? null
+                                  : _downloadSampleExcel,
                               icon: const Icon(Icons.download_rounded),
-                              label: Text(_isDownloadingSample ? 'Preparing...' : 'Download Sample Excel'),
+                              label: Text(
+                                _isDownloadingSample
+                                    ? 'Preparing...'
+                                    : 'Download Sample Excel',
+                              ),
                             ),
                             FilledButton.icon(
-                              onPressed: _isDownloadingSample || _isImporting ? null : _importExcel,
+                              onPressed: _isDownloadingSample || _isImporting
+                                  ? null
+                                  : _importExcel,
                               icon: const Icon(Icons.upload_file_rounded),
-                              label: Text(_isImporting ? 'Importing...' : 'Import Excel'),
+                              label: Text(
+                                _isImporting ? 'Importing...' : 'Import Excel',
+                              ),
                             ),
                           ],
                         ),
@@ -296,7 +332,10 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text('Investment Settings', style: theme.textTheme.titleLarge),
+                        Text(
+                          'Investment Settings',
+                          style: theme.textTheme.titleLarge,
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           'Manage investment categories and broker profiles.',
@@ -320,11 +359,14 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                                         child: TextButton(
                                           onPressed: () {
                                             setState(() {
-                                              _showAllCategories = !_showAllCategories;
+                                              _showAllCategories =
+                                                  !_showAllCategories;
                                             });
                                           },
                                           child: Text(
-                                            _showAllCategories ? 'Hide category' : 'View category',
+                                            _showAllCategories
+                                                ? 'Hide category'
+                                                : 'View category',
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
@@ -339,9 +381,15 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                                   fit: BoxFit.scaleDown,
                                   alignment: Alignment.centerRight,
                                   child: FilledButton.tonalIcon(
-                                    onPressed: () => _showCategoryDialog(context, existingCategories: categories),
+                                    onPressed: () => _showCategoryDialog(
+                                      context,
+                                      existingCategories: categories,
+                                    ),
                                     icon: const Icon(Icons.add),
-                                    label: const Text('Add category', overflow: TextOverflow.ellipsis),
+                                    label: const Text(
+                                      'Add category',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -366,7 +414,10 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                         const SizedBox(height: 6),
                         const Divider(),
                         const SizedBox(height: 8),
-                        Text('Broker Profiles', style: theme.textTheme.titleMedium),
+                        Text(
+                          'Broker Profiles',
+                          style: theme.textTheme.titleMedium,
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           children: <Widget>[
@@ -381,11 +432,14 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                                         child: TextButton(
                                           onPressed: () {
                                             setState(() {
-                                              _showAllBrokers = !_showAllBrokers;
+                                              _showAllBrokers =
+                                                  !_showAllBrokers;
                                             });
                                           },
                                           child: Text(
-                                            _showAllBrokers ? 'Hide Broker' : 'View Broker',
+                                            _showAllBrokers
+                                                ? 'Hide Broker'
+                                                : 'View Broker',
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
@@ -402,12 +456,15 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                                   child: FilledButton.tonalIcon(
                                     onPressed: () {
                                       setState(() {
-                                          _isCreatingBroker = true;
-                                          _initBrokerControllers(null);
+                                        _isCreatingBroker = true;
+                                        _initBrokerControllers(null);
                                       });
                                     },
                                     icon: const Icon(Icons.add),
-                                    label: const Text('Add broker', overflow: TextOverflow.ellipsis),
+                                    label: const Text(
+                                      'Add broker',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -416,15 +473,15 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                         ),
                         const SizedBox(height: 12),
                         if (brokers.isEmpty)
-                          _buildEmptyCard(context, 'No broker profiles added yet.')
+                          _buildEmptyCard(
+                            context,
+                            'No broker profiles added yet.',
+                          )
                         else
                           ...visibleBrokers.map(
                             (broker) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _buildBrokerCard(
-                                context,
-                                broker: broker,
-                              ),
+                              child: _buildBrokerCard(context, broker: broker),
                             ),
                           ),
                       ],
@@ -443,16 +500,23 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                           label: 'Default Broker',
                           value: _defaultBrokerId,
                           options: [
-                            const AppSelectOption(value: null, label: 'Select default broker'),
+                            const AppSelectOption(
+                              value: null,
+                              label: 'Select default broker',
+                            ),
                             ...brokers.map(
-                              (b) => AppSelectOption<int?>(value: b.id, label: b.brokerName),
+                              (b) => AppSelectOption<int?>(
+                                value: b.id,
+                                label: b.brokerName,
+                              ),
                             ),
                           ],
                           onChanged: (value) {
                             setState(() {
                               _defaultBrokerId = value;
                             });
-                            context.read<AppSettingsRepository>()
+                            context
+                                .read<AppSettingsRepository>()
                                 .updateSelectedInvestmentBrokerId(value);
                           },
                         ),
@@ -467,7 +531,10 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text('Delete Investment Data', style: theme.textTheme.titleLarge),
+                        Text(
+                          'Delete Investment Data',
+                          style: theme.textTheme.titleLarge,
+                        ),
                         const SizedBox(height: 6),
                         Text(
                           'This clears all investment entries, sell records, and resets broker profiles and categories to defaults.',
@@ -501,7 +568,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Text(message),
@@ -520,7 +589,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.42,
+        ),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
@@ -546,7 +617,11 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
           ),
           IconButton(
             onPressed: canDelete
-                ? () => _handleDeleteCategory(context, category, existingCategories)
+                ? () => _handleDeleteCategory(
+                    context,
+                    category,
+                    existingCategories,
+                  )
                 : null,
             icon: const Icon(Icons.delete_outline_rounded),
           ),
@@ -555,23 +630,20 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
     );
   }
 
-  Widget _buildBrokerCard(
-    BuildContext context, {
-    required TaxProfile broker,
-  }) {
+  Widget _buildBrokerCard(BuildContext context, {required TaxProfile broker}) {
     final theme = Theme.of(context);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.42),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.42,
+        ),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         children: <Widget>[
-          const CircleAvatar(
-            child: Icon(Icons.business_rounded),
-          ),
+          const CircleAvatar(child: Icon(Icons.business_rounded)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -634,9 +706,7 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                 children: [
                   TextFormField(
                     controller: _brokerNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Broker Name',
-                    ),
+                    decoration: const InputDecoration(labelText: 'Broker Name'),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'Broker name is required';
@@ -653,7 +723,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                           decoration: const InputDecoration(
                             labelText: 'STT Buy %',
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -663,7 +735,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                           decoration: const InputDecoration(
                             labelText: 'STT Sell %',
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                         ),
                       ),
                     ],
@@ -677,7 +751,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                           decoration: const InputDecoration(
                             labelText: 'Exchange Charge %',
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -687,7 +763,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                           decoration: const InputDecoration(
                             labelText: 'SEBI Charge %',
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                         ),
                       ),
                     ],
@@ -701,17 +779,19 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                           decoration: const InputDecoration(
                             labelText: 'Stamp Duty %',
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: TextFormField(
                           controller: _gstController,
-                          decoration: const InputDecoration(
-                            labelText: 'GST %',
+                          decoration: const InputDecoration(labelText: 'GST %'),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         ),
                       ),
                     ],
@@ -725,7 +805,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                           decoration: const InputDecoration(
                             labelText: 'Brokerage %',
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -735,7 +817,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                           decoration: const InputDecoration(
                             labelText: 'Brokerage Flat',
                           ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
                         ),
                       ),
                     ],
@@ -757,7 +841,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                     decoration: const InputDecoration(
                       labelText: 'DP Charge per Scrip',
                     ),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                   ),
                 ],
               ),
@@ -846,13 +932,18 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
     });
   }
 
-  Future<void> _handleDeleteBroker(BuildContext context, TaxProfile profile) async {
+  Future<void> _handleDeleteBroker(
+    BuildContext context,
+    TaxProfile profile,
+  ) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Delete Broker Profile'),
-          content: Text('Are you sure you want to delete "${profile.brokerName}"? This resets linked entries to no broker.'),
+          content: Text(
+            'Are you sure you want to delete "${profile.brokerName}"? This resets linked entries to no broker.',
+          ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -884,13 +975,19 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
   ) async {
     final repository = context.read<InvestmentRepository>();
     final entries = await repository.getBuyEntries();
-    final linkedCount = entries.where((e) => e.categoryId == category.id).length;
+    final linkedCount = entries
+        .where((e) => e.categoryId == category.id)
+        .length;
 
     if (!context.mounted) return;
 
     if (linkedCount > 0) {
-      final otherCategories = allCategories.where((c) => c.id != category.id).toList();
-      int? selectedCategoryId = otherCategories.isNotEmpty ? otherCategories.first.id : null;
+      final otherCategories = allCategories
+          .where((c) => c.id != category.id)
+          .toList();
+      int? selectedCategoryId = otherCategories.isNotEmpty
+          ? otherCategories.first.id
+          : null;
 
       await showDialog<void>(
         context: context,
@@ -934,7 +1031,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                     onPressed: selectedCategoryId == null
                         ? null
                         : () async {
-                            final scaffoldMessenger = ScaffoldMessenger.of(context);
+                            final scaffoldMessenger = ScaffoldMessenger.of(
+                              context,
+                            );
                             await repository.deleteCategory(
                               category.id,
                               reassignCategoryId: selectedCategoryId,
@@ -946,7 +1045,8 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                               scaffoldMessenger.showSnackBar(
                                 buildAppSnackBar(
                                   context,
-                                  message: 'Category deleted and entries reassigned.',
+                                  message:
+                                      'Category deleted and entries reassigned.',
                                   type: AppSnackBarType.info,
                                 ),
                               );
@@ -966,7 +1066,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
         builder: (dialogContext) {
           return AlertDialog(
             title: const Text('Delete Category'),
-            content: Text('Are you sure you want to delete category "${category.name}"?'),
+            content: Text(
+              'Are you sure you want to delete category "${category.name}"?',
+            ),
             actions: <Widget>[
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -1071,7 +1173,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: selected
-                                    ? Theme.of(context).colorScheme.primaryContainer
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.primaryContainer
                                     : Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -1105,7 +1209,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
                                 shape: BoxShape.circle,
                                 border: selected
                                     ? Border.all(
-                                        color: Theme.of(context).colorScheme.onSurface,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
                                         width: 2,
                                       )
                                     : null,
@@ -1200,11 +1306,12 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
         range = _customExportRange;
       }
 
-      final format = _selectedFormatOption == 'PDF' ? ModuleExportFormat.pdf : ModuleExportFormat.excel;
-      final path = await context.read<ModuleDataExportService>().exportInvestmentData(
-            range: range,
-            format: format,
-          );
+      final format = _selectedFormatOption == 'PDF'
+          ? ModuleExportFormat.pdf
+          : ModuleExportFormat.excel;
+      final path = await context
+          .read<ModuleDataExportService>()
+          .exportInvestmentData(range: range, format: format);
 
       if (!mounted) return;
       showDownloadResultSnackBar(
@@ -1234,7 +1341,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
     });
 
     try {
-      final path = await context.read<ModuleDataImportService>().downloadInvestmentSampleExcel();
+      final path = await context
+          .read<ModuleDataImportService>()
+          .downloadInvestmentSampleExcel();
       if (!mounted) return;
       showDownloadResultSnackBar(
         context,
@@ -1274,9 +1383,11 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
 
     if (!mounted) return;
     try {
-      final previewData = await context.read<ModuleDataImportService>().importInvestmentExcel(result.files.single.path!);
+      final previewData = await context
+          .read<ModuleDataImportService>()
+          .importInvestmentExcel(result.files.single.path!);
       if (!mounted) return;
-      
+
       Navigator.of(context).pushNamed(
         AppRoutes.investmentImportPreview,
         arguments: InvestmentImportPreviewArgs(previewData: previewData),
@@ -1303,7 +1414,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Delete All Investment Data'),
-          content: const Text('This will delete all investment entries, sell history, and reset settings. Are you sure?'),
+          content: const Text(
+            'This will delete all investment entries, sell history, and reset settings. Are you sure?',
+          ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -1327,7 +1440,9 @@ class _InvestmentSettingsPageState extends State<InvestmentSettingsPage> {
           message: 'All investment data deleted.',
           type: AppSnackBarType.info,
         );
-        context.read<InvestmentBloc>().add(const InvestmentSubscriptionRequested());
+        context.read<InvestmentBloc>().add(
+          const InvestmentSubscriptionRequested(),
+        );
       }
     }
   }

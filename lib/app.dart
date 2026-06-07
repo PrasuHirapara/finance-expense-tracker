@@ -212,9 +212,9 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
                 )..add(const InvestmentRestoreRequested()),
               ),
               BlocProvider<BrokerBloc>(
-                create: (context) => BrokerBloc(
-                  context.read<InvestmentRepository>(),
-                )..add(const BrokersSubscriptionRequested()),
+                create: (context) =>
+                    BrokerBloc(context.read<InvestmentRepository>())
+                      ..add(const BrokersSubscriptionRequested()),
               ),
               BlocProvider<InvestmentAnalyticsBloc>(
                 create: (context) => InvestmentAnalyticsBloc(

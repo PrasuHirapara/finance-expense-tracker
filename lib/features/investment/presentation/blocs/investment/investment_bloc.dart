@@ -39,10 +39,12 @@ class InvestmentState extends Equatable {
   }) {
     return InvestmentState(
       status: status ?? this.status,
-      selectedCategoryId:
-          clearCategory ? null : selectedCategoryId ?? this.selectedCategoryId,
-      selectedDateRange:
-          clearDateRange ? null : selectedDateRange ?? this.selectedDateRange,
+      selectedCategoryId: clearCategory
+          ? null
+          : selectedCategoryId ?? this.selectedCategoryId,
+      selectedDateRange: clearDateRange
+          ? null
+          : selectedDateRange ?? this.selectedDateRange,
       selectedWindow: selectedWindow ?? this.selectedWindow,
       dashboard: dashboard ?? this.dashboard,
       errorMessage: errorMessage,
@@ -51,13 +53,13 @@ class InvestmentState extends Equatable {
 
   @override
   List<Object?> get props => <Object?>[
-        status,
-        selectedCategoryId,
-        selectedDateRange,
-        selectedWindow,
-        dashboard,
-        errorMessage,
-      ];
+    status,
+    selectedCategoryId,
+    selectedDateRange,
+    selectedWindow,
+    dashboard,
+    errorMessage,
+  ];
 }
 
 enum InvestmentStatus { initial, loading, success, failure }
@@ -77,10 +79,7 @@ class InvestmentRestoreRequested extends InvestmentEvent {
 }
 
 class InvestmentSubscriptionRequested extends InvestmentEvent {
-  const InvestmentSubscriptionRequested({
-    this.categoryId,
-    this.dateRange,
-  });
+  const InvestmentSubscriptionRequested({this.categoryId, this.dateRange});
 
   final int? categoryId;
   final DateTimeRange? dateRange;
@@ -99,10 +98,7 @@ class InvestmentCategoryFilterChanged extends InvestmentEvent {
 }
 
 class InvestmentDateFilterChanged extends InvestmentEvent {
-  const InvestmentDateFilterChanged({
-    required this.window,
-    this.dateRange,
-  });
+  const InvestmentDateFilterChanged({required this.window, this.dateRange});
 
   final InvestmentAnalyticsWindow window;
   final DateTimeRange? dateRange;
@@ -131,7 +127,7 @@ class _InvestmentDashboardUpdated extends InvestmentEvent {
 
 class InvestmentBloc extends Bloc<InvestmentEvent, InvestmentState> {
   InvestmentBloc(this._repository, this._settingsRepository)
-      : super(const InvestmentState()) {
+    : super(const InvestmentState()) {
     on<InvestmentRestoreRequested>(_onRestoreRequested);
     on<InvestmentSubscriptionRequested>(_onSubscriptionRequested);
     on<InvestmentCategoryFilterChanged>(_onCategoryFilterChanged);
@@ -192,12 +188,15 @@ class InvestmentBloc extends Bloc<InvestmentEvent, InvestmentState> {
     InvestmentCategoryFilterChanged event,
     Emitter<InvestmentState> emit,
   ) async {
-    await _settingsRepository
-        .updateSelectedInvestmentCategoryId(event.categoryId);
-    add(InvestmentSubscriptionRequested(
-      categoryId: event.categoryId,
-      dateRange: state.selectedDateRange,
-    ));
+    await _settingsRepository.updateSelectedInvestmentCategoryId(
+      event.categoryId,
+    );
+    add(
+      InvestmentSubscriptionRequested(
+        categoryId: event.categoryId,
+        dateRange: state.selectedDateRange,
+      ),
+    );
   }
 
   void _onDateFilterChanged(
@@ -205,10 +204,12 @@ class InvestmentBloc extends Bloc<InvestmentEvent, InvestmentState> {
     Emitter<InvestmentState> emit,
   ) {
     emit(state.copyWith(selectedWindow: event.window));
-    add(InvestmentSubscriptionRequested(
-      categoryId: state.selectedCategoryId,
-      dateRange: event.dateRange,
-    ));
+    add(
+      InvestmentSubscriptionRequested(
+        categoryId: state.selectedCategoryId,
+        dateRange: event.dateRange,
+      ),
+    );
   }
 
   Future<void> _onDeleted(

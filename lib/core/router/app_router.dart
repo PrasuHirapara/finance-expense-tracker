@@ -33,6 +33,7 @@ import '../../features/investment/presentation/pages/investment_settings_page.da
 import '../../features/expense/presentation/pages/expense_import_preview_page.dart';
 import '../../features/credentials/presentation/pages/credential_import_preview_page.dart';
 import '../../features/investment/presentation/pages/investment_import_preview_page.dart';
+import '../../features/tasks/presentation/pages/task_import_preview_page.dart';
 import '../../core/services/module_data_import_service.dart';
 import '../../core/services/app_settings_repository.dart';
 
@@ -57,6 +58,7 @@ class AppRoutes {
   static const String expenseImportPreview = '/expense/import/preview';
   static const String credentialImportPreview = '/credential/import/preview';
   static const String investmentImportPreview = '/investment/import/preview';
+  static const String taskImportPreview = '/tasks/import/preview';
   static const String userSettingsInfo = '/settings/user-settings';
   static const String appSettingsInfo = '/settings/app-settings';
   static const String backupSettingsInfo = '/settings/backup-settings';
@@ -119,6 +121,11 @@ class InvestmentImportPreviewArgs {
 class ExpenseImportPreviewArgs {
   const ExpenseImportPreviewArgs({required this.previewData});
   final ExpenseImportPreviewData previewData;
+}
+
+class TaskImportPreviewArgs {
+  const TaskImportPreviewArgs({required this.previewData});
+  final TaskImportPreviewData previewData;
 }
 
 class CredentialImportPreviewArgs {
@@ -213,11 +220,10 @@ class AppRouter {
         final args = settings.arguments as InvestmentEditorArgs?;
         return MaterialPageRoute<void>(
           builder: (context) => BlocProvider(
-            create: (context) =>
-                InvestmentFormBloc(
-                  context.read<InvestmentRepository>(),
-                  context.read<AppSettingsRepository>(),
-                )..add(InvestmentFormInit(existingEntry: args?.entry)),
+            create: (context) => InvestmentFormBloc(
+              context.read<InvestmentRepository>(),
+              context.read<AppSettingsRepository>(),
+            )..add(InvestmentFormInit(existingEntry: args?.entry)),
             child: const InvestmentEntryFormPage(),
           ),
         );
@@ -229,11 +235,13 @@ class AppRouter {
                 InvestmentFormBloc(
                   context.read<InvestmentRepository>(),
                   context.read<AppSettingsRepository>(),
-                )..add(InvestmentFormSellInit(
+                )..add(
+                  InvestmentFormSellInit(
                     buyEntryId: args.buyEntryId,
                     symbol: args.symbol,
                     remainingUnsoldQty: args.remainingUnsoldQty,
-                  )),
+                  ),
+                ),
             child: const SellEntryFormPage(),
           ),
         );
@@ -264,6 +272,11 @@ class AppRouter {
         final args = settings.arguments as InvestmentImportPreviewArgs;
         return MaterialPageRoute<void>(
           builder: (context) => InvestmentImportPreviewPage(args: args),
+        );
+      case AppRoutes.taskImportPreview:
+        final args = settings.arguments as TaskImportPreviewArgs;
+        return MaterialPageRoute<void>(
+          builder: (context) => TaskImportPreviewPage(args: args),
         );
       case AppRoutes.userSettingsInfo:
         return MaterialPageRoute<void>(

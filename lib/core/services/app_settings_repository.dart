@@ -198,8 +198,12 @@ class AppSettingsRepository {
         json['acceptedPrivacyPolicyVersion'],
       ),
       selectedExpenseBankId: _intFromJson(json['selectedExpenseBankId']),
-      selectedInvestmentBrokerId: _intFromJson(json['selectedInvestmentBrokerId']),
-      selectedInvestmentCategoryId: _intFromJson(json['selectedInvestmentCategoryId']),
+      selectedInvestmentBrokerId: _intFromJson(
+        json['selectedInvestmentBrokerId'],
+      ),
+      selectedInvestmentCategoryId: _intFromJson(
+        json['selectedInvestmentCategoryId'],
+      ),
       cloudSync: _cloudSyncFromJson(json['cloudSync']),
     );
   }
@@ -239,7 +243,8 @@ class AppSettingsRepository {
       selectedInvestmentBrokerId: json.containsKey('selectedInvestmentBrokerId')
           ? _intFromJson(json['selectedInvestmentBrokerId'])
           : fallback.selectedInvestmentBrokerId,
-      selectedInvestmentCategoryId: json.containsKey('selectedInvestmentCategoryId')
+      selectedInvestmentCategoryId:
+          json.containsKey('selectedInvestmentCategoryId')
           ? _intFromJson(json['selectedInvestmentCategoryId'])
           : fallback.selectedInvestmentCategoryId,
       cloudSync: fallback.cloudSync.copyWith(
@@ -320,9 +325,7 @@ class AppSettingsRepository {
       syncExpense: value['syncExpense'] is bool
           ? value['syncExpense'] as bool
           : true,
-      syncTasks: value['syncTasks'] is bool
-          ? value['syncTasks'] as bool
-          : true,
+      syncTasks: value['syncTasks'] is bool ? value['syncTasks'] as bool : true,
       syncInvestment: value['syncInvestment'] is bool
           ? value['syncInvestment'] as bool
           : true,

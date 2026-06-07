@@ -7,7 +7,14 @@ import '../../../../../core/services/app_settings_repository.dart';
 import '../../../data/repositories/investment_repository.dart';
 import '../../../domain/models/investment_models.dart';
 
-enum InvestmentFormStatus { initial, loading, ready, submitting, success, failure }
+enum InvestmentFormStatus {
+  initial,
+  loading,
+  ready,
+  submitting,
+  success,
+  failure,
+}
 
 class InvestmentFormState extends Equatable {
   const InvestmentFormState({
@@ -30,6 +37,8 @@ class InvestmentFormState extends Equatable {
     this.isSellAmtOverridden = false,
     this.showValidation = false,
     this.errorMessage,
+    this.existingId,
+    this.soldQty = 0.0,
   });
 
   final InvestmentFormStatus status;
@@ -44,6 +53,8 @@ class InvestmentFormState extends Equatable {
   final bool isBuyAmtOverridden;
   final int? taxProfileId;
   final String? notes;
+  final int? existingId;
+  final double soldQty;
 
   // Sell form fields
   final DateTime? sellDate;
@@ -60,6 +71,7 @@ class InvestmentFormState extends Equatable {
       symbol.trim().isNotEmpty &&
       qty != null &&
       qty! > 0 &&
+      qty! >= soldQty &&
       buyDate != null &&
       buyRate != null &&
       buyRate! >= 0;
@@ -105,6 +117,9 @@ class InvestmentFormState extends Equatable {
     bool? isSellAmtOverridden,
     bool? showValidation,
     String? errorMessage,
+    int? existingId,
+    bool clearExistingId = false,
+    double? soldQty,
   }) {
     return InvestmentFormState(
       status: status ?? this.status,
@@ -126,31 +141,35 @@ class InvestmentFormState extends Equatable {
       isSellAmtOverridden: isSellAmtOverridden ?? this.isSellAmtOverridden,
       showValidation: showValidation ?? this.showValidation,
       errorMessage: errorMessage,
+      existingId: clearExistingId ? null : existingId ?? this.existingId,
+      soldQty: soldQty ?? this.soldQty,
     );
   }
 
   @override
   List<Object?> get props => [
-        status,
-        categories,
-        profiles,
-        categoryId,
-        symbol,
-        qty,
-        buyDate,
-        buyRate,
-        buyAmt,
-        isBuyAmtOverridden,
-        taxProfileId,
-        notes,
-        sellDate,
-        sellRate,
-        sellQty,
-        sellAmt,
-        isSellAmtOverridden,
-        showValidation,
-        errorMessage,
-      ];
+    status,
+    categories,
+    profiles,
+    categoryId,
+    symbol,
+    qty,
+    buyDate,
+    buyRate,
+    buyAmt,
+    isBuyAmtOverridden,
+    taxProfileId,
+    notes,
+    sellDate,
+    sellRate,
+    sellQty,
+    sellAmt,
+    isSellAmtOverridden,
+    showValidation,
+    errorMessage,
+    existingId,
+    soldQty,
+  ];
 }
 
 sealed class InvestmentFormEvent extends Equatable {
@@ -161,10 +180,7 @@ sealed class InvestmentFormEvent extends Equatable {
 }
 
 class InvestmentFormInit extends InvestmentFormEvent {
-  const InvestmentFormInit({
-    this.existingEntry,
-    this.defaultTaxProfileId,
-  });
+  const InvestmentFormInit({this.existingEntry, this.defaultTaxProfileId});
 
   final InvestmentEntry? existingEntry;
   final int? defaultTaxProfileId;
@@ -302,7 +318,10 @@ class InvestmentFormSellAmtOverrideToggled extends InvestmentFormEvent {
 }
 
 class InvestmentFormSellSubmitted extends InvestmentFormEvent {
-  const InvestmentFormSellSubmitted({required this.buyEntryId, required this.symbol});
+  const InvestmentFormSellSubmitted({
+    required this.buyEntryId,
+    required this.symbol,
+  });
   final int buyEntryId;
   final String symbol;
 
@@ -310,9 +329,10 @@ class InvestmentFormSellSubmitted extends InvestmentFormEvent {
   List<Object?> get props => [buyEntryId, symbol];
 }
 
-class InvestmentFormBloc extends Bloc<InvestmentFormEvent, InvestmentFormState> {
+class InvestmentFormBloc
+    extends Bloc<InvestmentFormEvent, InvestmentFormState> {
   InvestmentFormBloc(this._repository, this._settingsRepository)
-      : super(const InvestmentFormState()) {
+    : super(const InvestmentFormState()) {
     on<InvestmentFormInit>(_onInit);
     on<InvestmentFormCategoryChanged>(_onCategoryChanged);
     on<InvestmentFormSymbolChanged>(_onSymbolChanged);
@@ -348,101 +368,172 @@ class InvestmentFormBloc extends Bloc<InvestmentFormEvent, InvestmentFormState> 
 
       if (event.existingEntry != null) {
         final entry = event.existingEntry!;
-        emit(state.copyWith(
-          status: InvestmentFormStatus.ready,
-          categories: categories,
-          profiles: profiles,
-          categoryId: entry.categoryId,
-          symbol: entry.symbol,
-          qty: entry.qty,
-          buyDate: entry.buyDate,
-          buyRate: entry.buyRate,
-          buyAmt: entry.buyAmt,
-          isBuyAmtOverridden: (entry.buyAmt - (entry.qty * entry.buyRate)).abs() > 0.01,
-          taxProfileId: entry.taxProfileId,
-          notes: entry.notes,
-        ));
+        final sells = await _repository.getSellEntries();
+        final soldQty = sells
+            .where((s) => s.buyEntryId == entry.id)
+            .fold<double>(0.0, (sum, s) => sum + s.sellQty);
+        emit(
+          state.copyWith(
+            status: InvestmentFormStatus.ready,
+            categories: categories,
+            profiles: profiles,
+            categoryId: entry.categoryId,
+            symbol: entry.symbol,
+            qty: entry.qty,
+            buyDate: entry.buyDate,
+            buyRate: entry.buyRate,
+            buyAmt: entry.buyAmt,
+            isBuyAmtOverridden:
+                (entry.buyAmt - (entry.qty * entry.buyRate)).abs() > 0.01,
+            taxProfileId: entry.taxProfileId,
+            notes: entry.notes,
+            existingId: entry.id,
+            soldQty: soldQty,
+          ),
+        );
       } else {
         // Resolve saved default broker from settings.
         final settings = await _settingsRepository.getSettings();
-        int? defaultBrokerId = event.defaultTaxProfileId ??
-            settings.selectedInvestmentBrokerId;
+        int? defaultBrokerId =
+            event.defaultTaxProfileId ?? settings.selectedInvestmentBrokerId;
         // Validate the saved broker still exists.
         if (defaultBrokerId != null &&
             !profiles.any((p) => p.id == defaultBrokerId)) {
           defaultBrokerId = profiles.isNotEmpty ? profiles.first.id : null;
         }
-        emit(state.copyWith(
-          status: InvestmentFormStatus.ready,
-          categories: categories,
-          profiles: profiles,
-          categoryId: categories.isNotEmpty ? categories.first.id : null,
-          buyDate: DateTime.now(),
-          buyAmt: 0.0,
-          taxProfileId: defaultBrokerId,
-        ));
+
+        // Resolve saved default category from settings.
+        int? defaultCategoryId = settings.selectedInvestmentCategoryId;
+        if (defaultCategoryId == null ||
+            !categories.any((c) => c.id == defaultCategoryId)) {
+          defaultCategoryId = categories.isNotEmpty
+              ? categories.first.id
+              : null;
+        }
+
+        emit(
+          state.copyWith(
+            status: InvestmentFormStatus.ready,
+            categories: categories,
+            profiles: profiles,
+            categoryId: defaultCategoryId,
+            buyDate: DateTime.now(),
+            buyAmt: 0.0,
+            taxProfileId: defaultBrokerId,
+          ),
+        );
       }
     } catch (e) {
-      emit(state.copyWith(status: InvestmentFormStatus.failure, errorMessage: e.toString()));
+      emit(
+        state.copyWith(
+          status: InvestmentFormStatus.failure,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 
-  void _onCategoryChanged(InvestmentFormCategoryChanged event, Emitter<InvestmentFormState> emit) {
+  void _onCategoryChanged(
+    InvestmentFormCategoryChanged event,
+    Emitter<InvestmentFormState> emit,
+  ) {
+    _settingsRepository.updateSelectedInvestmentCategoryId(event.categoryId);
     emit(state.copyWith(categoryId: event.categoryId));
   }
 
-  void _onSymbolChanged(InvestmentFormSymbolChanged event, Emitter<InvestmentFormState> emit) {
+  void _onSymbolChanged(
+    InvestmentFormSymbolChanged event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     emit(state.copyWith(symbol: event.symbol));
   }
 
-  void _onQtyChanged(InvestmentFormQtyChanged event, Emitter<InvestmentFormState> emit) {
+  void _onQtyChanged(
+    InvestmentFormQtyChanged event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     final qty = event.qty;
-    emit(state.copyWith(
-      qty: qty,
-      clearQty: qty == null,
-      buyAmt: state.isBuyAmtOverridden ? state.buyAmt : (qty ?? 0.0) * (state.buyRate ?? 0.0),
-    ));
+    emit(
+      state.copyWith(
+        qty: qty,
+        clearQty: qty == null,
+        buyAmt: state.isBuyAmtOverridden
+            ? state.buyAmt
+            : (qty ?? 0.0) * (state.buyRate ?? 0.0),
+      ),
+    );
   }
 
-  void _onBuyDateChanged(InvestmentFormBuyDateChanged event, Emitter<InvestmentFormState> emit) {
+  void _onBuyDateChanged(
+    InvestmentFormBuyDateChanged event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     emit(state.copyWith(buyDate: event.buyDate));
   }
 
-  void _onBuyRateChanged(InvestmentFormBuyRateChanged event, Emitter<InvestmentFormState> emit) {
+  void _onBuyRateChanged(
+    InvestmentFormBuyRateChanged event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     final buyRate = event.buyRate;
-    emit(state.copyWith(
-      buyRate: buyRate,
-      clearBuyRate: buyRate == null,
-      buyAmt: state.isBuyAmtOverridden ? state.buyAmt : (state.qty ?? 0.0) * (buyRate ?? 0.0),
-    ));
+    emit(
+      state.copyWith(
+        buyRate: buyRate,
+        clearBuyRate: buyRate == null,
+        buyAmt: state.isBuyAmtOverridden
+            ? state.buyAmt
+            : (state.qty ?? 0.0) * (buyRate ?? 0.0),
+      ),
+    );
   }
 
-  void _onBuyAmtChanged(InvestmentFormBuyAmtChanged event, Emitter<InvestmentFormState> emit) {
+  void _onBuyAmtChanged(
+    InvestmentFormBuyAmtChanged event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     emit(state.copyWith(buyAmt: event.buyAmt));
   }
 
-  void _onBuyAmtOverrideToggled(InvestmentFormBuyAmtOverrideToggled event, Emitter<InvestmentFormState> emit) {
+  void _onBuyAmtOverrideToggled(
+    InvestmentFormBuyAmtOverrideToggled event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     final nextOverride = !state.isBuyAmtOverridden;
-    emit(state.copyWith(
-      isBuyAmtOverridden: nextOverride,
-      buyAmt: nextOverride ? state.buyAmt ?? state.computedBuyAmt : state.computedBuyAmt,
-    ));
+    emit(
+      state.copyWith(
+        isBuyAmtOverridden: nextOverride,
+        buyAmt: nextOverride
+            ? state.buyAmt ?? state.computedBuyAmt
+            : state.computedBuyAmt,
+      ),
+    );
   }
 
-  void _onBrokerChanged(InvestmentFormBrokerChanged event, Emitter<InvestmentFormState> emit) {
+  void _onBrokerChanged(
+    InvestmentFormBrokerChanged event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     // Persist broker selection for next time.
     _settingsRepository.updateSelectedInvestmentBrokerId(event.taxProfileId);
-    emit(state.copyWith(
-      taxProfileId: event.taxProfileId,
-      clearTaxProfile: event.taxProfileId == null,
-    ));
+    emit(
+      state.copyWith(
+        taxProfileId: event.taxProfileId,
+        clearTaxProfile: event.taxProfileId == null,
+      ),
+    );
   }
 
-  void _onNotesChanged(InvestmentFormNotesChanged event, Emitter<InvestmentFormState> emit) {
+  void _onNotesChanged(
+    InvestmentFormNotesChanged event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     emit(state.copyWith(notes: event.notes));
   }
 
-  Future<void> _onBuySubmitted(InvestmentFormBuySubmitted event, Emitter<InvestmentFormState> emit) async {
+  Future<void> _onBuySubmitted(
+    InvestmentFormBuySubmitted event,
+    Emitter<InvestmentFormState> emit,
+  ) async {
     if (!state.isBuyValid) {
       emit(state.copyWith(showValidation: true));
       return;
@@ -450,9 +541,10 @@ class InvestmentFormBloc extends Bloc<InvestmentFormEvent, InvestmentFormState> 
 
     emit(state.copyWith(status: InvestmentFormStatus.submitting));
     try {
-      if (event.existingId != null) {
+      final existingId = event.existingId ?? state.existingId;
+      if (existingId != null) {
         await _repository.updateBuyEntry(
-          id: event.existingId!,
+          id: existingId,
           categoryId: state.categoryId!,
           symbol: state.symbol,
           qty: state.qty!,
@@ -476,62 +568,107 @@ class InvestmentFormBloc extends Bloc<InvestmentFormEvent, InvestmentFormState> 
       }
       emit(state.copyWith(status: InvestmentFormStatus.success));
     } catch (e) {
-      emit(state.copyWith(status: InvestmentFormStatus.failure, errorMessage: e.toString()));
+      emit(
+        state.copyWith(
+          status: InvestmentFormStatus.failure,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 
   // Sell implementations
-  Future<void> _onSellInit(InvestmentFormSellInit event, Emitter<InvestmentFormState> emit) async {
+  Future<void> _onSellInit(
+    InvestmentFormSellInit event,
+    Emitter<InvestmentFormState> emit,
+  ) async {
     emit(state.copyWith(status: InvestmentFormStatus.loading));
     try {
       final profiles = await _repository.getTaxProfiles();
-      emit(state.copyWith(
-        status: InvestmentFormStatus.ready,
-        profiles: profiles,
-        symbol: event.symbol,
-        sellQty: event.remainingUnsoldQty,
-        sellDate: DateTime.now(),
-      ));
+      emit(
+        state.copyWith(
+          status: InvestmentFormStatus.ready,
+          profiles: profiles,
+          symbol: event.symbol,
+          sellQty: event.remainingUnsoldQty,
+          sellDate: DateTime.now(),
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(status: InvestmentFormStatus.failure, errorMessage: e.toString()));
+      emit(
+        state.copyWith(
+          status: InvestmentFormStatus.failure,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 
-  void _onSellDateChanged(InvestmentFormSellDateChanged event, Emitter<InvestmentFormState> emit) {
+  void _onSellDateChanged(
+    InvestmentFormSellDateChanged event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     emit(state.copyWith(sellDate: event.sellDate));
   }
 
-  void _onSellRateChanged(InvestmentFormSellRateChanged event, Emitter<InvestmentFormState> emit) {
+  void _onSellRateChanged(
+    InvestmentFormSellRateChanged event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     final rate = event.sellRate;
-    emit(state.copyWith(
-      sellRate: rate,
-      clearSellRate: rate == null,
-      sellAmt: state.isSellAmtOverridden ? state.sellAmt : (state.sellQty ?? 0.0) * (rate ?? 0.0),
-    ));
+    emit(
+      state.copyWith(
+        sellRate: rate,
+        clearSellRate: rate == null,
+        sellAmt: state.isSellAmtOverridden
+            ? state.sellAmt
+            : (state.sellQty ?? 0.0) * (rate ?? 0.0),
+      ),
+    );
   }
 
-  void _onSellQtyChanged(InvestmentFormSellQtyChanged event, Emitter<InvestmentFormState> emit) {
+  void _onSellQtyChanged(
+    InvestmentFormSellQtyChanged event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     final qty = event.sellQty;
-    emit(state.copyWith(
-      sellQty: qty,
-      clearSellQty: qty == null,
-      sellAmt: state.isSellAmtOverridden ? state.sellAmt : (qty ?? 0.0) * (state.sellRate ?? 0.0),
-    ));
+    emit(
+      state.copyWith(
+        sellQty: qty,
+        clearSellQty: qty == null,
+        sellAmt: state.isSellAmtOverridden
+            ? state.sellAmt
+            : (qty ?? 0.0) * (state.sellRate ?? 0.0),
+      ),
+    );
   }
 
-  void _onSellAmtChanged(InvestmentFormSellAmtChanged event, Emitter<InvestmentFormState> emit) {
+  void _onSellAmtChanged(
+    InvestmentFormSellAmtChanged event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     emit(state.copyWith(sellAmt: event.sellAmt));
   }
 
-  void _onSellAmtOverrideToggled(InvestmentFormSellAmtOverrideToggled event, Emitter<InvestmentFormState> emit) {
+  void _onSellAmtOverrideToggled(
+    InvestmentFormSellAmtOverrideToggled event,
+    Emitter<InvestmentFormState> emit,
+  ) {
     final nextOverride = !state.isSellAmtOverridden;
-    emit(state.copyWith(
-      isSellAmtOverridden: nextOverride,
-      sellAmt: nextOverride ? state.sellAmt ?? state.computedSellAmt : state.computedSellAmt,
-    ));
+    emit(
+      state.copyWith(
+        isSellAmtOverridden: nextOverride,
+        sellAmt: nextOverride
+            ? state.sellAmt ?? state.computedSellAmt
+            : state.computedSellAmt,
+      ),
+    );
   }
 
-  Future<void> _onSellSubmitted(InvestmentFormSellSubmitted event, Emitter<InvestmentFormState> emit) async {
+  Future<void> _onSellSubmitted(
+    InvestmentFormSellSubmitted event,
+    Emitter<InvestmentFormState> emit,
+  ) async {
     if (!state.isSellValid) {
       emit(state.copyWith(showValidation: true));
       return;
@@ -549,7 +686,12 @@ class InvestmentFormBloc extends Bloc<InvestmentFormEvent, InvestmentFormState> 
       );
       emit(state.copyWith(status: InvestmentFormStatus.success));
     } catch (e) {
-      emit(state.copyWith(status: InvestmentFormStatus.failure, errorMessage: e.toString()));
+      emit(
+        state.copyWith(
+          status: InvestmentFormStatus.failure,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 }

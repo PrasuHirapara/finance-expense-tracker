@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/models/app_preferences.dart';
 import '../../../../core/models/cloud_sync_models.dart';
-import '../../../../core/services/android_battery_optimization_service.dart';
 import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/auto_backup_scheduler_service.dart';
 import '../../../../core/services/cloud_backup_service.dart';
@@ -42,7 +41,10 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
   bool _isRestoring = false;
   bool _isToggling = false;
   bool _isUpdatingCredentialSync = false;
-  bool _isUpdatingAutoBackup = false;
+  bool _isUpdatingExpenseSync = false;
+  bool _isUpdatingTasksSync = false;
+  bool _isUpdatingInvestmentSync = false;
+  bool _isUpdatingSettingsSync = false;
 
   @override
   Widget build(BuildContext context) {
@@ -59,9 +61,6 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
         final canToggleCloudSync =
             authService.isAvailable &&
             (hasFirebaseAccount || cloudSync.enabled);
-        final canToggleAutoBackup =
-            authService.isAvailable &&
-            (canUseCloudSync || cloudSync.autoBackupEnabled);
 
         final content = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,110 +117,7 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
               ),
               const SizedBox(height: 16),
             ],
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.42,
-                ),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Column(
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              'Enable Auto Backup',
-                              style: theme.textTheme.titleMedium,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              canUseCloudSync
-                                  ? 'Automatically upload a cloud backup once a day.'
-                                  : cloudSync.enabled
-                                  ? 'Sign in to Firebase before enabling automatic backups.'
-                                  : 'Turn on Cloud Sync before enabling automatic backups.',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Switch.adaptive(
-                        value: cloudSync.autoBackupEnabled,
-                        onChanged: _isUpdatingAutoBackup || !canToggleAutoBackup
-                            ? null
-                            : (value) => _toggleAutoBackup(context, value),
-                      ),
-                    ],
-                  ),
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeInOut,
-                    alignment: Alignment.topCenter,
-                    child: cloudSync.autoBackupEnabled
-                        ? Column(
-                            children: <Widget>[
-                              const SizedBox(height: 12),
-                              InkWell(
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: _isUpdatingAutoBackup || !canUseCloudSync
-                                    ? null
-                                    : () => _pickAutoBackupTime(
-                                        context,
-                                        initialTime: cloudSync.autoBackupTime,
-                                      ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 2,
-                                    vertical: 10,
-                                  ),
-                                  child: Row(
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Text(
-                                          'Backup Time',
-                                          style: theme.textTheme.bodyLarge
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                        ),
-                                      ),
-                                      Text(
-                                        _formatBackupTime(
-                                          context,
-                                          cloudSync.autoBackupTime,
-                                        ),
-                                        style: theme.textTheme.bodyLarge
-                                            ?.copyWith(
-                                              color: theme.colorScheme.primary,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Icon(
-                                        Icons.chevron_right_rounded,
-                                        color:
-                                            theme.colorScheme.onSurfaceVariant,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+
             Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -272,9 +168,15 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
                   const SizedBox(height: 8),
                   _InfoRow(
                     label: 'Backup Scope',
-                    value: cloudSync.syncCredentials
-                        ? 'All data'
-                        : 'Expense and Task data only',
+                    value: () {
+                      final list = <String>[];
+                      if (cloudSync.syncCredentials) list.add('Credentials');
+                      if (cloudSync.syncExpense) list.add('Expenses');
+                      if (cloudSync.syncTasks) list.add('Tasks');
+                      if (cloudSync.syncInvestment) list.add('Investments');
+                      if (cloudSync.syncDefaults) list.add('Settings');
+                      return list.isEmpty ? 'None' : list.join(', ');
+                    }(),
                   ),
                   const SizedBox(height: 8),
                   _InfoRow(
@@ -339,6 +241,202 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
                             !hasFirebaseAccount
                         ? null
                         : (value) => _toggleCredentialSync(context, value),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.42,
+                ),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Sync Expense Data',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          !hasFirebaseAccount
+                              ? 'Sign in to choose whether expense backups should be stored in Firestore.'
+                              : !cloudSync.enabled
+                              ? 'Turn on Cloud Sync first to choose whether expenses are included.'
+                              : cloudSync.syncExpense
+                              ? 'All expense entries, split records, banks, and categories are included in your Firebase backup.'
+                              : 'Expense data stays local only. Any previous Firebase expense backup for this account will be deleted.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: cloudSync.syncExpense,
+                    onChanged:
+                        !cloudSync.enabled ||
+                            _isUpdatingExpenseSync ||
+                            !authService.isAvailable ||
+                            !hasFirebaseAccount
+                        ? null
+                        : (value) => _toggleExpenseSync(context, value),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.42,
+                ),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Sync Task Data',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          !hasFirebaseAccount
+                              ? 'Sign in to choose whether task backups should be stored in Firestore.'
+                              : !cloudSync.enabled
+                              ? 'Turn on Cloud Sync first to choose whether tasks are included.'
+                              : cloudSync.syncTasks
+                              ? 'All tasks, priorities, checklists, and categories are included in your Firebase backup.'
+                              : 'Task data stays local only. Any previous Firebase task backup for this account will be deleted.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: cloudSync.syncTasks,
+                    onChanged:
+                        !cloudSync.enabled ||
+                            _isUpdatingTasksSync ||
+                            !authService.isAvailable ||
+                            !hasFirebaseAccount
+                        ? null
+                        : (value) => _toggleTasksSync(context, value),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.42,
+                ),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Sync Investment Data',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          !hasFirebaseAccount
+                              ? 'Sign in to choose whether investment backups should be stored in Firestore.'
+                              : !cloudSync.enabled
+                              ? 'Turn on Cloud Sync first to choose whether investments are included.'
+                              : cloudSync.syncInvestment
+                              ? 'All investments, sell entries, brokers, tax profiles, and categories are included in your Firebase backup.'
+                              : 'Investment data stays local only. Any previous Firebase investment backup for this account will be deleted.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: cloudSync.syncInvestment,
+                    onChanged:
+                        !cloudSync.enabled ||
+                            _isUpdatingInvestmentSync ||
+                            !authService.isAvailable ||
+                            !hasFirebaseAccount
+                        ? null
+                        : (value) => _toggleInvestmentSync(context, value),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.42,
+                ),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'Sync General Settings',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          !hasFirebaseAccount
+                              ? 'Sign in to choose whether general settings backups should be stored in Firestore.'
+                              : !cloudSync.enabled
+                              ? 'Turn on Cloud Sync first to choose whether settings are included.'
+                              : cloudSync.syncDefaults
+                              ? 'General settings, reminders, and theme preferences are included in your Firebase backup.'
+                              : 'General settings stay local only. Any previous Firebase settings backup for this account will be deleted.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: cloudSync.syncDefaults,
+                    onChanged:
+                        !cloudSync.enabled ||
+                            _isUpdatingSettingsSync ||
+                            !authService.isAvailable ||
+                            !hasFirebaseAccount
+                        ? null
+                        : (value) => _toggleSettingsSync(context, value),
                   ),
                 ],
               ),
@@ -608,15 +706,6 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
     );
   }
 
-  String _formatBackupTime(BuildContext context, AppBackupTime backupTime) {
-    final localizations = MaterialLocalizations.of(context);
-    return localizations.formatTimeOfDay(
-      backupTime.toTimeOfDay(),
-      alwaysUse24HourFormat:
-          MediaQuery.maybeOf(context)?.alwaysUse24HourFormat ?? false,
-    );
-  }
-
   String _formatDateTime(DateTime? value) {
     if (value == null) {
       return 'Not available';
@@ -625,195 +714,13 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
   }
 
   String _statusSummary(CloudSyncPreferences preferences) {
-    final parts = <String>[
-      'Data: ${preferences.syncCredentials ? 'Full backup enabled' : 'App data backup without credentials'}',
-      'Mode: ${preferences.autoBackupEnabled ? 'automatic daily and manual sync' : 'manual sync only'}',
-    ];
-    return parts.join(' | ');
-  }
-
-  Future<void> _toggleAutoBackup(BuildContext context, bool enabled) async {
-    setState(() {
-      _isUpdatingAutoBackup = true;
-    });
-    try {
-      if (enabled) {
-        await _maybeShowBatteryOptimizationDialog(context);
-        if (!context.mounted) {
-          return;
-        }
-      }
-
-      await context.read<AutoBackupSchedulerService>().setAutoBackupEnabled(
-        enabled,
-      );
-      if (!context.mounted) {
-        return;
-      }
-      showAppSnackBar(
-        context,
-        message: enabled ? 'Auto Backup enabled.' : 'Auto Backup disabled.',
-      );
-      if (enabled) {
-        await _syncNow();
-      } else {
-        await _maybeShowRestoreBatteryOptimizationDialog(context);
-      }
-    } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
-      showAppSnackBar(
-        context,
-        message: 'Unable to update Auto Backup: $error',
-        type: AppSnackBarType.error,
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUpdatingAutoBackup = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _pickAutoBackupTime(
-    BuildContext context, {
-    required AppBackupTime initialTime,
-  }) async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final materialLocalizations = MaterialLocalizations.of(context);
-    final alwaysUse24HourFormat =
-        MediaQuery.maybeOf(context)?.alwaysUse24HourFormat ?? false;
-    final selectedTime = await showTimePicker(
-      context: context,
-      initialTime: initialTime.toTimeOfDay(),
-    );
-
-    if (selectedTime == null) {
-      return;
-    }
-
-    if (!context.mounted) {
-      return;
-    }
-
-    final backupTime = AppBackupTime.fromTimeOfDay(selectedTime);
-    final autoBackupSchedulerService = context
-        .read<AutoBackupSchedulerService>();
-    final formattedTime = materialLocalizations.formatTimeOfDay(
-      selectedTime,
-      alwaysUse24HourFormat: alwaysUse24HourFormat,
-    );
-
-    setState(() {
-      _isUpdatingAutoBackup = true;
-    });
-    try {
-      await autoBackupSchedulerService.updateAutoBackupTime(backupTime);
-      if (!context.mounted) {
-        return;
-      }
-      scaffoldMessenger.showSnackBar(
-        buildAppSnackBar(
-          context,
-          message: 'Auto Backup time set for $formattedTime.',
-        ),
-      );
-    } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
-      scaffoldMessenger.showSnackBar(
-        buildAppSnackBar(
-          context,
-          message: 'Unable to update Auto Backup time: $error',
-          type: AppSnackBarType.error,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUpdatingAutoBackup = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _maybeShowBatteryOptimizationDialog(BuildContext context) async {
-    final batteryOptimizationService = context
-        .read<AndroidBatteryOptimizationService>();
-    if (!batteryOptimizationService.isSupported) {
-      return;
-    }
-    final isIgnoringOptimization = await batteryOptimizationService
-        .isIgnoringBatteryOptimization();
-    if (isIgnoringOptimization || !context.mounted) {
-      return;
-    }
-
-    final openSettings = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Improve Backup Reliability?'),
-        content: const Text(
-          'Android battery optimization can delay background backups. Disabling it for Daily Use can make automatic backups more reliable.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Later'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-    );
-
-    if (openSettings == true) {
-      await batteryOptimizationService.openBatteryOptimizationSettings();
-    }
-  }
-
-  Future<void> _maybeShowRestoreBatteryOptimizationDialog(
-    BuildContext context,
-  ) async {
-    final batteryOptimizationService = context
-        .read<AndroidBatteryOptimizationService>();
-    if (!batteryOptimizationService.isSupported) {
-      return;
-    }
-    final isIgnoringOptimization = await batteryOptimizationService
-        .isIgnoringBatteryOptimization();
-    if (!isIgnoringOptimization || !context.mounted) {
-      return;
-    }
-
-    final openSettings = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Restore Normal Battery Use?'),
-        content: const Text(
-          'Auto Backup is off. Android does not let Daily Use re-enable battery optimization directly, but you can open app settings and set battery usage back to Optimized or Default.',
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Later'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-    );
-
-    if (openSettings == true) {
-      await batteryOptimizationService.openAppBatterySettings();
-    }
+    final activeModules = <String>[];
+    if (preferences.syncCredentials) activeModules.add('Credentials');
+    if (preferences.syncExpense) activeModules.add('Expenses');
+    if (preferences.syncTasks) activeModules.add('Tasks');
+    if (preferences.syncInvestment) activeModules.add('Investments');
+    if (preferences.syncDefaults) activeModules.add('Settings');
+    return 'Sync Modules: ${activeModules.isEmpty ? 'None' : activeModules.join(', ')}';
   }
 
   Future<void> _pickSyncReminderTime(
@@ -918,6 +825,246 @@ class _CloudSyncSettingsSectionState extends State<CloudSyncSettingsSection> {
       if (mounted) {
         setState(() {
           _isUpdatingCredentialSync = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleExpenseSync(BuildContext context, bool enabled) async {
+    if (!enabled) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Keep Expenses Local Only?'),
+          content: const Text(
+            'This keeps expense records on this device only and deletes any existing expense backup from Firebase for the signed-in account.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Disable Sync'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true || !context.mounted) {
+        return;
+      }
+    }
+
+    setState(() {
+      _isUpdatingExpenseSync = true;
+    });
+    try {
+      await context.read<CloudSyncService>().setExpenseSyncEnabled(enabled);
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: enabled
+            ? 'Expense cloud backup enabled.'
+            : 'Expense cloud backup disabled. Existing Firebase expense backup deleted.',
+        type: enabled ? AppSnackBarType.info : AppSnackBarType.warning,
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: 'Unable to update expense cloud backup: $error',
+        type: AppSnackBarType.error,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingExpenseSync = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleTasksSync(BuildContext context, bool enabled) async {
+    if (!enabled) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Keep Tasks Local Only?'),
+          content: const Text(
+            'This keeps task records on this device only and deletes any existing task backup from Firebase for the signed-in account.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Disable Sync'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true || !context.mounted) {
+        return;
+      }
+    }
+
+    setState(() {
+      _isUpdatingTasksSync = true;
+    });
+    try {
+      await context.read<CloudSyncService>().setTasksSyncEnabled(enabled);
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: enabled
+            ? 'Task cloud backup enabled.'
+            : 'Task cloud backup disabled. Existing Firebase task backup deleted.',
+        type: enabled ? AppSnackBarType.info : AppSnackBarType.warning,
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: 'Unable to update task cloud backup: $error',
+        type: AppSnackBarType.error,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingTasksSync = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleInvestmentSync(BuildContext context, bool enabled) async {
+    if (!enabled) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Keep Investments Local Only?'),
+          content: const Text(
+            'This keeps investment records on this device only and deletes any existing investment backup from Firebase for the signed-in account.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Disable Sync'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true || !context.mounted) {
+        return;
+      }
+    }
+
+    setState(() {
+      _isUpdatingInvestmentSync = true;
+    });
+    try {
+      await context.read<CloudSyncService>().setInvestmentSyncEnabled(enabled);
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: enabled
+            ? 'Investment cloud backup enabled.'
+            : 'Investment cloud backup disabled. Existing Firebase investment backup deleted.',
+        type: enabled ? AppSnackBarType.info : AppSnackBarType.warning,
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: 'Unable to update investment cloud backup: $error',
+        type: AppSnackBarType.error,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingInvestmentSync = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleSettingsSync(BuildContext context, bool enabled) async {
+    if (!enabled) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Keep General Settings Local Only?'),
+          content: const Text(
+            'This keeps general settings on this device only and deletes any existing settings backup from Firebase for the signed-in account.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Disable Sync'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true || !context.mounted) {
+        return;
+      }
+    }
+
+    setState(() {
+      _isUpdatingSettingsSync = true;
+    });
+    try {
+      await context.read<CloudSyncService>().setSettingsSyncEnabled(enabled);
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: enabled
+            ? 'General settings cloud backup enabled.'
+            : 'General settings cloud backup disabled. Existing Firebase settings backup deleted.',
+        type: enabled ? AppSnackBarType.info : AppSnackBarType.warning,
+      );
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      showAppSnackBar(
+        context,
+        message: 'Unable to update general settings cloud backup: $error',
+        type: AppSnackBarType.error,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingSettingsSync = false;
         });
       }
     }

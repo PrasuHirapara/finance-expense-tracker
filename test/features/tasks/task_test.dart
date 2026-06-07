@@ -195,6 +195,64 @@ void main() {
       expect(tasks.single.title, 'Keep me');
       expect(tasks.single.isCompleted, isFalse);
     });
+
+    test(
+      'does not duplicate daily tasks when importing/adding same daily tasks on consecutive days',
+      () async {
+        final dayOne = DateTime(2026, 5, 20);
+        final dayTwo = dayOne.add(const Duration(days: 1));
+        final dayThree = dayTwo.add(const Duration(days: 1));
+
+        // Simulate importing a daily task on Day 1
+        await repository.addTask(
+          TaskDraft(
+            title: 'Daily exercise',
+            description: '30 mins run',
+            category: 'Health',
+            date: dayOne,
+            priority: 3,
+            isDaily: true,
+            isCompleted: false,
+          ),
+        );
+
+        // Simulate importing the same daily task on Day 2
+        await repository.addTask(
+          TaskDraft(
+            title: 'Daily exercise',
+            description: '30 mins run',
+            category: 'Health',
+            date: dayTwo,
+            priority: 3,
+            isDaily: true,
+            isCompleted: false,
+          ),
+        );
+
+        // Verify that when loading tasks for Day 2, they don't compound (no duplicates)
+        final dayTwoTasks = await repository.loadTasksBetween(dayTwo, dayTwo);
+        expect(dayTwoTasks, hasLength(1));
+
+        // Simulate importing the same daily task on Day 3
+        await repository.addTask(
+          TaskDraft(
+            title: 'Daily exercise',
+            description: '30 mins run',
+            category: 'Health',
+            date: dayThree,
+            priority: 3,
+            isDaily: true,
+            isCompleted: false,
+          ),
+        );
+
+        final dayThreeTasks = await repository.loadTasksBetween(
+          dayThree,
+          dayThree,
+        );
+        expect(dayThreeTasks, hasLength(1));
+      },
+    );
   });
 }
 

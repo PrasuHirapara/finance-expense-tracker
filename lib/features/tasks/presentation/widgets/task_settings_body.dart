@@ -13,6 +13,7 @@ import '../../../../shared/widgets/module_export_panel.dart';
 import '../../data/repositories/task_category_repository.dart';
 import '../../data/repositories/task_repository.dart';
 import '../blocs/tasks/task_bloc.dart';
+import 'task_import_section.dart';
 
 class TaskSettingsBody extends StatefulWidget {
   const TaskSettingsBody({super.key});
@@ -101,6 +102,8 @@ class _TaskSettingsBodyState extends State<TaskSettingsBody> {
           onExport: (range, format) =>
               _exportTaskData(context, range: range, format: format),
         ),
+        const SizedBox(height: 18),
+        const TaskImportSection(),
         const SizedBox(height: 18),
         AppPanel(
           child: Column(

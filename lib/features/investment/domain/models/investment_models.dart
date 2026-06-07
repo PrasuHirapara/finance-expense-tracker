@@ -61,21 +61,21 @@ class TaxProfile extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        brokerName,
-        sttBuyPct,
-        sttSellPct,
-        exchangeChargePct,
-        sebiChargePct,
-        stampDutyPct,
-        gstPct,
-        brokeragePct,
-        brokerageFlat,
-        brokerageMinOfBoth,
-        dpChargePerScrip,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    brokerName,
+    sttBuyPct,
+    sttSellPct,
+    exchangeChargePct,
+    sebiChargePct,
+    stampDutyPct,
+    gstPct,
+    brokeragePct,
+    brokerageFlat,
+    brokerageMinOfBoth,
+    dpChargePerScrip,
+    createdAt,
+    updatedAt,
+  ];
 
   TaxProfile copyWith({
     int? id,
@@ -149,22 +149,22 @@ class InvestmentEntry extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        categoryId,
-        categoryName,
-        categoryIconCodePoint,
-        categoryColorValue,
-        symbol,
-        qty,
-        buyDate,
-        buyRate,
-        buyAmt,
-        taxProfileId,
-        notes,
-        createdAt,
-        updatedAt,
-        taxProfile,
-      ];
+    id,
+    categoryId,
+    categoryName,
+    categoryIconCodePoint,
+    categoryColorValue,
+    symbol,
+    qty,
+    buyDate,
+    buyRate,
+    buyAmt,
+    taxProfileId,
+    notes,
+    createdAt,
+    updatedAt,
+    taxProfile,
+  ];
 
   InvestmentEntry copyWith({
     int? id,
@@ -187,7 +187,8 @@ class InvestmentEntry extends Equatable {
       id: id ?? this.id,
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
-      categoryIconCodePoint: categoryIconCodePoint ?? this.categoryIconCodePoint,
+      categoryIconCodePoint:
+          categoryIconCodePoint ?? this.categoryIconCodePoint,
       categoryColorValue: categoryColorValue ?? this.categoryColorValue,
       symbol: symbol ?? this.symbol,
       qty: qty ?? this.qty,
@@ -226,15 +227,15 @@ class SellEntry extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        buyEntryId,
-        symbol,
-        sellQty,
-        sellDate,
-        sellRate,
-        sellAmt,
-        createdAt,
-      ];
+    id,
+    buyEntryId,
+    symbol,
+    sellQty,
+    sellDate,
+    sellRate,
+    sellAmt,
+    createdAt,
+  ];
 }
 
 enum InvestmentStatusBadge { open, partial, sold }
@@ -315,14 +316,14 @@ class InvestmentDashboardData extends Equatable {
 
   @override
   List<Object?> get props => [
-        totalInvested,
-        totalSellValue,
-        totalPL,
-        totalPLPct,
-        openPositionsCount,
-        totalActiveInvested,
-        symbolGroups,
-      ];
+    totalInvested,
+    totalSellValue,
+    totalPL,
+    totalPLPct,
+    openPositionsCount,
+    totalActiveInvested,
+    symbolGroups,
+  ];
 }
 
 enum InvestmentAnalyticsWindow { all, month, year, threeYears, custom }
@@ -388,7 +389,13 @@ class InvestmentCategoryPLSummary extends Equatable {
   final double plPct;
 
   @override
-  List<Object?> get props => [categoryName, totalInvested, totalSellValue, pl, plPct];
+  List<Object?> get props => [
+    categoryName,
+    totalInvested,
+    totalSellValue,
+    pl,
+    plPct,
+  ];
 }
 
 class InvestmentAnalyticsData extends Equatable {
@@ -420,16 +427,16 @@ class InvestmentAnalyticsData extends Equatable {
 
   @override
   List<Object?> get props => [
-        window,
-        rangeStart,
-        rangeEnd,
-        totalInvested,
-        totalSellValue,
-        totalPL,
-        totalPLPct,
-        categoryBreakdown,
-        trend,
-        symbolPLBreakdown,
-        categoryPLSummary,
-      ];
+    window,
+    rangeStart,
+    rangeEnd,
+    totalInvested,
+    totalSellValue,
+    totalPL,
+    totalPLPct,
+    categoryBreakdown,
+    trend,
+    symbolPLBreakdown,
+    categoryPLSummary,
+  ];
 }

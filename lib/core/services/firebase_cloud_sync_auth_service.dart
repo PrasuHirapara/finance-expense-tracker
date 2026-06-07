@@ -201,6 +201,31 @@ class FirebaseCloudSyncAuthService {
       cancellationToken?.throwIfCancelled();
       await _googleSignIn.signOut();
     }
+  }
+
+  Future<void> deleteAccount({AppCancellationToken? cancellationToken}) async {
+    cancellationToken?.throwIfCancelled();
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw StateError('No signed-in Firebase user found to delete.');
+    }
+
+    // Delete Firestore user profile document
+    final doc = _firestore.collection(_usersCollection).doc(user.uid);
+    await doc.delete();
+    cancellationToken?.throwIfCancelled();
+
+    // Delete the Auth user (this automatically signs them out)
+    await user.delete();
+    cancellationToken?.throwIfCancelled();
+
+    // Also disconnect Google sign-in if applicable
+    try {
+      await _googleSignIn.disconnect();
+    } catch (_) {
+      cancellationToken?.throwIfCancelled();
+      await _googleSignIn.signOut();
+    }
     cancellationToken?.throwIfCancelled();
   }
 

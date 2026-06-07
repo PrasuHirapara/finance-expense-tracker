@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/extensions/date_time_x.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_select_field.dart';
+import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../core/formatters/indian_number_formatter.dart';
 import '../../domain/models/investment_models.dart';
 import '../../data/repositories/investment_repository.dart';
@@ -22,6 +25,7 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
   InvestmentStatusBadge? _selectedStatusFilter;
   int _visibleGroupCount = 10;
   static const int _initialVisibleGroups = 10;
+  DateTime? _expandedDate;
 
   @override
   void initState() {
@@ -43,22 +47,6 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
     });
   }
 
-  bool _matchesSearchQuery(SymbolGroup group, String query) {
-    if (query.trim().isEmpty) return true;
-    final normalized = query.trim().toLowerCase();
-    return group.symbol.toLowerCase().contains(normalized);
-  }
-
-  bool _matchesStatusFilter(SymbolGroup group, InvestmentStatusBadge? filter) {
-    if (filter == null) return true;
-    // "Invested" filter → show open AND partial (not fully sold)
-    if (filter == InvestmentStatusBadge.open) {
-      return group.statusBadge == InvestmentStatusBadge.open ||
-          group.statusBadge == InvestmentStatusBadge.partial;
-    }
-    return group.statusBadge == filter;
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -73,13 +61,52 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
           );
         }
 
-        // Apply filters
-        final filteredGroups = dashboard.symbolGroups
-            .where((group) => _matchesStatusFilter(group, _selectedStatusFilter))
-            .where((group) => _matchesSearchQuery(group, _searchController.text))
+        // 1. Get all buy entries
+        final allBuyEntries = dashboard.symbolGroups
+            .expand((group) => group.buyEntries)
             .toList();
 
-        final visibleGroups = filteredGroups.take(_visibleGroupCount).toList();
+        // 2. Filter buy entries
+        final filteredEntries = allBuyEntries.where((entry) {
+          // Status filter
+          // Let's compute entry status
+          final entrySells = dashboard.symbolGroups
+              .firstWhere((g) => g.symbol == entry.symbol)
+              .sellEntries
+              .where((s) => s.buyEntryId == entry.id)
+              .toList();
+          final soldQty = entrySells.fold<double>(
+            0.0,
+            (sum, s) => sum + s.sellQty,
+          );
+          final entryStatus = soldQty == 0
+              ? InvestmentStatusBadge.open
+              : (soldQty < entry.qty
+                    ? InvestmentStatusBadge.partial
+                    : InvestmentStatusBadge.sold);
+
+          if (_selectedStatusFilter != null) {
+            if (_selectedStatusFilter == InvestmentStatusBadge.open) {
+              if (entryStatus == InvestmentStatusBadge.sold) return false;
+            } else {
+              if (entryStatus != _selectedStatusFilter) return false;
+            }
+          }
+
+          // Search query filter
+          if (_searchController.text.trim().isNotEmpty) {
+            final query = _searchController.text.trim().toLowerCase();
+            if (!entry.symbol.toLowerCase().contains(query)) return false;
+          }
+
+          return true;
+        }).toList()..sort((a, b) => b.buyDate.compareTo(a.buyDate));
+
+        final groupedEntries = _groupBuyEntries(filteredEntries);
+        final visibleGroupedEntries =
+            Map<DateTime, List<InvestmentEntry>>.fromEntries(
+              groupedEntries.entries.take(_visibleGroupCount),
+            );
 
         final summaryCards = <_SummaryCardData>[
           _SummaryCardData(
@@ -90,24 +117,31 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
           ),
           _SummaryCardData(
             label: 'Total P/L',
-            value: '${dashboard.totalPL >= 0 ? "+" : ""}${IndianNumberFormatter.formatFull(dashboard.totalPL)}',
-            color: dashboard.totalPL >= 0 ? const Color(0xFF1F8B4C) : const Color(0xFFC0392B),
+            value:
+                '${dashboard.totalPL >= 0 ? "+" : ""}${IndianNumberFormatter.formatFull(dashboard.totalPL)}',
+            color: dashboard.totalPL >= 0
+                ? const Color(0xFF1F8B4C)
+                : const Color(0xFFC0392B),
             statusFilter: null,
           ),
           _SummaryCardData(
             label: 'Total P/L %',
-            value: '${dashboard.totalPLPct >= 0 ? "+" : ""}${dashboard.totalPLPct.toStringAsFixed(2)}%',
-            color: dashboard.totalPLPct >= 0 ? const Color(0xFF1F8B4C) : const Color(0xFFC0392B),
+            value:
+                '${dashboard.totalPLPct >= 0 ? "+" : ""}${dashboard.totalPLPct.toStringAsFixed(2)}%',
+            color: dashboard.totalPLPct >= 0
+                ? const Color(0xFF1F8B4C)
+                : const Color(0xFFC0392B),
             statusFilter: null,
           ),
           _SummaryCardData(
             label: 'Invested',
-            value: IndianNumberFormatter.formatFull(dashboard.totalActiveInvested),
+            value: IndianNumberFormatter.formatFull(
+              dashboard.totalActiveInvested,
+            ),
             color: const Color(0xFF16A085),
             statusFilter: InvestmentStatusBadge.open,
           ),
         ];
-
 
         return Scaffold(
           body: SafeArea(
@@ -132,15 +166,15 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
                         ),
                       ),
                       IconButton(
-                        onPressed: () => Navigator.of(context).pushNamed(
-                          AppRoutes.investmentAnalytics,
-                        ),
+                        onPressed: () => Navigator.of(
+                          context,
+                        ).pushNamed(AppRoutes.investmentAnalytics),
                         icon: const Icon(Icons.insights_rounded),
                       ),
                       IconButton(
-                        onPressed: () => Navigator.of(context).pushNamed(
-                          AppRoutes.investmentSettings,
-                        ),
+                        onPressed: () => Navigator.of(
+                          context,
+                        ).pushNamed(AppRoutes.investmentSettings),
                         icon: const Icon(Icons.settings_outlined),
                       ),
                     ],
@@ -150,9 +184,13 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
                     children: <Widget>[
                       Expanded(
                         child: StreamBuilder<List<InvestmentCategory>>(
-                          stream: context.read<InvestmentRepository>().watchCategories(),
+                          stream: context
+                              .read<InvestmentRepository>()
+                              .watchCategories(),
                           builder: (context, categoriesSnapshot) {
-                            final categories = categoriesSnapshot.data ?? const <InvestmentCategory>[];
+                            final categories =
+                                categoriesSnapshot.data ??
+                                const <InvestmentCategory>[];
                             return BlocBuilder<InvestmentBloc, InvestmentState>(
                               builder: (context, state) {
                                 return AppSelectField<int?>(
@@ -163,15 +201,17 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
                                       value: null,
                                       label: 'All',
                                     ),
-                                    ...categories.map((c) => AppSelectOption<int?>(
-                                          value: c.id,
-                                          label: c.name,
-                                        )),
+                                    ...categories.map(
+                                      (c) => AppSelectOption<int?>(
+                                        value: c.id,
+                                        label: c.name,
+                                      ),
+                                    ),
                                   ],
                                   onChanged: (value) {
                                     context.read<InvestmentBloc>().add(
-                                          InvestmentCategoryFilterChanged(value),
-                                        );
+                                      InvestmentCategoryFilterChanged(value),
+                                    );
                                   },
                                 );
                               },
@@ -181,9 +221,9 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
                       ),
                       const SizedBox(width: 12),
                       FilledButton.icon(
-                        onPressed: () => Navigator.of(context).pushNamed(
-                          AppRoutes.investmentAdd,
-                        ),
+                        onPressed: () => Navigator.of(
+                          context,
+                        ).pushNamed(AppRoutes.investmentAdd),
                         icon: const Icon(Icons.add),
                         label: const Text('Add Investment'),
                       ),
@@ -215,7 +255,9 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
                         ),
                         const SizedBox(height: 16),
                         _NetSummaryRow(
-                          value: IndianNumberFormatter.formatFull(dashboard.totalInvested),
+                          value: IndianNumberFormatter.formatFull(
+                            dashboard.totalInvested,
+                          ),
                           selected: _selectedStatusFilter == null,
                           onTap: () {
                             setState(() {
@@ -236,8 +278,10 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
                               .map(
                                 (item) => _SummaryMetricCard(
                                   data: item,
-                                  selected: item.statusFilter != null &&
-                                      _selectedStatusFilter == item.statusFilter,
+                                  selected:
+                                      item.statusFilter != null &&
+                                      _selectedStatusFilter ==
+                                          item.statusFilter,
                                   onTap: item.statusFilter == null
                                       ? () {}
                                       : () {
@@ -309,7 +353,7 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        if (filteredGroups.isEmpty)
+                        if (filteredEntries.isEmpty)
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             child: Text(
@@ -320,27 +364,73 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
                             ),
                           )
                         else
-                          ...visibleGroups.map(
-                            (group) => _SymbolGroupCard(
-                              group: group,
-                              onTap: () {
-                                Navigator.of(context).pushNamed(
-                                  AppRoutes.investmentDetail,
-                                  arguments: InvestmentDetailArgs(
-                                    symbol: group.symbol,
-                                  ),
-                                );
-                              },
+                          ...visibleGroupedEntries.entries.map(
+                            (group) => Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: _DateInvestmentGroup(
+                                date: group.key,
+                                entries: group.value,
+                                dashboard: dashboard,
+                                expanded: _expandedDate == group.key,
+                                onTap: () {
+                                  setState(() {
+                                    _expandedDate = _expandedDate == group.key
+                                        ? null
+                                        : group.key;
+                                  });
+                                },
+                                onView: (entry) {
+                                  Navigator.of(context).pushNamed(
+                                    AppRoutes.investmentDetail,
+                                    arguments: InvestmentDetailArgs(
+                                      symbol: entry.symbol,
+                                    ),
+                                  );
+                                },
+                                onEdit: (entry) {
+                                  Navigator.of(context).pushNamed(
+                                    AppRoutes.investmentAdd,
+                                    arguments: InvestmentEditorArgs(
+                                      entry: entry,
+                                    ),
+                                  );
+                                },
+                                onSell: (entry) {
+                                  final entrySells = dashboard.symbolGroups
+                                      .firstWhere(
+                                        (g) => g.symbol == entry.symbol,
+                                      )
+                                      .sellEntries
+                                      .where((s) => s.buyEntryId == entry.id)
+                                      .toList();
+                                  final soldQty = entrySells.fold<double>(
+                                    0.0,
+                                    (sum, s) => sum + s.sellQty,
+                                  );
+                                  Navigator.of(context).pushNamed(
+                                    AppRoutes.investmentSellAdd,
+                                    arguments: SellEditorArgs(
+                                      buyEntryId: entry.id,
+                                      symbol: entry.symbol,
+                                      remainingUnsoldQty: entry.qty - soldQty,
+                                    ),
+                                  );
+                                },
+                                onDelete: (entry) {
+                                  _confirmDeleteEntry(context, entry);
+                                },
+                              ),
                             ),
                           ),
-                        if (filteredGroups.length > _visibleGroupCount)
+                        if (groupedEntries.length >
+                            visibleGroupedEntries.length)
                           Center(
                             child: Padding(
                               padding: const EdgeInsets.only(top: 12),
                               child: TextButton(
                                 onPressed: () {
                                   setState(() {
-                                    _visibleGroupCount += _initialVisibleGroups;
+                                    _visibleGroupCount += 10;
                                   });
                                 },
                                 child: const Text('Load More'),
@@ -368,23 +458,29 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
           children: <Widget>[
             SimpleDialogOption(
               onPressed: () => Navigator.pop(
-                  context,
-                  const InvestmentDateFilterResult(
-                      window: InvestmentAnalyticsWindow.all)),
+                context,
+                const InvestmentDateFilterResult(
+                  window: InvestmentAnalyticsWindow.all,
+                ),
+              ),
               child: const Text('All Time'),
             ),
             SimpleDialogOption(
               onPressed: () => Navigator.pop(
-                  context,
-                  const InvestmentDateFilterResult(
-                      window: InvestmentAnalyticsWindow.year)),
+                context,
+                const InvestmentDateFilterResult(
+                  window: InvestmentAnalyticsWindow.year,
+                ),
+              ),
               child: const Text('This Year'),
             ),
             SimpleDialogOption(
               onPressed: () => Navigator.pop(
-                  context,
-                  const InvestmentDateFilterResult(
-                      window: InvestmentAnalyticsWindow.threeYears)),
+                context,
+                const InvestmentDateFilterResult(
+                  window: InvestmentAnalyticsWindow.threeYears,
+                ),
+              ),
               child: const Text('Past 3 Years'),
             ),
             SimpleDialogOption(
@@ -401,7 +497,9 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
                       InvestmentDateFilterResult(
                         window: InvestmentAnalyticsWindow.custom,
                         range: DateTimeRange(
-                            start: picked.start, end: picked.end),
+                          start: picked.start,
+                          end: picked.end,
+                        ),
                       ),
                     );
                   }
@@ -445,11 +543,61 @@ class _InvestmentModulePageState extends State<InvestmentModulePage> {
       }
 
       context.read<InvestmentBloc>().add(
-            InvestmentDateFilterChanged(
-              window: result.window,
-              dateRange: resolvedRange,
+        InvestmentDateFilterChanged(
+          window: result.window,
+          dateRange: resolvedRange,
+        ),
+      );
+    }
+  }
+
+  Map<DateTime, List<InvestmentEntry>> _groupBuyEntries(
+    List<InvestmentEntry> entries,
+  ) {
+    final Map<DateTime, List<InvestmentEntry>> grouped = {};
+    for (final entry in entries) {
+      grouped
+          .putIfAbsent(entry.buyDate.startOfDay, () => <InvestmentEntry>[])
+          .add(entry);
+    }
+    return grouped;
+  }
+
+  Future<void> _confirmDeleteEntry(
+    BuildContext context,
+    InvestmentEntry entry,
+  ) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete Entry'),
+          content: Text(
+            'Are you sure you want to delete this purchase of ${entry.symbol} on ${AppConstants.shortDateFormat.format(entry.buyDate)}? All linked sell records will also be deleted.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
             ),
-          );
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete == true) {
+      if (context.mounted) {
+        context.read<InvestmentBloc>().add(InvestmentDeleted(entry.id));
+        showAppSnackBar(
+          context,
+          message: 'Entry deleted successfully.',
+          type: AppSnackBarType.info,
+        );
+      }
     }
   }
 }
@@ -471,6 +619,7 @@ class _SummaryCardData {
   final String label;
   final String value;
   final Color color;
+
   /// If non-null, tapping this card will filter the list by this status.
   final InvestmentStatusBadge? statusFilter;
 }
@@ -599,90 +748,218 @@ class _NetSummaryRow extends StatelessWidget {
   }
 }
 
-class _SymbolGroupCard extends StatelessWidget {
-  const _SymbolGroupCard({
-    required this.group,
+class _DateInvestmentGroup extends StatelessWidget {
+  const _DateInvestmentGroup({
+    required this.date,
+    required this.entries,
+    required this.dashboard,
+    required this.expanded,
     required this.onTap,
+    required this.onView,
+    required this.onEdit,
+    required this.onSell,
+    required this.onDelete,
   });
 
-  final SymbolGroup group;
+  final DateTime date;
+  final List<InvestmentEntry> entries;
+  final InvestmentDashboardData dashboard;
+  final bool expanded;
   final VoidCallback onTap;
+  final ValueChanged<InvestmentEntry> onView;
+  final ValueChanged<InvestmentEntry> onEdit;
+  final ValueChanged<InvestmentEntry> onSell;
+  final ValueChanged<InvestmentEntry> onDelete;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Re-calculate total P/L live
-    final buyRates = {for (final buy in group.buyEntries) buy.id: buy.buyRate};
-    var totalPL = 0.0;
-    for (final sell in group.sellEntries) {
-      final buyRate = buyRates[sell.buyEntryId] ?? 0.0;
-      totalPL += sell.sellAmt - (buyRate * sell.sellQty);
-    }
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.32,
+        ),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        children: <Widget>[
+          InkWell(
+            borderRadius: BorderRadius.circular(22),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          _labelForDate(date),
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${entries.length} entry${entries.length == 1 ? '' : 'ies'}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    expanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (expanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: entries.map((entry) {
+                  final group = dashboard.symbolGroups.firstWhere(
+                    (g) => g.symbol == entry.symbol,
+                  );
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _InvestmentEntryCard(
+                      entry: entry,
+                      allSells: group.sellEntries,
+                      onView: () => onView(entry),
+                      onEdit: () => onEdit(entry),
+                      onSell: () => onSell(entry),
+                      onDelete: () => onDelete(entry),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
+  String _labelForDate(DateTime date) {
+    final today = DateTime.now().startOfDay;
+    final yesterday = today.subtract(const Duration(days: 1));
+    if (date == today) {
+      return 'Today';
+    }
+    if (date == yesterday) {
+      return 'Yesterday';
+    }
+    return AppConstants.shortDateFormat.format(date);
+  }
+}
+
+class _InvestmentEntryCard extends StatelessWidget {
+  const _InvestmentEntryCard({
+    required this.entry,
+    required this.allSells,
+    required this.onView,
+    required this.onEdit,
+    required this.onSell,
+    required this.onDelete,
+  });
+
+  final InvestmentEntry entry;
+  final List<SellEntry> allSells;
+  final VoidCallback onView;
+  final VoidCallback onEdit;
+  final VoidCallback onSell;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // Calculate sold quantity for this entry
+    final entrySells = allSells.where((s) => s.buyEntryId == entry.id).toList();
+    final soldQty = entrySells.fold<double>(0.0, (sum, s) => sum + s.sellQty);
+
+    // Calculate realized P/L for this entry
+    // P/L = sellAmt - (buyRate * sellQty)
+    final totalPL = entrySells.fold<double>(
+      0.0,
+      (sum, s) => sum + (s.sellAmt - (entry.buyRate * s.sellQty)),
+    );
     final isPositive = totalPL >= 0;
 
-    final badgeColor = switch (group.statusBadge) {
+    // Determine status badge
+    final InvestmentStatusBadge status;
+    if (soldQty == 0) {
+      status = InvestmentStatusBadge.open;
+    } else if (soldQty < entry.qty) {
+      status = InvestmentStatusBadge.partial;
+    } else {
+      status = InvestmentStatusBadge.sold;
+    }
+
+    final badgeColor = switch (status) {
       InvestmentStatusBadge.open => Colors.grey,
       InvestmentStatusBadge.partial => Colors.orange,
       InvestmentStatusBadge.sold => Colors.green,
     };
 
-    final badgeText = switch (group.statusBadge) {
+    final badgeText = switch (status) {
       InvestmentStatusBadge.open => 'Open',
       InvestmentStatusBadge.partial => 'Partial',
       InvestmentStatusBadge.sold => 'Sold',
     };
 
     return Card(
-      margin: const EdgeInsets.only(top: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      elevation: 0,
+      color: theme.colorScheme.surface,
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
+        onTap: onView,
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      group.symbol,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${group.buyEntries.length + group.sellEntries.length} transactions',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: badgeColor.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        badgeText,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: badgeColor,
+              // Row 1: Symbol + Status Badge & P/L on right
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Row(
+                    children: [
+                      Text(
+                        entry.symbol,
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          badgeText,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: badgeColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   Text(
                     '${isPositive ? "+" : ""}${IndianNumberFormatter.formatFull(totalPL)}',
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -690,8 +967,34 @@ class _SymbolGroupCard extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Icon(Icons.chevron_right_rounded),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Row 2: Stock Qty & Avg Price Paid
+              Text(
+                'Qty: ${entry.qty.toStringAsFixed(2)} | Avg Price: ${IndianNumberFormatter.formatFull(entry.buyRate)}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Row 3: Action Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: <Widget>[
+                  TextButton(onPressed: onEdit, child: const Text('Edit')),
+                  if (status != InvestmentStatusBadge.sold) ...[
+                    const SizedBox(width: 8),
+                    TextButton(onPressed: onSell, child: const Text('Sell')),
+                  ],
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: onDelete,
+                    child: const Text(
+                      'Delete',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
                 ],
               ),
             ],

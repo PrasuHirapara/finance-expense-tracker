@@ -126,8 +126,11 @@ class InvestmentRepository {
         );
       }).toList();
       await _database.batch((batch) {
-        batch.insertAll(_database.dbInvestmentCategories, companions,
-            mode: InsertMode.insertOrIgnore);
+        batch.insertAll(
+          _database.dbInvestmentCategories,
+          companions,
+          mode: InsertMode.insertOrIgnore,
+        );
       });
     }
 
@@ -151,8 +154,11 @@ class InvestmentRepository {
         );
       }).toList();
       await _database.batch((batch) {
-        batch.insertAll(_database.dbInvestmentTaxProfiles, companions,
-            mode: InsertMode.insertOrIgnore);
+        batch.insertAll(
+          _database.dbInvestmentTaxProfiles,
+          companions,
+          mode: InsertMode.insertOrIgnore,
+        );
       });
     }
   }
@@ -168,27 +174,25 @@ class InvestmentRepository {
   // --- Categories CRUD ---
 
   SimpleSelectStatement<$DbInvestmentCategoriesTable, DbInvestmentCategory>
-      selectInvestmentCategories() {
+  selectInvestmentCategories() {
     return _database.select(_database.dbInvestmentCategories)
-      ..orderBy([
-        (table) => OrderingTerm.asc(table.name),
-      ]);
+      ..orderBy([(table) => OrderingTerm.asc(table.name)]);
   }
 
   Stream<List<InvestmentCategory>> watchCategories() {
     return selectInvestmentCategories().watch().map(
-          (rows) => rows
-              .map(
-                (row) => InvestmentCategory(
-                  id: row.id,
-                  name: row.name,
-                  iconCodePoint: row.iconCodePoint,
-                  colorValue: row.colorValue,
-                  createdAt: row.createdAt,
-                ),
-              )
-              .toList(growable: false),
-        );
+      (rows) => rows
+          .map(
+            (row) => InvestmentCategory(
+              id: row.id,
+              name: row.name,
+              iconCodePoint: row.iconCodePoint,
+              colorValue: row.colorValue,
+              createdAt: row.createdAt,
+            ),
+          )
+          .toList(growable: false),
+    );
   }
 
   Future<List<InvestmentCategory>> getCategories() async {
@@ -206,9 +210,14 @@ class InvestmentRepository {
         .toList(growable: false);
   }
 
-  Future<int> insertCategory(
-      {required String name, required int colorValue, required int iconCodePoint}) async {
-    return _database.into(_database.dbInvestmentCategories).insert(
+  Future<int> insertCategory({
+    required String name,
+    required int colorValue,
+    required int iconCodePoint,
+  }) async {
+    return _database
+        .into(_database.dbInvestmentCategories)
+        .insert(
           DbInvestmentCategoriesCompanion.insert(
             name: name,
             colorValue: colorValue,
@@ -217,14 +226,15 @@ class InvestmentRepository {
         );
   }
 
-  Future<void> updateCategory(
-      {required int id,
-      required String name,
-      required int colorValue,
-      required int iconCodePoint}) async {
-    await (_database.update(_database.dbInvestmentCategories)
-          ..where((t) => t.id.equals(id)))
-        .write(
+  Future<void> updateCategory({
+    required int id,
+    required String name,
+    required int colorValue,
+    required int iconCodePoint,
+  }) async {
+    await (_database.update(
+      _database.dbInvestmentCategories,
+    )..where((t) => t.id.equals(id))).write(
       DbInvestmentCategoriesCompanion(
         name: Value(name),
         colorValue: Value(colorValue),
@@ -236,46 +246,44 @@ class InvestmentRepository {
   Future<void> deleteCategory(int id, {int? reassignCategoryId}) async {
     await _database.transaction(() async {
       if (reassignCategoryId != null) {
-        await (_database.update(_database.dbInvestmentEntries)
-              ..where((t) => t.categoryId.equals(id)))
-            .write(DbInvestmentEntriesCompanion(categoryId: Value(reassignCategoryId)));
+        await (_database.update(
+          _database.dbInvestmentEntries,
+        )..where((t) => t.categoryId.equals(id))).write(
+          DbInvestmentEntriesCompanion(categoryId: Value(reassignCategoryId)),
+        );
       } else {
         // delete linked buys & sells
-        final linkedBuys = await (_database.select(_database.dbInvestmentEntries)
-              ..where((t) => t.categoryId.equals(id)))
-            .get();
+        final linkedBuys = await (_database.select(
+          _database.dbInvestmentEntries,
+        )..where((t) => t.categoryId.equals(id))).get();
         final buyIds = linkedBuys.map((b) => b.id).toList();
         if (buyIds.isNotEmpty) {
-          await (_database.delete(_database.dbSellEntries)
-                ..where((t) => t.buyEntryId.isIn(buyIds)))
-              .go();
-          await (_database.delete(_database.dbInvestmentEntries)
-                ..where((t) => t.id.isIn(buyIds)))
-              .go();
+          await (_database.delete(
+            _database.dbSellEntries,
+          )..where((t) => t.buyEntryId.isIn(buyIds))).go();
+          await (_database.delete(
+            _database.dbInvestmentEntries,
+          )..where((t) => t.id.isIn(buyIds))).go();
         }
       }
-      await (_database.delete(_database.dbInvestmentCategories)
-            ..where((t) => t.id.equals(id)))
-          .go();
+      await (_database.delete(
+        _database.dbInvestmentCategories,
+      )..where((t) => t.id.equals(id))).go();
     });
   }
 
   // --- Tax Profiles CRUD ---
 
   SimpleSelectStatement<$DbInvestmentTaxProfilesTable, DbInvestmentTaxProfile>
-      selectTaxProfiles() {
+  selectTaxProfiles() {
     return _database.select(_database.dbInvestmentTaxProfiles)
-      ..orderBy([
-        (table) => OrderingTerm.asc(table.brokerName),
-      ]);
+      ..orderBy([(table) => OrderingTerm.asc(table.brokerName)]);
   }
 
   Stream<List<TaxProfile>> watchTaxProfiles() {
     return selectTaxProfiles().watch().map(
-          (rows) => rows
-              .map((row) => _mapTaxProfile(row))
-              .toList(growable: false),
-        );
+      (rows) => rows.map((row) => _mapTaxProfile(row)).toList(growable: false),
+    );
   }
 
   Future<List<TaxProfile>> getTaxProfiles() async {
@@ -284,7 +292,9 @@ class InvestmentRepository {
   }
 
   Future<int> insertTaxProfile(TaxProfile profile) async {
-    return _database.into(_database.dbInvestmentTaxProfiles).insert(
+    return _database
+        .into(_database.dbInvestmentTaxProfiles)
+        .insert(
           DbInvestmentTaxProfilesCompanion.insert(
             brokerName: profile.brokerName,
             sttBuyPct: profile.sttBuyPct,
@@ -304,9 +314,9 @@ class InvestmentRepository {
   }
 
   Future<void> updateTaxProfile(TaxProfile profile) async {
-    await (_database.update(_database.dbInvestmentTaxProfiles)
-          ..where((t) => t.id.equals(profile.id)))
-        .write(
+    await (_database.update(
+      _database.dbInvestmentTaxProfiles,
+    )..where((t) => t.id.equals(profile.id))).write(
       DbInvestmentTaxProfilesCompanion(
         brokerName: Value(profile.brokerName),
         sttBuyPct: Value(profile.sttBuyPct),
@@ -329,9 +339,9 @@ class InvestmentRepository {
       await (_database.update(_database.dbInvestmentEntries)
             ..where((t) => t.taxProfileId.equals(id)))
           .write(const DbInvestmentEntriesCompanion(taxProfileId: Value(null)));
-      await (_database.delete(_database.dbInvestmentTaxProfiles)
-            ..where((t) => t.id.equals(id)))
-          .go();
+      await (_database.delete(
+        _database.dbInvestmentTaxProfiles,
+      )..where((t) => t.id.equals(id))).go();
     });
   }
 
@@ -347,7 +357,9 @@ class InvestmentRepository {
     int? taxProfileId,
     String? notes,
   }) async {
-    return _database.into(_database.dbInvestmentEntries).insert(
+    return _database
+        .into(_database.dbInvestmentEntries)
+        .insert(
           DbInvestmentEntriesCompanion.insert(
             categoryId: categoryId,
             symbol: symbol.trim().toUpperCase(),
@@ -374,9 +386,9 @@ class InvestmentRepository {
     int? taxProfileId,
     String? notes,
   }) async {
-    await (_database.update(_database.dbInvestmentEntries)
-          ..where((t) => t.id.equals(id)))
-        .write(
+    await (_database.update(
+      _database.dbInvestmentEntries,
+    )..where((t) => t.id.equals(id))).write(
       DbInvestmentEntriesCompanion(
         categoryId: Value(categoryId),
         symbol: Value(symbol.trim().toUpperCase()),
@@ -393,12 +405,12 @@ class InvestmentRepository {
 
   Future<void> deleteBuyEntry(int id) async {
     await _database.transaction(() async {
-      await (_database.delete(_database.dbSellEntries)
-            ..where((t) => t.buyEntryId.equals(id)))
-          .go();
-      await (_database.delete(_database.dbInvestmentEntries)
-            ..where((t) => t.id.equals(id)))
-          .go();
+      await (_database.delete(
+        _database.dbSellEntries,
+      )..where((t) => t.buyEntryId.equals(id))).go();
+      await (_database.delete(
+        _database.dbInvestmentEntries,
+      )..where((t) => t.id.equals(id))).go();
     });
   }
 
@@ -412,7 +424,9 @@ class InvestmentRepository {
     required double sellRate,
     required double sellAmt,
   }) async {
-    return _database.into(_database.dbSellEntries).insert(
+    return _database
+        .into(_database.dbSellEntries)
+        .insert(
           DbSellEntriesCompanion.insert(
             buyEntryId: buyEntryId,
             symbol: symbol.trim().toUpperCase(),
@@ -426,9 +440,9 @@ class InvestmentRepository {
   }
 
   Future<void> deleteSellEntry(int id) async {
-    await (_database.delete(_database.dbSellEntries)
-          ..where((t) => t.id.equals(id)))
-        .go();
+    await (_database.delete(
+      _database.dbSellEntries,
+    )..where((t) => t.id.equals(id))).go();
   }
 
   // --- Queries & Dashboard/Analytics ---
@@ -437,11 +451,15 @@ class InvestmentRepository {
     final query = _database.select(_database.dbInvestmentEntries).join([
       innerJoin(
         _database.dbInvestmentCategories,
-        _database.dbInvestmentCategories.id.equalsExp(_database.dbInvestmentEntries.categoryId),
+        _database.dbInvestmentCategories.id.equalsExp(
+          _database.dbInvestmentEntries.categoryId,
+        ),
       ),
       leftOuterJoin(
         _database.dbInvestmentTaxProfiles,
-        _database.dbInvestmentTaxProfiles.id.equalsExp(_database.dbInvestmentEntries.taxProfileId),
+        _database.dbInvestmentTaxProfiles.id.equalsExp(
+          _database.dbInvestmentEntries.taxProfileId,
+        ),
       ),
     ]);
 
@@ -459,11 +477,15 @@ class InvestmentRepository {
     final query = _database.select(_database.dbInvestmentEntries).join([
       innerJoin(
         _database.dbInvestmentCategories,
-        _database.dbInvestmentCategories.id.equalsExp(_database.dbInvestmentEntries.categoryId),
+        _database.dbInvestmentCategories.id.equalsExp(
+          _database.dbInvestmentEntries.categoryId,
+        ),
       ),
       leftOuterJoin(
         _database.dbInvestmentTaxProfiles,
-        _database.dbInvestmentTaxProfiles.id.equalsExp(_database.dbInvestmentEntries.taxProfileId),
+        _database.dbInvestmentTaxProfiles.id.equalsExp(
+          _database.dbInvestmentEntries.taxProfileId,
+        ),
       ),
     ]);
 
@@ -505,16 +527,24 @@ class InvestmentRepository {
     // 1. Filter buy entries by category and date range
     var filteredBuys = buys;
     if (categoryId != null) {
-      filteredBuys = filteredBuys.where((b) => b.categoryId == categoryId).toList();
+      filteredBuys = filteredBuys
+          .where((b) => b.categoryId == categoryId)
+          .toList();
     }
     if (dateRange != null) {
       filteredBuys = filteredBuys
-          .where((b) => !b.buyDate.isBefore(dateRange.start) && !b.buyDate.isAfter(dateRange.end))
+          .where(
+            (b) =>
+                !b.buyDate.isBefore(dateRange.start) &&
+                !b.buyDate.isAfter(dateRange.end),
+          )
           .toList();
     }
 
     final buyIds = filteredBuys.map((b) => b.id).toSet();
-    final filteredSells = sells.where((s) => buyIds.contains(s.buyEntryId)).toList();
+    final filteredSells = sells
+        .where((s) => buyIds.contains(s.buyEntryId))
+        .toList();
 
     // 2. Group by symbol
     final buysBySymbol = <String, List<InvestmentEntry>>{};
@@ -559,8 +589,13 @@ class InvestmentRepository {
       }
     }
 
-    final totalPLPct = totalInvested == 0 ? 0.0 : (totalPL / totalInvested) * 100;
-    final totalActiveInvested = groups.fold<double>(0.0, (sum, g) => sum + g.remainingInvested);
+    final totalPLPct = totalInvested == 0
+        ? 0.0
+        : (totalPL / totalInvested) * 100;
+    final totalActiveInvested = groups.fold<double>(
+      0.0,
+      (sum, g) => sum + g.remainingInvested,
+    );
 
     return InvestmentDashboardData(
       totalInvested: totalInvested.letRound(),
@@ -597,7 +632,8 @@ class InvestmentRepository {
         rangeStart = DateTime(now.year - 3, now.month, now.day).startOfDay;
         break;
       case InvestmentAnalyticsWindow.custom:
-        rangeStart = (customStartDate ?? now.subtract(const Duration(days: 30))).startOfDay;
+        rangeStart = (customStartDate ?? now.subtract(const Duration(days: 30)))
+            .startOfDay;
         rangeEnd = (customEndDate ?? now).endOfDay;
         break;
       case InvestmentAnalyticsWindow.all:
@@ -608,14 +644,21 @@ class InvestmentRepository {
     // Filter buys
     var filteredBuys = buys;
     if (categoryId != null) {
-      filteredBuys = filteredBuys.where((b) => b.categoryId == categoryId).toList();
+      filteredBuys = filteredBuys
+          .where((b) => b.categoryId == categoryId)
+          .toList();
     }
     filteredBuys = filteredBuys
-        .where((b) => !b.buyDate.isBefore(rangeStart) && !b.buyDate.isAfter(rangeEnd))
+        .where(
+          (b) =>
+              !b.buyDate.isBefore(rangeStart) && !b.buyDate.isAfter(rangeEnd),
+        )
         .toList();
 
     final buyIds = filteredBuys.map((b) => b.id).toSet();
-    final filteredSells = sells.where((s) => buyIds.contains(s.buyEntryId)).toList();
+    final filteredSells = sells
+        .where((s) => buyIds.contains(s.buyEntryId))
+        .toList();
 
     // Summary calculations
     double totalInvested = 0;
@@ -634,13 +677,19 @@ class InvestmentRepository {
       totalPL += sell.sellAmt - (buyRate * sell.sellQty);
     }
 
-    final totalPLPct = totalInvested == 0 ? 0.0 : (totalPL / totalInvested) * 100;
+    final totalPLPct = totalInvested == 0
+        ? 0.0
+        : (totalPL / totalInvested) * 100;
 
     // 1. Investment by Category (total buyAmt per category)
     final categoryTotals = <String, double>{};
     final categoryColors = <String, int>{};
     for (final buy in filteredBuys) {
-      categoryTotals.update(buy.categoryName, (v) => v + buy.buyAmt, ifAbsent: () => buy.buyAmt);
+      categoryTotals.update(
+        buy.categoryName,
+        (v) => v + buy.buyAmt,
+        ifAbsent: () => buy.buyAmt,
+      );
       categoryColors[buy.categoryName] = buy.categoryColorValue;
     }
     final categoryBreakdown = categoryTotals.entries.map((e) {
@@ -649,8 +698,7 @@ class InvestmentRepository {
         amount: e.value.letRound(),
         colorValue: categoryColors[e.key] ?? 0xFFFFFFFF,
       );
-    }).toList()
-      ..sort((a, b) => b.amount.compareTo(a.amount));
+    }).toList()..sort((a, b) => b.amount.compareTo(a.amount));
 
     // 2. P/L Over Time (Line chart: X = sell date, Y = cumulative P/L)
     final sellsSorted = List<SellEntry>.from(filteredSells)
@@ -676,7 +724,11 @@ class InvestmentRepository {
       symbolPL.update(sell.symbol, (v) => v + pl, ifAbsent: () => pl);
     }
     for (final buy in filteredBuys) {
-      symbolInvested.update(buy.symbol, (v) => v + buy.buyAmt, ifAbsent: () => buy.buyAmt);
+      symbolInvested.update(
+        buy.symbol,
+        (v) => v + buy.buyAmt,
+        ifAbsent: () => buy.buyAmt,
+      );
     }
 
     final symbolPLBreakdown = symbolPL.entries.map((e) {
@@ -689,8 +741,7 @@ class InvestmentRepository {
         plPct: plPct.letRound(),
         pl: pl.letRound(),
       );
-    }).toList()
-      ..sort((a, b) => b.plPct.compareTo(a.plPct));
+    }).toList()..sort((a, b) => b.plPct.compareTo(a.plPct));
 
     // 4. Category P/L Summary (Table/Card. Per category: Total Invested, Total Sell, P/L, P/L%)
     final catInvested = <String, double>{};
@@ -698,11 +749,19 @@ class InvestmentRepository {
     final catPL = <String, double>{};
 
     for (final buy in filteredBuys) {
-      catInvested.update(buy.categoryName, (v) => v + buy.buyAmt, ifAbsent: () => buy.buyAmt);
+      catInvested.update(
+        buy.categoryName,
+        (v) => v + buy.buyAmt,
+        ifAbsent: () => buy.buyAmt,
+      );
     }
     for (final sell in filteredSells) {
       final catName = buyCategories[sell.buyEntryId] ?? 'Equity / Stocks';
-      catSellValue.update(catName, (v) => v + sell.sellAmt, ifAbsent: () => sell.sellAmt);
+      catSellValue.update(
+        catName,
+        (v) => v + sell.sellAmt,
+        ifAbsent: () => sell.sellAmt,
+      );
       final buyRate = buyRates[sell.buyEntryId] ?? 0.0;
       final pl = sell.sellAmt - (buyRate * sell.sellQty);
       catPL.update(catName, (v) => v + pl, ifAbsent: () => pl);
@@ -781,7 +840,13 @@ class InvestmentRepository {
     final stt = (buyAmt * sttBuyPct) + (sellAmt * sttSellPct);
     final stampDuty = buyAmt * stampDutyPct;
     final dpCharge = dpChargePerScrip;
-    return stt + exchangeCharge + sebiCharge + gst + brokerage + stampDuty + dpCharge;
+    return stt +
+        exchangeCharge +
+        sebiCharge +
+        gst +
+        brokerage +
+        stampDuty +
+        dpCharge;
   }
 
   // --- Mappings ---
@@ -806,7 +871,10 @@ class InvestmentRepository {
   }
 
   InvestmentEntry _mapInvestmentEntry(
-      DbInvestmentEntry row, DbInvestmentCategory cat, DbInvestmentTaxProfile? taxRow) {
+    DbInvestmentEntry row,
+    DbInvestmentCategory cat,
+    DbInvestmentTaxProfile? taxRow,
+  ) {
     return InvestmentEntry(
       id: row.id,
       categoryId: row.categoryId,

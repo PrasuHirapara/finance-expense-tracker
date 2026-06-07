@@ -2,24 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/formatters/indian_number_formatter.dart';
+import '../../domain/models/task_models.dart';
+
 import '../../../../core/router/app_router.dart';
 import '../../../../core/services/module_data_import_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
-import '../blocs/expense/expense_bloc.dart';
+import '../blocs/tasks/task_bloc.dart';
 
-class ExpenseImportPreviewPage extends StatefulWidget {
-  const ExpenseImportPreviewPage({super.key, required this.args});
+class TaskImportPreviewPage extends StatefulWidget {
+  const TaskImportPreviewPage({super.key, required this.args});
 
-  final ExpenseImportPreviewArgs args;
+  final TaskImportPreviewArgs args;
 
   @override
-  State<ExpenseImportPreviewPage> createState() =>
-      _ExpenseImportPreviewPageState();
+  State<TaskImportPreviewPage> createState() => _TaskImportPreviewPageState();
 }
 
-class _ExpenseImportPreviewPageState extends State<ExpenseImportPreviewPage> {
+class _TaskImportPreviewPageState extends State<TaskImportPreviewPage> {
   bool _isSaving = false;
 
   @override
@@ -31,7 +31,7 @@ class _ExpenseImportPreviewPageState extends State<ExpenseImportPreviewPage> {
     final invalidRowsCount = totalRows - validRowsCount;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Import Preview')),
+      appBar: AppBar(title: const Text('Task Import Preview')),
       body: Column(
         children: [
           Expanded(
@@ -49,13 +49,14 @@ class _ExpenseImportPreviewPageState extends State<ExpenseImportPreviewPage> {
                     ? Colors.transparent
                     : theme.colorScheme.error.withValues(alpha: 0.4);
 
-                final typeColor = row.type.toLowerCase() == 'income'
-                    ? const Color(0xFF1F8B4C)
-                    : row.type.toLowerCase() == 'lent'
-                    ? const Color(0xFF2980B9)
-                    : row.type.toLowerCase() == 'borrowed'
-                    ? const Color(0xFFD35400)
-                    : theme.colorScheme.error;
+                // Priority Color mapping (1-5)
+                final priorityColor = switch (row.priority) {
+                  5 => Colors.red.shade700,
+                  4 => Colors.orange.shade700,
+                  3 => Colors.blue.shade700,
+                  2 => Colors.teal.shade700,
+                  _ => Colors.grey.shade600,
+                };
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -79,22 +80,26 @@ class _ExpenseImportPreviewPageState extends State<ExpenseImportPreviewPage> {
                                 overflow: TextOverflow.ellipsis,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
+                                  decoration: row.isCompleted
+                                      ? TextDecoration.lineThrough
+                                      : null,
                                 ),
                               ),
                             ),
+                            const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: typeColor.withValues(alpha: 0.15),
+                                color: priorityColor.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                row.type.toUpperCase(),
+                                'Priority ${row.priority}',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: typeColor,
+                                  color: priorityColor,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -106,18 +111,43 @@ class _ExpenseImportPreviewPageState extends State<ExpenseImportPreviewPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              IndianNumberFormatter.formatFull(row.amount),
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: typeColor,
-                              ),
-                            ),
-                            Text(
                               row.categoryName,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.primary,
                                 fontWeight: FontWeight.w600,
                               ),
+                            ),
+                            Row(
+                              children: [
+                                if (row.isDaily) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.secondary
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'Daily',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme.colorScheme.secondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                if (row.isCompleted)
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Colors.green.shade600,
+                                    size: 18,
+                                  ),
+                              ],
                             ),
                           ],
                         ),
@@ -131,34 +161,28 @@ class _ExpenseImportPreviewPageState extends State<ExpenseImportPreviewPage> {
                               Icons.calendar_today_rounded,
                               DateFormat('yyyy-MM-dd').format(row.date),
                             ),
-                            if (row.bankName != null)
+                            if (row.checklist.isNotEmpty)
                               _buildInfoChip(
                                 theme,
-                                Icons.account_balance_wallet_rounded,
-                                row.bankName!,
-                              ),
-                            _buildInfoChip(
-                              theme,
-                              Icons.payment_rounded,
-                              row.paymentMode,
-                            ),
-                            if (row.counterparty != null)
-                              _buildInfoChip(
-                                theme,
-                                Icons.person_rounded,
-                                row.counterparty!,
+                                Icons.playlist_add_check_rounded,
+                                '${row.checklist.length} items',
                               ),
                           ],
                         ),
-                        if (row.notes.isNotEmpty) ...[
+                        if (row.description.isNotEmpty) ...[
                           const SizedBox(height: 10),
                           Text(
-                            'Notes: ${row.notes}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontStyle: FontStyle.italic,
+                            row.description,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
+                        ],
+                        if (row.checklist.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          _buildChecklistPreview(theme, row.checklist),
                         ],
                         if (!row.isValid) ...[
                           const SizedBox(height: 10),
@@ -201,7 +225,7 @@ class _ExpenseImportPreviewPageState extends State<ExpenseImportPreviewPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Total Rows: $totalRows',
+                            'Total Tasks: $totalRows',
                             style: theme.textTheme.bodyMedium,
                           ),
                           Text(
@@ -249,6 +273,73 @@ class _ExpenseImportPreviewPageState extends State<ExpenseImportPreviewPage> {
     );
   }
 
+  Widget _buildChecklistPreview(
+    ThemeData theme,
+    List<TaskChecklistItem> checklist,
+  ) {
+    final displayedItems = checklist.take(3).toList();
+    final remainingCount = checklist.length - displayedItems.length;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ...displayedItems.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    item.isCompleted
+                        ? Icons.check_box_outlined
+                        : Icons.check_box_outline_blank_rounded,
+                    size: 14,
+                    color: item.isCompleted
+                        ? Colors.green.shade600
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        decoration: item.isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
+                        color: item.isCompleted
+                            ? theme.colorScheme.onSurfaceVariant
+                            : null,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (remainingCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 2, left: 20),
+              child: Text(
+                '+ $remainingCount more item${remainingCount == 1 ? '' : 's'}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleConfirmImport() async {
     setState(() {
       _isSaving = true;
@@ -259,18 +350,16 @@ class _ExpenseImportPreviewPageState extends State<ExpenseImportPreviewPage> {
       final validRows = widget.args.previewData.rows
           .where((r) => r.isValid)
           .toList();
-      final result = await importService.saveExpenseImport(
-        validRows,
-        widget.args.previewData.splitBundle,
-      );
+      final savedCount = await importService.saveTaskImport(validRows);
 
       if (!mounted) return;
 
-      context.read<ExpenseBloc>().add(const ExpenseSubscriptionRequested());
+      context.read<TaskBloc>().add(const TasksSubscriptionRequested());
 
       showAppSnackBar(
         context,
-        message: result.message,
+        message:
+            '$savedCount task${savedCount == 1 ? '' : 's'} imported successfully.',
         type: AppSnackBarType.info,
       );
 
@@ -279,7 +368,7 @@ class _ExpenseImportPreviewPageState extends State<ExpenseImportPreviewPage> {
       if (!mounted) return;
       showAppSnackBar(
         context,
-        message: 'Failed to import data: ${e.toString()}',
+        message: 'Failed to import tasks: ${e.toString()}',
         type: AppSnackBarType.error,
       );
     } finally {

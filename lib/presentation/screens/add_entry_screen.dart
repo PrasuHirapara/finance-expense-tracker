@@ -120,7 +120,8 @@ class _AddEntryView extends StatelessWidget {
                     AppSelectField<int?>(
                       label: 'Category',
                       value: formState.selectedCategoryId,
-                      errorText: formState.showValidation &&
+                      errorText:
+                          formState.showValidation &&
                               formState.selectedCategoryId == null
                           ? 'Select a category'
                           : null,

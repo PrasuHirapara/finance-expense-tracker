@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:archive/archive.dart';
 import 'package:drift/drift.dart';
 import 'package:excel/excel.dart';
@@ -11,6 +13,7 @@ import 'package:xml/xml.dart';
 
 import '../../data/database/app_database.dart';
 import '../../features/credentials/domain/models/credential_models.dart';
+import '../../features/tasks/domain/models/task_models.dart';
 import '../constants/app_constants.dart';
 import 'app_settings_repository.dart';
 import 'credential_crypto_service.dart';
@@ -383,27 +386,35 @@ class ModuleDataImportService {
           rowNumber: rowIndex + 1,
           headerMap: headerMap,
         );
-        rows.add(ExpenseImportRow(
-          sourceEntryId: validated.sourceEntryId,
-          title: validated.title,
-          amount: validated.amount,
-          type: validated.type,
-          categoryName: validated.categoryName,
-          bankName: validated.bankName,
-          date: validated.date,
-          day: validated.day,
-          paymentMode: validated.paymentMode,
-          counterparty: validated.counterparty,
-          notes: validated.notes,
-          isValid: true,
-        ));
+        rows.add(
+          ExpenseImportRow(
+            sourceEntryId: validated.sourceEntryId,
+            title: validated.title,
+            amount: validated.amount,
+            type: validated.type,
+            categoryName: validated.categoryName,
+            bankName: validated.bankName,
+            date: validated.date,
+            day: validated.day,
+            paymentMode: validated.paymentMode,
+            counterparty: validated.counterparty,
+            notes: validated.notes,
+            isValid: true,
+          ),
+        );
       } on ModuleImportException catch (error) {
-        final sourceEntryId = _parseOptionalInt(_cellAt(row, headerMap['entryId']));
+        final sourceEntryId = _parseOptionalInt(
+          _cellAt(row, headerMap['entryId']),
+        );
         final title = _cellText(_cellAt(row, headerMap['title']));
         final category = _cellText(_cellAt(row, headerMap['category']));
         final bank = _cellText(_cellAt(row, headerMap['bank']));
-        final paymentModeText = _cellText(_cellAt(row, headerMap['paymentMode']));
-        final counterpartyText = _cellText(_cellAt(row, headerMap['counterparty']));
+        final paymentModeText = _cellText(
+          _cellAt(row, headerMap['paymentMode']),
+        );
+        final counterpartyText = _cellText(
+          _cellAt(row, headerMap['counterparty']),
+        );
         final notes = _cellText(_cellAt(row, headerMap['notes']));
         final dayText = _cellText(_cellAt(row, headerMap['day']));
         final amountCell = _cellAt(row, headerMap['amount']);
@@ -413,28 +424,27 @@ class ModuleDataImportService {
         final amount = _parseAmount(amountCell) ?? 0.0;
         final date = _parseDate(dateCell) ?? DateTime.now();
 
-        rows.add(ExpenseImportRow(
-          sourceEntryId: sourceEntryId,
-          title: title.isEmpty ? 'Untitled' : title,
-          amount: amount,
-          type: typeText.isEmpty ? 'Expense' : typeText,
-          categoryName: category.isEmpty ? 'Miscellaneous' : category,
-          bankName: bank.isEmpty ? null : bank,
-          date: date,
-          day: dayText.isEmpty ? null : dayText,
-          paymentMode: paymentModeText.isEmpty ? 'Cash' : paymentModeText,
-          counterparty: counterpartyText.isEmpty ? null : counterpartyText,
-          notes: notes,
-          isValid: false,
-          validationError: error.message,
-        ));
+        rows.add(
+          ExpenseImportRow(
+            sourceEntryId: sourceEntryId,
+            title: title.isEmpty ? 'Untitled' : title,
+            amount: amount,
+            type: typeText.isEmpty ? 'Expense' : typeText,
+            categoryName: category.isEmpty ? 'Miscellaneous' : category,
+            bankName: bank.isEmpty ? null : bank,
+            date: date,
+            day: dayText.isEmpty ? null : dayText,
+            paymentMode: paymentModeText.isEmpty ? 'Cash' : paymentModeText,
+            counterparty: counterpartyText.isEmpty ? null : counterpartyText,
+            notes: notes,
+            isValid: false,
+            validationError: error.message,
+          ),
+        );
       }
     }
 
-    return ExpenseImportPreviewData(
-      rows: rows,
-      splitBundle: splitBundle,
-    );
+    return ExpenseImportPreviewData(rows: rows, splitBundle: splitBundle);
   }
 
   Future<ModuleImportResult> saveExpenseImport(
@@ -451,7 +461,9 @@ class ModuleDataImportService {
         bankName: row.bankName,
         date: row.date,
         day: row.day,
-        paymentMode: _normalizePaymentMode(row.paymentMode) ?? AppConstants.paymentModes.first,
+        paymentMode:
+            _normalizePaymentMode(row.paymentMode) ??
+            AppConstants.paymentModes.first,
         counterparty: row.counterparty,
         notes: row.notes,
       );
@@ -582,7 +594,9 @@ class ModuleDataImportService {
     return saveExpenseImport(preview.rows, preview.splitBundle);
   }
 
-  Future<CredentialImportPreviewData> previewCredentialExcel(String filePath) async {
+  Future<CredentialImportPreviewData> previewCredentialExcel(
+    String filePath,
+  ) async {
     final workbook = await _loadWorkbook(filePath);
     final sheet = _resolveSheet(workbook, preferredSheetName: 'Credentials');
     final headerMap = _resolveHeaderMap(
@@ -590,6 +604,7 @@ class ModuleDataImportService {
       aliases: const <String, List<String>>{
         'title': <String>['title'],
         'expiryDate': <String>[
+          'expiry',
           'expiry date',
           'expirydate',
           'expiration date',
@@ -637,7 +652,7 @@ class ModuleDataImportService {
       }
 
       final groupKey = title.toLowerCase();
-      
+
       if (rowErrors.isEmpty) {
         final existingFields = groupedFields.putIfAbsent(
           groupKey,
@@ -671,14 +686,16 @@ class ModuleDataImportService {
       }
 
       final isValid = rowErrors.isEmpty;
-      rows.add(CredentialImportRow(
-        title: title.isEmpty ? 'Untitled' : title,
-        expiryDate: parsedExpiryDate,
-        field: field.isEmpty ? 'Username' : field,
-        value: value,
-        isValid: isValid,
-        validationError: isValid ? null : rowErrors.join(' '),
-      ));
+      rows.add(
+        CredentialImportRow(
+          title: title.isEmpty ? 'Untitled' : title,
+          expiryDate: parsedExpiryDate,
+          field: field.isEmpty ? 'Username' : field,
+          value: value,
+          isValid: isValid,
+          validationError: isValid ? null : rowErrors.join(' '),
+        ),
+      );
     }
 
     return CredentialImportPreviewData(rows: rows);
@@ -712,7 +729,9 @@ class ModuleDataImportService {
         groupedExpiryDates.putIfAbsent(groupKey, () => null);
       }
 
-      existingFields.add(CredentialField(keyLabel: row.field, value: row.value));
+      existingFields.add(
+        CredentialField(keyLabel: row.field, value: row.value),
+      );
     }
 
     final drafts = groupedFields.entries
@@ -1335,6 +1354,26 @@ class ModuleDataImportService {
     if (preferredSheet != null) {
       return preferredSheet;
     }
+
+    final lowerPreferred = preferredSheetName.toLowerCase();
+    final alternativeKeys = <String>[lowerPreferred];
+    if (lowerPreferred == 'expenses') {
+      alternativeKeys.addAll(['entries', 'expense']);
+    } else if (lowerPreferred == 'credentials') {
+      alternativeKeys.addAll(['credential', 'creds']);
+    } else if (lowerPreferred == 'investments') {
+      alternativeKeys.addAll(['investment', 'entries']);
+    } else if (lowerPreferred == 'tasks') {
+      alternativeKeys.addAll(['task', 'checklist', 'todos']);
+    }
+
+    for (final key in sheets.keys) {
+      final lowerKey = key.toLowerCase();
+      if (alternativeKeys.contains(lowerKey)) {
+        return sheets[key]!;
+      }
+    }
+
     if (sheets.isEmpty) {
       throw const ModuleImportException(
         'The selected Excel file has no sheets.',
@@ -1774,7 +1813,9 @@ class ModuleDataImportService {
     final headerStyle = CellStyle(bold: true);
 
     sheet.appendRow(<CellValue?>[
-      TextCellValue('Do not fill: Days, P/L, P/L%, Tax, PAT, PAT% — these are calculated by the app'),
+      TextCellValue(
+        'Do not fill: Days, P/L, P/L%, Tax, PAT, PAT% — these are calculated by the app',
+      ),
     ]);
 
     sheet.appendRow(<CellValue?>[
@@ -1851,15 +1892,22 @@ class ModuleDataImportService {
     return file.path;
   }
 
-  Future<InvestmentImportPreviewData> importInvestmentExcel(String filePath) async {
+  Future<InvestmentImportPreviewData> importInvestmentExcel(
+    String filePath,
+  ) async {
     final workbook = await _loadWorkbook(filePath);
     final sheet = _resolveSheet(workbook, preferredSheetName: 'Investments');
 
     var headerRowIndex = 0;
     for (var i = 0; i < 5 && i < sheet.maxRows; i++) {
       final r = sheet.row(i);
-      final values = r.map((c) => c?.value?.toString().toLowerCase() ?? '').toList();
-      if (values.contains('symbol') || values.contains('fund name') || values.contains('qty') || values.contains('quantity')) {
+      final values = r
+          .map((c) => c?.value?.toString().toLowerCase() ?? '')
+          .toList();
+      if (values.contains('symbol') ||
+          values.contains('fund name') ||
+          values.contains('qty') ||
+          values.contains('quantity')) {
         headerRowIndex = i;
         break;
       }
@@ -1870,36 +1918,59 @@ class ModuleDataImportService {
       headerRow: headerRow,
       aliases: const <String, List<String>>{
         'category': <String>['category', 'type'],
-        'symbol': <String>['symbol', 'name', 'fund name', 'fundname', 'stock', 'scrip'],
+        'symbol': <String>[
+          'symbol',
+          'name',
+          'fund name',
+          'fundname',
+          'stock',
+          'scrip',
+        ],
         'qty': <String>['qty', 'quantity', 'units', 'shares'],
-        'buyDate': <String>['buy date', 'buydate', 'date', 'order date', 'orderdate'],
+        'buyDate': <String>[
+          'buy date',
+          'buydate',
+          'date',
+          'order date',
+          'orderdate',
+        ],
         'buyRate': <String>['buy rate', 'buyrate', 'rate', 'price', 'nav'],
-        'buyAmt': <String>['buy amt', 'buyamt', 'amount', 'amt', 'value', 'buy value'],
+        'buyAmt': <String>[
+          'buy amt',
+          'buyamt',
+          'amount',
+          'amt',
+          'value',
+          'buy value',
+        ],
         'sellDate': <String>['sell date', 'selldate'],
         'sellRate': <String>['sell rate', 'sellrate'],
         'sellAmt': <String>['sell amt', 'sellamt'],
         'notes': <String>['notes', 'remarks', 'comment'],
         'type': <String>['type', 'action', 'transaction type'],
       },
-      requiredKeys: const <String>[
-        'symbol',
-        'qty',
-        'buyDate',
-        'buyRate',
-      ],
+      requiredKeys: const <String>['symbol', 'qty', 'buyDate', 'buyRate'],
     );
 
     final rows = <InvestmentImportRow>[];
     final unrecognizedSections = <String>[];
     var currentCategorySection = 'Equity / Stocks';
 
-    for (var rowIndex = headerRowIndex + 1; rowIndex < sheet.maxRows; rowIndex++) {
+    for (
+      var rowIndex = headerRowIndex + 1;
+      rowIndex < sheet.maxRows;
+      rowIndex++
+    ) {
       final row = sheet.row(rowIndex);
       if (_isBlankRow(row, headerMap.values)) {
         continue;
       }
 
-      final nonBlankCells = row.where((c) => c?.value != null && c!.value.toString().trim().isNotEmpty).toList();
+      final nonBlankCells = row
+          .where(
+            (c) => c?.value != null && c!.value.toString().trim().isNotEmpty,
+          )
+          .toList();
       if (nonBlankCells.length == 1) {
         final sectionText = nonBlankCells.first!.value.toString().trim();
         final detected = _detectCategoryFromKeyword(sectionText);
@@ -1927,65 +1998,86 @@ class ModuleDataImportService {
         if (headerMap.containsKey('category')) {
           final catCellVal = _parseStringCell(row, headerMap['category']);
           if (catCellVal.isNotEmpty) {
-            final parsedCat = _detectCategoryFromKeyword(catCellVal) ?? catCellVal;
+            final parsedCat =
+                _detectCategoryFromKeyword(catCellVal) ?? catCellVal;
             rowCategory = parsedCat;
           }
         }
 
         var finalBuyDate = buyDateVal;
         var finalBuyRate = buyRateVal;
-        var finalBuyAmt = buyAmtVal ?? ((qtyVal != null && buyRateVal != null) ? qtyVal * buyRateVal : 0.0);
+        var finalBuyAmt =
+            buyAmtVal ??
+            ((qtyVal != null && buyRateVal != null)
+                ? qtyVal * buyRateVal
+                : 0.0);
         DateTime? finalSellDate = sellDateVal;
         double? finalSellRate = sellRateVal;
         double? finalSellAmt = sellAmtVal;
 
         if (headerMap.containsKey('type')) {
-          final typeCellVal = _parseStringCell(row, headerMap['type']).toLowerCase();
+          final typeCellVal = _parseStringCell(
+            row,
+            headerMap['type'],
+          ).toLowerCase();
           if (typeCellVal == 'sell' || typeCellVal == 'redemption') {
             finalSellDate = buyDateVal;
             finalSellRate = buyRateVal;
-            finalSellAmt = buyAmtVal ?? ((qtyVal != null && buyRateVal != null) ? qtyVal * buyRateVal : 0.0);
+            finalSellAmt =
+                buyAmtVal ??
+                ((qtyVal != null && buyRateVal != null)
+                    ? qtyVal * buyRateVal
+                    : 0.0);
             finalBuyDate = null;
             finalBuyRate = null;
             finalBuyAmt = 0.0;
           }
         }
 
-        final isRowValid = symbol.isNotEmpty && qtyVal != null && qtyVal > 0 && (finalBuyDate != null || finalSellDate != null);
+        final isRowValid =
+            symbol.isNotEmpty &&
+            qtyVal != null &&
+            qtyVal > 0 &&
+            (finalBuyDate != null || finalSellDate != null);
         String? validationError;
         if (!isRowValid) {
           final missing = <String>[];
           if (symbol.isEmpty) missing.add('Symbol');
           if (qtyVal == null || qtyVal <= 0) missing.add('Qty');
-          if (finalBuyDate == null && finalSellDate == null) missing.add('Date');
+          if (finalBuyDate == null && finalSellDate == null)
+            missing.add('Date');
           validationError = 'Missing required fields: ${missing.join(", ")}';
         }
 
-        rows.add(InvestmentImportRow(
-          symbol: symbol,
-          qty: qtyVal ?? 0.0,
-          buyDate: finalBuyDate ?? finalSellDate ?? DateTime.now(),
-          buyRate: finalBuyRate ?? finalSellRate ?? 0.0,
-          buyAmt: finalBuyAmt,
-          sellDate: finalSellDate,
-          sellRate: finalSellRate,
-          sellAmt: finalSellAmt,
-          categoryName: rowCategory,
-          notes: notesVal.isEmpty ? null : notesVal,
-          isValid: isRowValid,
-          validationError: validationError,
-        ));
+        rows.add(
+          InvestmentImportRow(
+            symbol: symbol,
+            qty: qtyVal ?? 0.0,
+            buyDate: finalBuyDate ?? finalSellDate ?? DateTime.now(),
+            buyRate: finalBuyRate ?? finalSellRate ?? 0.0,
+            buyAmt: finalBuyAmt,
+            sellDate: finalSellDate,
+            sellRate: finalSellRate,
+            sellAmt: finalSellAmt,
+            categoryName: rowCategory,
+            notes: notesVal.isEmpty ? null : notesVal,
+            isValid: isRowValid,
+            validationError: validationError,
+          ),
+        );
       } catch (e) {
-        rows.add(InvestmentImportRow(
-          symbol: '',
-          qty: 0.0,
-          buyDate: DateTime.now(),
-          buyRate: 0.0,
-          buyAmt: 0.0,
-          categoryName: currentCategorySection,
-          isValid: false,
-          validationError: 'Error parsing row: ${e.toString()}',
-        ));
+        rows.add(
+          InvestmentImportRow(
+            symbol: '',
+            qty: 0.0,
+            buyDate: DateTime.now(),
+            buyRate: 0.0,
+            buyAmt: 0.0,
+            categoryName: currentCategorySection,
+            isValid: false,
+            validationError: 'Error parsing row: ${e.toString()}',
+          ),
+        );
       }
     }
 
@@ -1997,13 +2089,18 @@ class ModuleDataImportService {
 
   String? _detectCategoryFromKeyword(String text) {
     final lower = text.toLowerCase();
-    if (lower.contains('share') || lower.contains('equity') || lower.contains('stock') || lower.contains('demat')) {
+    if (lower.contains('share') ||
+        lower.contains('equity') ||
+        lower.contains('stock') ||
+        lower.contains('demat')) {
       return 'Equity / Stocks';
     }
     if (lower.contains('ipo')) {
       return 'IPO (Allocation)';
     }
-    if (lower.contains('mutual') || lower.contains('mf') || lower.contains('fund')) {
+    if (lower.contains('mutual') ||
+        lower.contains('mf') ||
+        lower.contains('fund')) {
       return 'Mutual Fund';
     }
     if (lower.contains('gold')) {
@@ -2012,78 +2109,391 @@ class ModuleDataImportService {
     if (lower.contains('bond') || lower.contains('debt')) {
       return 'Bond / Debt';
     }
-    if (lower.contains('fd') || lower.contains('fixed') || lower.contains('savings')) {
+    if (lower.contains('fd') ||
+        lower.contains('fixed') ||
+        lower.contains('savings')) {
       return 'Fixed Deposit';
     }
     return null;
   }
 
   Future<int> saveInvestmentImport(List<InvestmentImportRow> rows) async {
-    return _database.transaction(() async {
-      final existingCategories = await (_database.select(_database.dbInvestmentCategories)).get();
-      final categoryIds = {for (final c in existingCategories) c.name.toLowerCase(): c.id};
+    final existingCategories = await (_database.select(
+      _database.dbInvestmentCategories,
+    )).get();
+    final categoryIds = {
+      for (final c in existingCategories) c.name.toLowerCase(): c.id,
+    };
 
-      final existingBrokers = await (_database.select(_database.dbInvestmentTaxProfiles)).get();
-      final defaultBrokerId = existingBrokers.isNotEmpty ? existingBrokers.first.id : null;
+    final existingBrokers = await (_database.select(
+      _database.dbInvestmentTaxProfiles,
+    )).get();
+    final defaultBrokerId = existingBrokers.isNotEmpty
+        ? existingBrokers.first.id
+        : null;
 
-      var savedCount = 0;
+    var savedCount = 0;
 
-      for (final row in rows) {
-        if (!row.isValid) continue;
+    for (final row in rows) {
+      if (!row.isValid) continue;
 
-        final catKey = row.categoryName.toLowerCase();
-        var catId = categoryIds[catKey];
-        if (catId == null) {
-          catId = await _database.into(_database.dbInvestmentCategories).insert(
-                DbInvestmentCategoriesCompanion.insert(
-                  name: row.categoryName,
-                  iconCodePoint: 0xe62e,
-                  colorValue: 0xFF2196F3,
+      try {
+        await _database.transaction(() async {
+          final catKey = row.categoryName.toLowerCase();
+          var catId = categoryIds[catKey];
+          if (catId == null) {
+            catId = await _database
+                .into(_database.dbInvestmentCategories)
+                .insert(
+                  DbInvestmentCategoriesCompanion.insert(
+                    name: row.categoryName,
+                    iconCodePoint: 0xe62e,
+                    colorValue: 0xFF2196F3,
+                  ),
+                );
+            categoryIds[catKey] = catId;
+          }
+
+          final buyId = await _database
+              .into(_database.dbInvestmentEntries)
+              .insert(
+                DbInvestmentEntriesCompanion.insert(
+                  categoryId: catId,
+                  symbol: row.symbol.trim().toUpperCase(),
+                  qty: row.qty,
+                  buyDate: row.buyDate,
+                  buyRate: row.buyRate,
+                  buyAmt: row.buyAmt,
+                  taxProfileId: Value(defaultBrokerId),
+                  notes: Value(row.notes),
+                  createdAt: Value(DateTime.now()),
+                  updatedAt: Value(DateTime.now()),
                 ),
               );
-          categoryIds[catKey] = catId;
+
+          if (row.sellDate != null &&
+              row.sellRate != null &&
+              row.sellQty != null) {
+            final sellAmt = row.sellAmt ?? (row.sellQty! * row.sellRate!);
+            await _database
+                .into(_database.dbSellEntries)
+                .insert(
+                  DbSellEntriesCompanion.insert(
+                    buyEntryId: buyId,
+                    symbol: row.symbol.trim().toUpperCase(),
+                    sellQty: row.sellQty!,
+                    sellDate: row.sellDate!,
+                    sellRate: row.sellRate!,
+                    sellAmt: sellAmt,
+                    createdAt: Value(DateTime.now()),
+                  ),
+                );
+          }
+          savedCount++;
+        });
+      } catch (e) {
+        debugPrint('Skipping investment row due to database error: $e');
+      }
+    }
+
+    return savedCount;
+  }
+
+  Future<String> downloadTaskSampleExcel() async {
+    final file = await _buildOutputFile(
+      moduleFolder: 'task',
+      fileNameLabel: 'task-import-sample',
+    );
+    final excel = Excel.createExcel();
+    final defaultSheet = excel.getDefaultSheet();
+    if (defaultSheet != null && defaultSheet != 'Tasks') {
+      excel.rename(defaultSheet, 'Tasks');
+    }
+
+    final taskSheet = excel['Tasks'];
+    final headerStyle = CellStyle(bold: true);
+
+    taskSheet.appendRow(<CellValue?>[
+      TextCellValue('Date*'),
+      TextCellValue('Title*'),
+      TextCellValue('Category'),
+      TextCellValue('Priority'),
+      TextCellValue('Daily'),
+      TextCellValue('Completed'),
+      TextCellValue('Checklist'),
+      TextCellValue('Description'),
+    ]);
+    taskSheet.appendRow(<CellValue?>[
+      TextCellValue(DateFormat('yyyy-MM-dd').format(DateTime.now())),
+      TextCellValue('Buy groceries'),
+      TextCellValue('Personal'),
+      IntCellValue(3),
+      TextCellValue('No'),
+      TextCellValue('No'),
+      TextCellValue('[ ] Milk | [x] Eggs | [ ] Bread'),
+      TextCellValue('Buy weekly groceries from supermarket'),
+    ]);
+    _applyRowStyle(taskSheet, rowIndex: 0, columnCount: 8, style: headerStyle);
+    _setColumnWidths(taskSheet, <double>[14, 26, 18, 12, 12, 14, 30, 32]);
+
+    final bytes = excel.save();
+    if (bytes == null) {
+      throw StateError('Unable to generate the task Excel import sample.');
+    }
+    await file.writeAsBytes(bytes);
+    return file.path;
+  }
+
+  Future<TaskImportPreviewData> previewTaskExcel(String filePath) async {
+    final workbook = await _loadWorkbook(filePath);
+    final sheet = _resolveSheet(workbook, preferredSheetName: 'Tasks');
+    final headerMap = _resolveHeaderMap(
+      headerRow: sheet.row(0),
+      aliases: const <String, List<String>>{
+        'date': <String>['date', 'task date', 'taskdate'],
+        'title': <String>['title', 'task title', 'tasktitle'],
+        'category': <String>['category', 'task category'],
+        'priority': <String>['priority'],
+        'daily': <String>['daily', 'is daily', 'isdaily'],
+        'completed': <String>['completed', 'is completed', 'iscompleted'],
+        'checklist': <String>['checklist', 'subtasks', 'subtask'],
+        'description': <String>['description', 'desc', 'notes'],
+      },
+      requiredKeys: const <String>['date', 'title'],
+    );
+
+    final rows = <TaskImportRow>[];
+
+    for (var rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
+      final row = sheet.row(rowIndex);
+      if (_isBlankRow(row, headerMap.values)) {
+        continue;
+      }
+
+      try {
+        final validated = _validateTaskRow(
+          row: row,
+          rowNumber: rowIndex + 1,
+          headerMap: headerMap,
+        );
+        rows.add(validated);
+      } on ModuleImportException catch (error) {
+        final title = _cellText(_cellAt(row, headerMap['title']));
+        final category = _cellText(_cellAt(row, headerMap['category']));
+        final rawDescription = _cellText(
+          _cellAt(row, headerMap['description']),
+        ).trim();
+        final description = rawDescription == '-' ? '' : rawDescription;
+        final checklistText = _cellText(_cellAt(row, headerMap['checklist']));
+        final priorityText = _cellText(_cellAt(row, headerMap['priority']));
+        final dailyText = _cellText(_cellAt(row, headerMap['daily']));
+        final completedText = _cellText(_cellAt(row, headerMap['completed']));
+
+        final dateCell = _cellAt(row, headerMap['date']);
+        final date = _parseDate(dateCell) ?? DateTime.now();
+
+        var priority = 3;
+        if (priorityText.isNotEmpty) {
+          priority = int.tryParse(priorityText) ?? 3;
         }
 
-        final buyId = await _database.into(_database.dbInvestmentEntries).insert(
-              DbInvestmentEntriesCompanion.insert(
-                categoryId: catId,
-                symbol: row.symbol.trim().toUpperCase(),
-                qty: row.qty,
-                buyDate: row.buyDate,
-                buyRate: row.buyRate,
-                buyAmt: row.buyAmt,
-                taxProfileId: Value(defaultBrokerId),
-                notes: Value(row.notes),
-                createdAt: Value(DateTime.now()),
-                updatedAt: Value(DateTime.now()),
-              ),
-            );
+        final isDaily =
+            dailyText.toLowerCase().trim() == 'yes' ||
+            dailyText.toLowerCase().trim() == 'true';
+        final isCompleted =
+            completedText.toLowerCase().trim() == 'yes' ||
+            completedText.toLowerCase().trim() == 'true';
 
-        savedCount++;
+        rows.add(
+          TaskImportRow(
+            date: date,
+            title: title.isEmpty ? 'Untitled Task' : title,
+            categoryName: category.isEmpty ? 'General' : category,
+            priority: priority,
+            isDaily: isDaily,
+            isCompleted: isCompleted,
+            checklist: _parseTaskChecklist(checklistText),
+            description: description,
+            isValid: false,
+            validationError: error.message,
+          ),
+        );
+      }
+    }
 
-        if (row.sellDate != null && row.sellRate != null && row.sellQty != null) {
-          final sellAmt = row.sellAmt ?? (row.sellQty! * row.sellRate!);
-          await _database.into(_database.dbSellEntries).insert(
-                DbSellEntriesCompanion.insert(
-                  buyEntryId: buyId,
-                  symbol: row.symbol.trim().toUpperCase(),
-                  sellQty: row.sellQty!,
-                  sellDate: row.sellDate!,
-                  sellRate: row.sellRate!,
-                  sellAmt: sellAmt,
+    return TaskImportPreviewData(rows: rows);
+  }
+
+  TaskImportRow _validateTaskRow({
+    required List<Data?> row,
+    required int rowNumber,
+    required Map<String, int> headerMap,
+  }) {
+    final titleCell = _cellAt(row, headerMap['title']);
+    final dateCell = _cellAt(row, headerMap['date']);
+
+    final title = _cellText(titleCell).trim();
+    if (title.isEmpty) {
+      throw ModuleImportException('Row $rowNumber: Title is empty.');
+    }
+
+    final date = _parseDate(dateCell);
+    if (date == null) {
+      throw ModuleImportException('Row $rowNumber: Invalid or missing date.');
+    }
+
+    final category = _cellText(_cellAt(row, headerMap['category'])).trim();
+    final rawDescription = _cellText(
+      _cellAt(row, headerMap['description']),
+    ).trim();
+    final description = rawDescription == '-' ? '' : rawDescription;
+    final checklistText = _cellText(
+      _cellAt(row, headerMap['checklist']),
+    ).trim();
+
+    final priorityText = _cellText(_cellAt(row, headerMap['priority'])).trim();
+    var priority = 3;
+    if (priorityText.isNotEmpty) {
+      final val = int.tryParse(priorityText);
+      if (val == null || val < 1 || val > 5) {
+        throw ModuleImportException(
+          'Row $rowNumber: Priority must be between 1 and 5.',
+        );
+      }
+      priority = val;
+    }
+
+    final dailyText = _cellText(
+      _cellAt(row, headerMap['daily']),
+    ).trim().toLowerCase();
+    final isDaily = dailyText == 'yes' || dailyText == 'true';
+
+    final completedText = _cellText(
+      _cellAt(row, headerMap['completed']),
+    ).trim().toLowerCase();
+    final isCompleted = completedText == 'yes' || completedText == 'true';
+
+    return TaskImportRow(
+      date: date,
+      title: title,
+      categoryName: category.isEmpty ? 'General' : category,
+      priority: priority,
+      isDaily: isDaily,
+      isCompleted: isCompleted,
+      checklist: _parseTaskChecklist(checklistText),
+      description: description,
+      isValid: true,
+    );
+  }
+
+  List<TaskChecklistItem> _parseTaskChecklist(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty || trimmed == '-') {
+      return const <TaskChecklistItem>[];
+    }
+    final items = <TaskChecklistItem>[];
+    final parts = text.split('|');
+    for (final part in parts) {
+      final trimmed = part.trim();
+      if (trimmed.isEmpty) continue;
+
+      if (trimmed.startsWith('[x]') || trimmed.startsWith('[X]')) {
+        items.add(
+          TaskChecklistItem(
+            title: trimmed.substring(3).trim(),
+            isCompleted: true,
+          ),
+        );
+      } else if (trimmed.startsWith('[ ]')) {
+        items.add(
+          TaskChecklistItem(
+            title: trimmed.substring(3).trim(),
+            isCompleted: false,
+          ),
+        );
+      } else {
+        items.add(TaskChecklistItem(title: trimmed, isCompleted: false));
+      }
+    }
+    return items;
+  }
+
+  Future<int> saveTaskImport(List<TaskImportRow> rows) async {
+    final cleanRows = rows.where((row) => row.isValid).toList();
+    if (cleanRows.isEmpty) return 0;
+
+    var savedCount = 0;
+    for (final row in cleanRows) {
+      try {
+        await _database.transaction(() async {
+          final dbDescription = _encodeTaskContent(
+            description: row.description.trim(),
+            checklist: row.checklist,
+          );
+
+          await _database
+              .into(_database.dbTasks)
+              .insert(
+                DbTasksCompanion.insert(
+                  title: row.title.trim(),
+                  description: Value(dbDescription),
+                  category: row.categoryName.trim(),
+                  taskDate: row.date,
+                  priority: Value(row.priority),
+                  isDaily: Value(row.isDaily),
+                  isCompleted: Value(row.isCompleted),
                   createdAt: Value(DateTime.now()),
                 ),
               );
-        }
+          savedCount++;
+        });
+      } catch (e) {
+        debugPrint('Skipping task row due to database error: $e');
       }
-
-      return savedCount;
-    });
+    }
+    return savedCount;
   }
 
-  String _parseStringCell(List<Data?> row, int? index) => _cellText(_cellAt(row, index));
-  double? _parseNumericCell(List<Data?> row, int? index) => _parseAmount(_cellAt(row, index));
-  DateTime? _parseDateCell(List<Data?> row, int? index) => _parseDate(_cellAt(row, index));
+  String _encodeTaskContent({
+    required String description,
+    required List<TaskChecklistItem> checklist,
+  }) {
+    final normalizedChecklist = checklist
+        .map(
+          (item) => TaskChecklistItem(
+            title: item.title.trim(),
+            isCompleted: item.isCompleted,
+          ),
+        )
+        .where((item) => item.title.isNotEmpty)
+        .toList(growable: false);
+
+    if (normalizedChecklist.isEmpty) {
+      return description;
+    }
+
+    return '__task_content_v1__${jsonEncode(<String, dynamic>{'description': description, 'checklist': normalizedChecklist.map((item) => item.toJson()).toList(growable: false)})}';
+  }
+
+  Future<ModuleImportResult> importTaskExcel(String filePath) async {
+    final preview = await previewTaskExcel(filePath);
+    final validRows = preview.rows.where((r) => r.isValid).toList();
+    final savedCount = await saveTaskImport(validRows);
+
+    return ModuleImportResult(
+      savedItems: savedCount,
+      validatedRows: preview.rows.length,
+      message:
+          '$savedCount task${savedCount == 1 ? '' : 's'} imported successfully out of ${preview.rows.length} row${preview.rows.length == 1 ? '' : 's'}.',
+    );
+  }
+
+  String _parseStringCell(List<Data?> row, int? index) =>
+      _cellText(_cellAt(row, index));
+  double? _parseNumericCell(List<Data?> row, int? index) =>
+      _parseAmount(_cellAt(row, index));
+  DateTime? _parseDateCell(List<Data?> row, int? index) =>
+      _parseDate(_cellAt(row, index));
 }
 
 class InvestmentImportRow {
@@ -2163,10 +2573,7 @@ class ExpenseImportRow {
 }
 
 class ExpenseImportPreviewData {
-  ExpenseImportPreviewData({
-    required this.rows,
-    required this.splitBundle,
-  });
+  ExpenseImportPreviewData({required this.rows, required this.splitBundle});
 
   final List<ExpenseImportRow> rows;
   final ExpenseSplitImportBundle splitBundle;
@@ -2191,14 +2598,10 @@ class CredentialImportRow {
 }
 
 class CredentialImportPreviewData {
-  CredentialImportPreviewData({
-    required this.rows,
-  });
+  CredentialImportPreviewData({required this.rows});
 
   final List<CredentialImportRow> rows;
 }
-
-
 
 class _ValidatedExpenseRow {
   const _ValidatedExpenseRow({
@@ -2415,4 +2818,36 @@ class _ExcelDropdownRule {
   final String sheetName;
   final String targetRange;
   final String formula;
+}
+
+class TaskImportRow {
+  TaskImportRow({
+    required this.date,
+    required this.title,
+    required this.categoryName,
+    required this.priority,
+    required this.isDaily,
+    required this.isCompleted,
+    required this.checklist,
+    required this.description,
+    this.isValid = true,
+    this.validationError,
+  });
+
+  final DateTime date;
+  final String title;
+  final String categoryName;
+  final int priority;
+  final bool isDaily;
+  final bool isCompleted;
+  final List<TaskChecklistItem> checklist;
+  final String description;
+  final bool isValid;
+  final String? validationError;
+}
+
+class TaskImportPreviewData {
+  const TaskImportPreviewData({required this.rows});
+
+  final List<TaskImportRow> rows;
 }

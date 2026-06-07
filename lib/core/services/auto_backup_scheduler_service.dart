@@ -21,37 +21,20 @@ class AutoBackupSchedulerService {
 
   Future<void> setAutoBackupEnabled(bool enabled) async {
     final settings = await _appSettingsRepository.getSettings();
-    final nextCloudSync = settings.cloudSync.copyWith(
-      autoBackupEnabled: enabled,
-    );
+    final nextCloudSync = settings.cloudSync.copyWith(autoBackupEnabled: false);
     await _appSettingsRepository.updateCloudSyncPreferences(nextCloudSync);
-
-    if (enabled && nextCloudSync.enabled) {
-      await _register(nextCloudSync.autoBackupTime);
-    } else {
-      await cancelScheduledBackup();
-    }
+    await cancelScheduledBackup();
   }
 
   Future<void> updateAutoBackupTime(AppBackupTime time) async {
     final settings = await _appSettingsRepository.getSettings();
     final nextCloudSync = settings.cloudSync.copyWith(autoBackupTime: time);
     await _appSettingsRepository.updateCloudSyncPreferences(nextCloudSync);
-
-    if (nextCloudSync.autoBackupEnabled && nextCloudSync.enabled) {
-      await _register(time);
-    }
+    await cancelScheduledBackup();
   }
 
   Future<void> reconcileScheduledBackup() async {
     try {
-      final settings = await _appSettingsRepository.getSettings();
-      final cloudSync = settings.cloudSync;
-      if (cloudSync.enabled && cloudSync.autoBackupEnabled) {
-        await _register(cloudSync.autoBackupTime);
-        return;
-      }
-
       await cancelScheduledBackup();
     } catch (_) {
       // Startup reconciliation should never make app launch fail.
@@ -65,40 +48,5 @@ class AutoBackupSchedulerService {
 
     await _workmanager.cancelByUniqueName(uniqueName);
     await _workmanager.cancelByTag(tag);
-  }
-
-  Future<void> _register(AppBackupTime time) async {
-    if (!Platform.isAndroid) {
-      return;
-    }
-
-    await cancelScheduledBackup();
-    await _workmanager.registerPeriodicTask(
-      uniqueName,
-      taskName,
-      frequency: const Duration(days: 1),
-      initialDelay: _initialDelayFor(time),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
-      constraints: Constraints(networkType: NetworkType.connected),
-      inputData: <String, dynamic>{'hour': time.hour, 'minute': time.minute},
-      tag: tag,
-    );
-  }
-
-  Duration _initialDelayFor(AppBackupTime time) {
-    final now = DateTime.now();
-    var scheduled = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      time.hour,
-      time.minute,
-    );
-
-    if (!scheduled.isAfter(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
-    }
-
-    return scheduled.difference(now);
   }
 }

@@ -14,10 +14,12 @@ class InvestmentImportPreviewPage extends StatefulWidget {
   final InvestmentImportPreviewArgs args;
 
   @override
-  State<InvestmentImportPreviewPage> createState() => _InvestmentImportPreviewPageState();
+  State<InvestmentImportPreviewPage> createState() =>
+      _InvestmentImportPreviewPageState();
 }
 
-class _InvestmentImportPreviewPageState extends State<InvestmentImportPreviewPage> {
+class _InvestmentImportPreviewPageState
+    extends State<InvestmentImportPreviewPage> {
   bool _isSaving = false;
 
   @override
@@ -29,9 +31,7 @@ class _InvestmentImportPreviewPageState extends State<InvestmentImportPreviewPag
     final invalidRowsCount = totalRows - validRowsCount;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Import Preview'),
-      ),
+      appBar: AppBar(title: const Text('Import Preview')),
       body: Column(
         children: [
           if (previewData.unrecognizedSections.isNotEmpty)
@@ -41,7 +41,10 @@ class _InvestmentImportPreviewPageState extends State<InvestmentImportPreviewPag
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFC88719)),
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Color(0xFFC88719),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -62,7 +65,9 @@ class _InvestmentImportPreviewPageState extends State<InvestmentImportPreviewPag
               itemBuilder: (context, index) {
                 final row = previewData.rows[index];
                 final cardColor = row.isValid
-                    ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
+                    ? theme.colorScheme.surfaceContainerHighest.withValues(
+                        alpha: 0.3,
+                      )
                     : theme.colorScheme.errorContainer.withValues(alpha: 0.15);
                 final borderColor = row.isValid
                     ? Colors.transparent
@@ -90,9 +95,13 @@ class _InvestmentImportPreviewPageState extends State<InvestmentImportPreviewPag
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
+                                color: theme.colorScheme.primaryContainer
+                                    .withValues(alpha: 0.4),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -144,10 +153,13 @@ class _InvestmentImportPreviewPageState extends State<InvestmentImportPreviewPag
                                   children: [
                                     Text(
                                       'SELL DETAILS',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
@@ -160,16 +172,20 @@ class _InvestmentImportPreviewPageState extends State<InvestmentImportPreviewPag
                                     ),
                                     Text(
                                       'Date: ${DateFormat('yyyy-MM-dd').format(row.sellDate!)}',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
                                     ),
                                   ],
                                 ),
                               ),
                           ],
                         ),
-                        if (row.notes != null && row.notes!.trim().isNotEmpty) ...[
+                        if (row.notes != null &&
+                            row.notes!.trim().isNotEmpty) ...[
                           const SizedBox(height: 10),
                           Text(
                             'Notes: ${row.notes}',
@@ -183,8 +199,11 @@ class _InvestmentImportPreviewPageState extends State<InvestmentImportPreviewPag
                           const SizedBox(height: 10),
                           Row(
                             children: [
-                              Icon(Icons.error_outline_rounded,
-                                  color: theme.colorScheme.error, size: 16),
+                              Icon(
+                                Icons.error_outline_rounded,
+                                color: theme.colorScheme.error,
+                                size: 16,
+                              ),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
@@ -234,7 +253,9 @@ class _InvestmentImportPreviewPageState extends State<InvestmentImportPreviewPag
                         onPressed: _isSaving || validRowsCount == 0
                             ? null
                             : _handleConfirmImport,
-                        child: Text(_isSaving ? 'Importing...' : 'Confirm Import'),
+                        child: Text(
+                          _isSaving ? 'Importing...' : 'Confirm Import',
+                        ),
                       ),
                     ],
                   ),
@@ -254,13 +275,17 @@ class _InvestmentImportPreviewPageState extends State<InvestmentImportPreviewPag
 
     try {
       final importService = context.read<ModuleDataImportService>();
-      final validRows = widget.args.previewData.rows.where((r) => r.isValid).toList();
+      final validRows = widget.args.previewData.rows
+          .where((r) => r.isValid)
+          .toList();
       final count = await importService.saveInvestmentImport(validRows);
 
       if (!mounted) return;
-      
+
       // Refresh the investment bloc
-      context.read<InvestmentBloc>().add(const InvestmentSubscriptionRequested());
+      context.read<InvestmentBloc>().add(
+        const InvestmentSubscriptionRequested(),
+      );
 
       showAppSnackBar(
         context,

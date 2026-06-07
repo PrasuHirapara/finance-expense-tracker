@@ -272,7 +272,8 @@ class FirestoreCloudSyncStoreService {
     final hasCredentialPayload =
         credentialSnapshot.exists && credentialData != null;
     final hasSettingsPayload = settingsSnapshot.exists && settingsData != null;
-    final hasInvestmentPayload = investmentSnapshot.exists && investmentData != null;
+    final hasInvestmentPayload =
+        investmentSnapshot.exists && investmentData != null;
 
     return CloudBackupBundle(
       manifest: CloudSyncManifest.fromJson(_normalizeMap(manifestData)),

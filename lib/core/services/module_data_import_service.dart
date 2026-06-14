@@ -645,7 +645,9 @@ class ModuleDataImportService {
       final parsedExpiryDate = (expiryText.isEmpty || expiryText == '-')
           ? null
           : _parseDate(expiryCell);
-      if (expiryText.isNotEmpty && expiryText != '-' && parsedExpiryDate == null) {
+      if (expiryText.isNotEmpty &&
+          expiryText != '-' &&
+          parsedExpiryDate == null) {
         rowErrors.add(
           'Expiry Date must be a valid Excel date or text date like yyyy-MM-dd.',
         );
@@ -2078,7 +2080,10 @@ class ModuleDataImportService {
 
       // Skip summary / total rows
       if (headerMap.containsKey('category')) {
-        final categoryVal = _parseStringCell(row, headerMap['category']).trim().toUpperCase();
+        final categoryVal = _parseStringCell(
+          row,
+          headerMap['category'],
+        ).trim().toUpperCase();
         if (categoryVal.startsWith('COMBINED TOTAL') ||
             categoryVal.startsWith('TOTAL ') ||
             categoryVal == 'TOTAL') {

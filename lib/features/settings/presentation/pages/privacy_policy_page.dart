@@ -39,7 +39,9 @@ class PrivacyPolicyPage extends StatelessWidget {
                   'Credential records, including encrypted credential payloads and related metadata.',
                   'Expense records, banks, categories, split information, and transaction history.',
                   'Task records, task categories, completion state, and task dates.',
+                  'Investment records, including buy/sell transactions, brokers, categories, tax profiles, and valuation details.',
                   'Reminder preferences, app theme, export folder path, notification settings, and cloud sync preferences.',
+                  'Google Drive backup configurations, last backup status, and connection metadata.',
                   'Privacy-policy acceptance version so the app can know whether you have accepted the current policy text.',
                 ],
               ),
@@ -63,21 +65,22 @@ class PrivacyPolicyPage extends StatelessWidget {
             ],
           ),
           _PolicySection(
-            title: '3. Cloud Backup and Firebase',
+            title: '3. Cloud Backup (Firebase and Google Drive)',
             children: const <Widget>[
               _PolicyParagraph(
-                'Cloud sync is optional. If you enable it, Daily Use can store backup documents in your Firebase project under your signed-in account. This backup is designed to help you restore app data on the same or another device using the same signed-in Firebase account.',
+                'Cloud sync and backups are optional. If you enable Firebase Cloud Sync, the app can store backup documents in your Firebase project. If you use Google Drive Backup, the app compresses your selected modules into a ZIP archive and uploads it to a dedicated folder ("Daily Use Backup") on your own Google Drive.',
               ),
               _PolicyBulletList(
                 items: <String>[
-                  'Expense data can be backed up to Firebase.',
-                  'Task data can be backed up to Firebase.',
-                  'Saved app settings and reminder settings can be backed up to Firebase.',
-                  'Credential backup is optional and can be turned on or off separately.',
+                  'Expense data can be backed up to Firebase or Google Drive.',
+                  'Task data can be backed up to Firebase or Google Drive.',
+                  'Investment data can be backed up to Google Drive.',
+                  'Saved app settings and reminder settings can be backed up to Firebase or Google Drive.',
+                  'Credential backup is optional and can be turned on or off separately for Firebase and Google Drive.',
                 ],
               ),
               _PolicyParagraph(
-                'If credential cloud backup is disabled, credential records are intended to remain local only, and any previous Firebase credential backup for that signed-in account is intended to be deleted when the option is turned off.',
+                'If credential backup is disabled, credential records remain local only. Google Drive backup files are stored directly in your personal Google account and remain there until you explicitly delete them from the backups screen or your drive.',
               ),
             ],
           ),
@@ -89,8 +92,8 @@ class PrivacyPolicyPage extends StatelessWidget {
               ),
               _PolicyBulletList(
                 items: <String>[
-                  'Credential data uses a dedicated credential encryption key flow.',
-                  'Expense, task, and settings cloud payloads use a separate encryption flow and do not use the credential encryption key.',
+                  'Credential data uses a dedicated credential encryption key flow. Your credentials inside the local database and Google Drive ZIP backup are encrypted using this master key.',
+                  'Expense, task, investment, and settings cloud payloads use a separate encryption flow and do not use the credential encryption key.',
                   'Credential titles and selected credential metadata may be additionally protected during cloud sync when credential backup is enabled.',
                   'Secure-storage mechanisms supported by the device platform are used where applicable for sensitive local key material.',
                 ],

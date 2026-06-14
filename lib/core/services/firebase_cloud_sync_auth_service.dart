@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../utils/log_console.dart';
 import 'cancellable_task.dart';
 
 class FirebaseCloudSyncAuthService {
@@ -28,6 +29,8 @@ class FirebaseCloudSyncAuthService {
   bool get isAvailable => Firebase.apps.isNotEmpty;
   bool get supportsGoogleSignIn =>
       Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
+
+  GoogleSignIn get googleSignIn => _googleSignIn;
 
   FirebaseCloudSyncAccount? get currentAccount {
     final user = _firebaseAuth.currentUser;
@@ -267,7 +270,14 @@ class FirebaseCloudSyncAuthService {
     if (!supportsGoogleSignIn) {
       return;
     }
-    await _googleSignIn.initialize();
+    LogConsole.log(
+      'GoogleSignIn: Initializing with serverClientId: 238201551199-ctijdgser1al1dfu1d9aki8iqn759hem.apps.googleusercontent.com',
+    );
+    await _googleSignIn.initialize(
+      serverClientId:
+          '238201551199-ctijdgser1al1dfu1d9aki8iqn759hem.apps.googleusercontent.com',
+    );
+    LogConsole.log('GoogleSignIn: Initialization complete');
   }
 }
 

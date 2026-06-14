@@ -5,6 +5,7 @@ import '../../features/tasks/data/repositories/task_category_repository.dart';
 import '../../features/tasks/data/repositories/task_repository.dart';
 import 'app_settings_repository.dart';
 import 'cloud_sync_service.dart';
+import 'google_drive_backup_service.dart';
 import 'notification_service.dart';
 import 'reminder_settings_repository.dart';
 
@@ -19,6 +20,7 @@ class AppDataResetService {
     required AppSettingsRepository appSettingsRepository,
     required NotificationService notificationService,
     required CloudSyncService cloudSyncService,
+    required GoogleDriveBackupService googleDriveBackupService,
   }) : _credentialService = credentialService,
        _expenseRepository = expenseRepository,
        _investmentRepository = investmentRepository,
@@ -27,7 +29,8 @@ class AppDataResetService {
        _reminderSettingsRepository = reminderSettingsRepository,
        _appSettingsRepository = appSettingsRepository,
        _notificationService = notificationService,
-       _cloudSyncService = cloudSyncService;
+       _cloudSyncService = cloudSyncService,
+       _googleDriveBackupService = googleDriveBackupService;
 
   final CredentialService _credentialService;
   final ExpenseRepository _expenseRepository;
@@ -38,6 +41,7 @@ class AppDataResetService {
   final AppSettingsRepository _appSettingsRepository;
   final NotificationService _notificationService;
   final CloudSyncService _cloudSyncService;
+  final GoogleDriveBackupService _googleDriveBackupService;
 
   Future<void> deleteAllData() async {
     await _credentialService.deleteAllCredentials();
@@ -59,5 +63,7 @@ class AppDataResetService {
     if (appSettings.cloudSync.enabled) {
       await _cloudSyncService.deleteCloudData('Daily Use');
     }
+
+    await _googleDriveBackupService.deleteAllCloudBackups();
   }
 }

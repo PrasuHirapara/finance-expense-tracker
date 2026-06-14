@@ -15,6 +15,7 @@ import '../../features/expense/presentation/pages/expense_settings_page.dart';
 import '../../features/settings/presentation/pages/privacy_policy_page.dart';
 import '../../features/settings/presentation/pages/settings_info_pages.dart';
 import '../../features/settings/presentation/pages/terms_conditions_page.dart';
+import '../../features/settings/presentation/pages/google_drive_backups_page.dart';
 import '../../features/tasks/data/repositories/task_repository.dart';
 import '../../features/tasks/domain/models/task_models.dart';
 import '../../features/tasks/presentation/blocs/task_analytics/task_analytics_bloc.dart';
@@ -63,7 +64,9 @@ class AppRoutes {
   static const String taskImportPreview = '/tasks/import/preview';
   static const String userSettingsInfo = '/settings/user-settings';
   static const String appSettingsInfo = '/settings/app-settings';
+  static const String syncSettingsInfo = '/settings/sync-settings';
   static const String backupSettingsInfo = '/settings/backup-settings';
+  static const String googleDriveBackups = '/settings/google-drive-backups';
   static const String privacyPolicy = '/settings/privacy-policy';
   static const String termsAndConditions = '/settings/terms-and-conditions';
 }
@@ -232,6 +235,7 @@ class AppRouter {
       case AppRoutes.investmentSellAdd:
         final args = settings.arguments as SellEditorArgs;
         return MaterialPageRoute<void>(
+          settings: settings,
           builder: (context) => BlocProvider(
             create: (context) =>
                 InvestmentFormBloc(
@@ -292,10 +296,19 @@ class AppRouter {
         return MaterialPageRoute<void>(
           builder: (context) => const AppSettingsInfoPage(),
         );
+      case AppRoutes.syncSettingsInfo:
+        return MaterialPageRoute<void>(
+          builder: (context) => const SyncSettingsInfoPage(),
+        );
       case AppRoutes.backupSettingsInfo:
         return MaterialPageRoute<void>(
           builder: (context) => const BackupSettingsInfoPage(),
         );
+      case AppRoutes.googleDriveBackups:
+        return MaterialPageRoute<void>(
+          builder: (context) => const GoogleDriveBackupsPage(),
+        );
+
       case AppRoutes.privacyPolicy:
         return MaterialPageRoute<void>(
           builder: (context) => const PrivacyPolicyPage(),

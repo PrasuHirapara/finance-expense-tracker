@@ -217,6 +217,42 @@ class InvestmentEntryDetailPage extends StatelessWidget {
                             ),
                             Row(
                               children: <Widget>[
+                                ...(() {
+                                  final soldForThisBuy = group.sellEntries
+                                      .where((s) => s.buyEntryId == buy.id)
+                                      .fold<double>(
+                                        0,
+                                        (sum, s) => sum + s.sellQty,
+                                      );
+                                  final remainingForThisBuy =
+                                      buy.qty - soldForThisBuy;
+                                  if (remainingForThisBuy > 0) {
+                                    return <Widget>[
+                                      IconButton(
+                                        constraints: const BoxConstraints(),
+                                        padding: EdgeInsets.zero,
+                                        icon: const Icon(
+                                          Icons.sell_outlined,
+                                          color: Colors.green,
+                                          size: 20,
+                                        ),
+                                        onPressed: () {
+                                          Navigator.of(context).pushNamed(
+                                            AppRoutes.investmentSellAdd,
+                                            arguments: SellEditorArgs(
+                                              buyEntryId: buy.id,
+                                              symbol: buy.symbol,
+                                              remainingUnsoldQty:
+                                                  remainingForThisBuy,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ];
+                                  }
+                                  return <Widget>[];
+                                })(),
                                 IconButton(
                                   constraints: const BoxConstraints(),
                                   padding: EdgeInsets.zero,
@@ -406,13 +442,30 @@ class InvestmentEntryDetailPage extends StatelessWidget {
               if (group.statusBadge != InvestmentStatusBadge.sold)
                 FilledButton.icon(
                   onPressed: () {
-                    final remaining = group.totalBoughtQty - group.totalSoldQty;
+                    InvestmentEntry? targetBuy;
+                    double remainingForTarget = 0.0;
+                    for (final buy in group.buyEntries) {
+                      final sold = group.sellEntries
+                          .where((s) => s.buyEntryId == buy.id)
+                          .fold<double>(0, (sum, s) => sum + s.sellQty);
+                      final rem = buy.qty - sold;
+                      if (rem > 0) {
+                        targetBuy = buy;
+                        remainingForTarget = rem;
+                        break;
+                      }
+                    }
+                    final targetId = targetBuy?.id ?? firstBuy.id;
+                    final targetRemaining = targetBuy != null
+                        ? remainingForTarget
+                        : 0.0;
+
                     Navigator.of(context).pushNamed(
                       AppRoutes.investmentSellAdd,
                       arguments: SellEditorArgs(
-                        buyEntryId: firstBuy.id,
+                        buyEntryId: targetId,
                         symbol: group.symbol,
-                        remainingUnsoldQty: remaining,
+                        remainingUnsoldQty: targetRemaining,
                       ),
                     );
                   },

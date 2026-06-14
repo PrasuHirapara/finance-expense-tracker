@@ -24,6 +24,13 @@ class SettingsModulePage extends StatelessWidget {
           const SizedBox(height: 16),
           _buildNavigationTile(
             context,
+            icon: Icons.sync_rounded,
+            title: 'Sync Settings',
+            routeName: AppRoutes.syncSettingsInfo,
+          ),
+          const SizedBox(height: 16),
+          _buildNavigationTile(
+            context,
             icon: Icons.backup_outlined,
             title: 'Backup Settings',
             routeName: AppRoutes.backupSettingsInfo,

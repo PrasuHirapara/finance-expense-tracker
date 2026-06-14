@@ -79,6 +79,13 @@ class AppSettingsRepository {
     await _commit(settings.copyWith(cloudSync: preferences));
   }
 
+  Future<void> updateGoogleDriveBackupPreferences(
+    GoogleDriveBackupPreferences preferences,
+  ) async {
+    final settings = await getSettings();
+    await _commit(settings.copyWith(googleDriveBackup: preferences));
+  }
+
   Future<void> acceptPrivacyPolicy(String version) async {
     final settings = await getSettings();
     await _commit(
@@ -159,6 +166,7 @@ class AppSettingsRepository {
       'selectedInvestmentBrokerId': settings.selectedInvestmentBrokerId,
       'selectedInvestmentCategoryId': settings.selectedInvestmentCategoryId,
       'cloudSync': _cloudSyncToJson(settings.cloudSync),
+      'googleDriveBackup': _googleDriveBackupToJson(settings.googleDriveBackup),
     };
   }
 
@@ -205,6 +213,7 @@ class AppSettingsRepository {
         json['selectedInvestmentCategoryId'],
       ),
       cloudSync: _cloudSyncFromJson(json['cloudSync']),
+      googleDriveBackup: _googleDriveBackupFromJson(json['googleDriveBackup']),
     );
   }
 
@@ -387,5 +396,43 @@ class AppSettingsRepository {
       return null;
     }
     return DateTime.tryParse(value);
+  }
+
+  Map<String, dynamic> _googleDriveBackupToJson(
+    GoogleDriveBackupPreferences preferences,
+  ) {
+    return <String, dynamic>{
+      'lastBackupAt': preferences.lastBackupAt?.toIso8601String(),
+      'backupStatus': preferences.backupStatus,
+      'lastUploadedFileName': preferences.lastUploadedFileName,
+      'backupGoogleAccount': preferences.backupGoogleAccount,
+      'backupIncludedModules': preferences.backupIncludedModules,
+      'backupTotalSize': preferences.backupTotalSize,
+    };
+  }
+
+  GoogleDriveBackupPreferences _googleDriveBackupFromJson(Object? value) {
+    if (value is! Map) {
+      return const GoogleDriveBackupPreferences();
+    }
+
+    return GoogleDriveBackupPreferences(
+      lastBackupAt: _dateTimeFromJson(value['lastBackupAt']),
+      backupStatus: value['backupStatus'] is String
+          ? value['backupStatus'] as String
+          : 'No Backups',
+      lastUploadedFileName: value['lastUploadedFileName'] is String
+          ? value['lastUploadedFileName'] as String
+          : 'N/A',
+      backupGoogleAccount: value['backupGoogleAccount'] is String
+          ? value['backupGoogleAccount'] as String
+          : 'Not connected',
+      backupIncludedModules: value['backupIncludedModules'] is String
+          ? value['backupIncludedModules'] as String
+          : 'None',
+      backupTotalSize: value['backupTotalSize'] is String
+          ? value['backupTotalSize'] as String
+          : '0 B',
+    );
   }
 }

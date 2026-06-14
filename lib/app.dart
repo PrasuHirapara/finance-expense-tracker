@@ -14,6 +14,7 @@ import 'core/services/android_battery_optimization_service.dart';
 import 'core/services/auto_backup_scheduler_service.dart';
 import 'core/services/cloud_backup_service.dart';
 import 'core/services/cloud_sync_service.dart';
+import 'core/services/google_drive_backup_service.dart';
 import 'core/services/firebase_cloud_sync_auth_service.dart';
 import 'core/services/file_launcher_service.dart';
 import 'core/services/module_data_import_service.dart';
@@ -127,6 +128,9 @@ class _DailyUseAppState extends State<DailyUseApp> with WidgetsBindingObserver {
         ),
         RepositoryProvider<AppDataResetService>.value(
           value: _session.appDataResetService,
+        ),
+        RepositoryProvider<GoogleDriveBackupService>.value(
+          value: _session.googleDriveBackupService,
         ),
         RepositoryProvider<FileLauncherService>.value(
           value: _session.fileLauncherService,

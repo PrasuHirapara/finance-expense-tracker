@@ -10,8 +10,9 @@ import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
-import '../widgets/cloud_sync_settings_section.dart';
 import '../widgets/user_settings_section.dart';
+import '../widgets/google_drive_backup_settings_section.dart';
+import '../widgets/cloud_sync_settings_section.dart';
 
 class UserSettingsInfoPage extends StatelessWidget {
   const UserSettingsInfoPage({super.key});
@@ -272,6 +273,32 @@ class _AppSettingsInfoPageState extends State<AppSettingsInfoPage> {
   }
 }
 
+class SyncSettingsInfoPage extends StatelessWidget {
+  const SyncSettingsInfoPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final settingsRepository = context.read<AppSettingsRepository>();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Sync Settings')),
+      body: StreamBuilder<AppPreferences>(
+        stream: settingsRepository.watchSettings(),
+        builder: (context, snapshot) {
+          final preferences = snapshot.data ?? const AppPreferences();
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            children: <Widget>[
+              CloudSyncSettingsSection(preferences: preferences),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
 class BackupSettingsInfoPage extends StatelessWidget {
   const BackupSettingsInfoPage({super.key});
 
@@ -289,7 +316,7 @@ class BackupSettingsInfoPage extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
             children: <Widget>[
-              CloudSyncSettingsSection(preferences: preferences),
+              GoogleDriveBackupSettingsSection(preferences: preferences),
             ],
           );
         },

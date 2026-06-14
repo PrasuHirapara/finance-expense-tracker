@@ -155,11 +155,13 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
                           ),
                           decoration: InputDecoration(
                             labelText: 'Sell Quantity',
-                            errorText:
-                                state.showValidation &&
-                                    (state.sellQty == null ||
-                                        state.sellQty! <= 0)
-                                ? 'Enter valid quantity'
+                            errorText: state.showValidation
+                                ? (state.sellQty == null || state.sellQty! <= 0
+                                      ? 'Enter valid quantity'
+                                      : (state.sellQty! >
+                                                args.remainingUnsoldQty
+                                            ? 'Cannot sell more than remaining quantity (${args.remainingUnsoldQty.toStringAsFixed(2)})'
+                                            : null))
                                 : null,
                           ),
                           onChanged: (value) {
@@ -200,7 +202,9 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
                           children: <Widget>[
                             Expanded(
                               child: TextFormField(
-                                key: ValueKey<bool>(state.isSellAmtOverridden),
+                                key: ValueKey<String>(
+                                  '${state.isSellAmtOverridden}_${state.sellAmt ?? state.computedSellAmt}',
+                                ),
                                 initialValue:
                                     state.sellAmt?.toStringAsFixed(2) ??
                                     state.computedSellAmt.toStringAsFixed(2),
@@ -289,6 +293,17 @@ class _SellEntryFormPageState extends State<SellEntryFormPage> {
                               state.status == InvestmentFormStatus.submitting
                               ? null
                               : () {
+                                  if (state.sellQty != null &&
+                                      state.sellQty! >
+                                          args.remainingUnsoldQty) {
+                                    showAppSnackBar(
+                                      context,
+                                      message:
+                                          'Cannot sell more than remaining quantity (${args.remainingUnsoldQty.toStringAsFixed(2)})',
+                                      type: AppSnackBarType.warning,
+                                    );
+                                    return;
+                                  }
                                   context.read<InvestmentFormBloc>().add(
                                     InvestmentFormSellSubmitted(
                                       buyEntryId: args.buyEntryId,

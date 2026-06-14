@@ -127,6 +127,7 @@ class AppPreferences {
     this.selectedInvestmentBrokerId,
     this.selectedInvestmentCategoryId,
     this.cloudSync = const CloudSyncPreferences(),
+    this.googleDriveBackup = const GoogleDriveBackupPreferences(),
   });
 
   final ThemeMode themeMode;
@@ -138,6 +139,7 @@ class AppPreferences {
   final int? selectedInvestmentBrokerId;
   final int? selectedInvestmentCategoryId;
   final CloudSyncPreferences cloudSync;
+  final GoogleDriveBackupPreferences googleDriveBackup;
 
   AppPreferences copyWith({
     ThemeMode? themeMode,
@@ -149,6 +151,7 @@ class AppPreferences {
     Object? selectedInvestmentBrokerId = _appPreferenceUnset,
     Object? selectedInvestmentCategoryId = _appPreferenceUnset,
     CloudSyncPreferences? cloudSync,
+    GoogleDriveBackupPreferences? googleDriveBackup,
   }) {
     return AppPreferences(
       themeMode: themeMode ?? this.themeMode,
@@ -176,6 +179,46 @@ class AppPreferences {
           ? this.selectedInvestmentCategoryId
           : selectedInvestmentCategoryId as int?,
       cloudSync: cloudSync ?? this.cloudSync,
+      googleDriveBackup: googleDriveBackup ?? this.googleDriveBackup,
+    );
+  }
+}
+
+class GoogleDriveBackupPreferences {
+  const GoogleDriveBackupPreferences({
+    this.lastBackupAt,
+    this.backupStatus = 'No Backups',
+    this.lastUploadedFileName = 'N/A',
+    this.backupGoogleAccount = 'Not connected',
+    this.backupIncludedModules = 'None',
+    this.backupTotalSize = '0 B',
+  });
+
+  final DateTime? lastBackupAt;
+  final String backupStatus;
+  final String lastUploadedFileName;
+  final String backupGoogleAccount;
+  final String backupIncludedModules;
+  final String backupTotalSize;
+
+  GoogleDriveBackupPreferences copyWith({
+    Object? lastBackupAt = _appPreferenceUnset,
+    String? backupStatus,
+    String? lastUploadedFileName,
+    String? backupGoogleAccount,
+    String? backupIncludedModules,
+    String? backupTotalSize,
+  }) {
+    return GoogleDriveBackupPreferences(
+      lastBackupAt: identical(lastBackupAt, _appPreferenceUnset)
+          ? this.lastBackupAt
+          : lastBackupAt as DateTime?,
+      backupStatus: backupStatus ?? this.backupStatus,
+      lastUploadedFileName: lastUploadedFileName ?? this.lastUploadedFileName,
+      backupGoogleAccount: backupGoogleAccount ?? this.backupGoogleAccount,
+      backupIncludedModules:
+          backupIncludedModules ?? this.backupIncludedModules,
+      backupTotalSize: backupTotalSize ?? this.backupTotalSize,
     );
   }
 }

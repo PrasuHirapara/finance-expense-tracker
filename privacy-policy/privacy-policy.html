@@ -93,8 +93,14 @@
             Task records, task categories, completion state, and task dates.
           </li>
           <li>
+            Investment records, including buy/sell transactions, brokers, categories, tax profiles, and valuation details.
+          </li>
+          <li>
             Reminder preferences, app theme, export folder path, notification
             settings, and cloud sync preferences.
+          </li>
+          <li>
+            Google Drive backup configurations, last backup status, and connection metadata.
           </li>
           <li>
             Privacy-policy acceptance version so the app can know whether you
@@ -129,31 +135,25 @@
       </section>
 
       <section>
-        <h2>3. Cloud Backup and Firebase</h2>
+        <h2>3. Cloud Backup (Firebase and Google Drive)</h2>
         <p>
-          Cloud sync is <strong>optional</strong>. If you enable it, Daily Use
-          can store backup documents in your Firebase project under your
-          signed-in account. This backup is designed to help you restore app
-          data on the same or another device using the same signed-in Firebase
-          account.
+          Cloud sync and backups are <strong>optional</strong>. If you enable Firebase Cloud Sync, the app can store backup documents in your Firebase project. If you use Google Drive Backup, the app compresses your selected modules into a ZIP archive and uploads it to a dedicated folder ("Daily Use Backup") on your own Google Drive.
         </p>
         <ul>
-          <li>Expense data can be backed up to Firebase.</li>
-          <li>Task data can be backed up to Firebase.</li>
+          <li>Expense data can be backed up to Firebase or Google Drive.</li>
+          <li>Task data can be backed up to Firebase or Google Drive.</li>
+          <li>Investment data can be backed up to Google Drive.</li>
           <li>
             Saved app settings and reminder settings can be backed up to
-            Firebase.
+            Firebase or Google Drive.
           </li>
           <li>
             Credential backup is optional and can be turned on or off
-            separately.
+            separately for Firebase and Google Drive.
           </li>
         </ul>
         <p>
-          If credential cloud backup is disabled, credential records are
-          intended to remain local only, and any previous Firebase credential
-          backup for that signed-in account is intended to be deleted when the
-          option is turned off.
+          If credential backup is disabled, credential records remain local only. Google Drive backup files are stored directly in your personal Google account and remain there until you explicitly delete them from the backups screen or your drive.
         </p>
       </section>
 
@@ -166,10 +166,10 @@
         <ul>
           <li>
             <strong>Credential data</strong> uses a dedicated credential
-            encryption key flow.
+            encryption key flow. Your credentials inside the local database and Google Drive ZIP backup are encrypted using this master key.
           </li>
           <li>
-            <strong>Expense, task, and settings cloud payloads</strong> use a
+            <strong>Expense, task, investment, and settings cloud payloads</strong> use a
             separate encryption flow and do not use the credential encryption
             key.
           </li>

@@ -14,6 +14,7 @@ import '../../features/tasks/data/repositories/task_category_repository.dart';
 import '../../features/tasks/data/repositories/task_repository.dart';
 import '../models/app_preferences.dart';
 import '../services/android_battery_optimization_service.dart';
+import '../services/google_drive_backup_service.dart';
 import '../services/app_data_reset_service.dart';
 import '../services/app_preferences_effects_service.dart';
 import '../services/app_settings_repository.dart';
@@ -62,6 +63,7 @@ class AppSession {
     required this.autoBackupSchedulerService,
     required this.androidBatteryOptimizationService,
     required this.appDataResetService,
+    required this.googleDriveBackupService,
   });
 
   factory AppSession.create() {
@@ -139,6 +141,15 @@ class AppSession {
     );
     final androidBatteryOptimizationService =
         AndroidBatteryOptimizationService();
+    final googleDriveBackupService = GoogleDriveBackupService(
+      authService: firebaseCloudSyncAuthService,
+      appSettingsRepository: appSettingsRepository,
+      exportService: moduleDataExportService,
+      expenseRepository: expenseRepository,
+      taskRepository: taskRepository,
+      credentialService: credentialService,
+      investmentRepository: investmentRepository,
+    );
     final appDataResetService = AppDataResetService(
       credentialService: credentialService,
       expenseRepository: expenseRepository,
@@ -149,6 +160,7 @@ class AppSession {
       appSettingsRepository: appSettingsRepository,
       notificationService: notificationService,
       cloudSyncService: cloudSyncService,
+      googleDriveBackupService: googleDriveBackupService,
     );
 
     return AppSession._(
@@ -179,6 +191,7 @@ class AppSession {
       autoBackupSchedulerService: autoBackupSchedulerService,
       androidBatteryOptimizationService: androidBatteryOptimizationService,
       appDataResetService: appDataResetService,
+      googleDriveBackupService: googleDriveBackupService,
     );
   }
 
@@ -209,6 +222,7 @@ class AppSession {
   final AutoBackupSchedulerService autoBackupSchedulerService;
   final AndroidBatteryOptimizationService androidBatteryOptimizationService;
   final AppDataResetService appDataResetService;
+  final GoogleDriveBackupService googleDriveBackupService;
 
   Future<AppPreferences> bootstrap() async {
     final appPreferences = await appSettingsRepository.getSettings();

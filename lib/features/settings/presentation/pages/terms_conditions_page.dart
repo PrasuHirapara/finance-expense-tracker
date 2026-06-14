@@ -67,17 +67,18 @@ class TermsConditionsPage extends StatelessWidget {
             ],
           ),
           _TermsSection(
-            title: '4. Cloud Backup and Restore',
+            title: '4. Cloud Backup and Restore (Firebase and Google Drive)',
             children: const <Widget>[
               _TermsParagraph(
-                'Cloud sync depends on Firebase configuration, internet connectivity, account access, and correct app behavior. The availability of cloud backup is not guaranteed at all times.',
+                'Cloud sync and backups depend on your Firebase and Google account configurations, internet connectivity, API access, and correct app behavior. The availability of cloud backup is not guaranteed at all times.',
               ),
               _TermsBulletList(
                 items: <String>[
-                  'Expense data, task data, and settings may be included in cloud backup when sync is enabled.',
-                  'Credential backup is optional and can be turned on or off separately.',
+                  'Expense data, task data, and settings may be included in Firebase or Google Drive backups when enabled.',
+                  'Investment transactions and valuations are tracked locally and can be backed up to Google Drive.',
+                  'Credential backup is optional and can be turned on or off separately. Google Drive backups store credentials in an encrypted state using your master key.',
                   'Restore behavior may replace local data with cloud data depending on the restore action you choose.',
-                  'You should confirm important information after a restore before relying on it.',
+                  'You are responsible for validating the accuracy and completeness of any restored data before relying on it.',
                 ],
               ),
             ],

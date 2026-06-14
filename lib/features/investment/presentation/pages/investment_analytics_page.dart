@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/formatters/indian_number_formatter.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../domain/entities/analytics_models.dart';
 import '../../../../presentation/widgets/charts/category_pie_chart.dart';
 import '../../../../presentation/widgets/charts/trend_line_chart.dart';
@@ -312,49 +313,63 @@ class _InvestmentAnalyticsPageState extends State<InvestmentAnalyticsPage> {
                           itemBuilder: (context, index) {
                             final item = analytics.symbolPLBreakdown[index];
                             final isPos = item.plPct >= 0;
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: <Widget>[
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: <Widget>[
-                                      Expanded(
-                                        child: Text(
-                                          item.symbol,
-                                          style: const TextStyle(
+                            return InkWell(
+                              onTap: () {
+                                Navigator.of(context).pushNamed(
+                                  AppRoutes.investmentDetail,
+                                  arguments: InvestmentDetailArgs(
+                                    symbol: item.symbol,
+                                  ),
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 6,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: <Widget>[
+                                        Expanded(
+                                          child: Text(
+                                            item.symbol,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '${isPos ? "+" : ""}${item.plPct.toStringAsFixed(2)}% (${isPos ? "+" : ""}${IndianNumberFormatter.formatFull(item.pl)})',
+                                          style: TextStyle(
+                                            color: isPos
+                                                ? Colors.green
+                                                : Colors.red,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '${isPos ? "+" : ""}${item.plPct.toStringAsFixed(2)}% (${isPos ? "+" : ""}${IndianNumberFormatter.formatFull(item.pl)})',
-                                        style: TextStyle(
-                                          color: isPos
-                                              ? Colors.green
-                                              : Colors.red,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  LinearProgressIndicator(
-                                    value: (item.plPct.abs() / 100.0).clamp(
-                                      0.0,
-                                      1.0,
+                                      ],
                                     ),
-                                    color: isPos ? Colors.green : Colors.red,
-                                    backgroundColor: theme
-                                        .colorScheme
-                                        .surfaceContainerHighest,
-                                    minHeight: 8,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ],
+                                    const SizedBox(height: 4),
+                                    LinearProgressIndicator(
+                                      value: (item.plPct.abs() / 100.0).clamp(
+                                        0.0,
+                                        1.0,
+                                      ),
+                                      color: isPos ? Colors.green : Colors.red,
+                                      backgroundColor: theme
+                                          .colorScheme
+                                          .surfaceContainerHighest,
+                                      minHeight: 8,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           },
@@ -402,10 +417,16 @@ class _AnalyticsCard extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          Text(
-            value,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
             ),
           ),
         ],

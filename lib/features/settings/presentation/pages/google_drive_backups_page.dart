@@ -1,11 +1,24 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
+import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
+import '../../../../core/services/app_data_reset_service.dart';
+import '../../../../core/services/app_settings_repository.dart';
 import '../../../../core/services/cancellable_task.dart';
 import '../../../../core/services/google_drive_backup_service.dart';
+import '../../../../core/services/module_data_import_service.dart';
+import '../../../../core/services/reminder_settings_repository.dart';
+import '../../../../features/credentials/data/services/credential_service.dart';
+import '../../../../features/expense/data/repositories/expense_repository.dart';
+import '../../../../features/investment/data/repositories/investment_repository.dart';
+import '../../../../features/tasks/data/repositories/task_repository.dart';
 import '../../../../shared/widgets/app_panel.dart';
 import '../../../../shared/widgets/app_snackbar.dart';
 import '../../../../shared/widgets/cancellable_blocking_overlay.dart';
@@ -286,6 +299,17 @@ class _GoogleDriveBackupsPageState extends State<GoogleDriveBackupsPage> {
                                           ),
                                           IconButton(
                                             icon: const Icon(
+                                              Icons
+                                                  .settings_backup_restore_rounded,
+                                            ),
+                                            tooltip: 'Import Backup',
+                                            onPressed: () =>
+                                                _importBackup(file),
+                                            constraints: const BoxConstraints(),
+                                            padding: const EdgeInsets.all(8),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(
                                               Icons.download_rounded,
                                             ),
                                             tooltip: 'Download',
@@ -431,6 +455,240 @@ class _GoogleDriveBackupsPageState extends State<GoogleDriveBackupsPage> {
     }
   }
 
+  Future<void> _importBackup(GoogleDriveBackupFile file) async {
+    final backupService = context.read<GoogleDriveBackupService>();
+    final importService = context.read<ModuleDataImportService>();
+    final appDataResetService = context.read<AppDataResetService>();
+    final credentialService = context.read<CredentialService>();
+    final appSettingsRepository = context.read<AppSettingsRepository>();
+    final reminderSettingsRepository = context
+        .read<ReminderSettingsRepository>();
+    final expenseRepository = context.read<ExpenseRepository>();
+    final taskRepository = context.read<TaskRepository>();
+    final investmentRepository = context.read<InvestmentRepository>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    // 1. Download ZIP file first using blocking overlay
+    String? zipFilePath;
+    try {
+      zipFilePath = await _runBlockingOperation<String>(
+        statusText: 'Downloading backup archive for import...',
+        task: (token) =>
+            backupService.downloadBackup(file.id, file.year, file.month),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        buildAppSnackBar(
+          context,
+          message: 'Failed to download backup: $e',
+          type: AppSnackBarType.error,
+        ),
+      );
+      return;
+    }
+
+    if (zipFilePath.isEmpty) return;
+
+    if (!mounted) return;
+
+    final errorColor = Theme.of(context).colorScheme.error;
+    final onErrorColor = Theme.of(context).colorScheme.onError;
+
+    // 2. Check if data is already in app
+    try {
+      final expenses = await expenseRepository.loadEntries(filter: null);
+      final tasks = await taskRepository.loadAllTasks();
+      final credentials = await credentialService.loadCredentials();
+      final buys = await investmentRepository.getBuyEntries();
+      final sells = await investmentRepository.getSellEntries();
+
+      final hasExistingData =
+          expenses.isNotEmpty ||
+          tasks.isNotEmpty ||
+          credentials.isNotEmpty ||
+          buys.isNotEmpty ||
+          sells.isNotEmpty;
+
+      if (hasExistingData) {
+        if (!mounted) return;
+        // Show confirmation popup to override data
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Override Existing Data?'),
+            content: const Text(
+              'Data already exists in the app. Importing this backup will permanently replace all your current data. Do you want to continue?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: errorColor,
+                  foregroundColor: onErrorColor,
+                ),
+                child: const Text('Override'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirmed != true) {
+          // User chose not to override, so clean up downloaded zip and exit
+          try {
+            final fileObj = File(zipFilePath);
+            if (await fileObj.exists()) {
+              await fileObj.delete();
+            }
+          } catch (_) {}
+          return;
+        }
+      }
+
+      // 3. User confirmed or no data exists -> Proceed with import
+      await _runBlockingOperation<void>(
+        statusText: 'Importing data...',
+        task: (token) async {
+          // Clear current database first (since user requested override or there's no data)
+          await appDataResetService.deleteAllData();
+
+          // Read the ZIP archive
+          final zipFile = File(zipFilePath!);
+          final bytes = await zipFile.readAsBytes();
+          final archive = ZipDecoder().decodeBytes(bytes);
+
+          final tempDir = await getTemporaryDirectory();
+          final unzipDir = Directory(
+            path.join(
+              tempDir.path,
+              'gdrive_unzip_temp_${DateTime.now().millisecondsSinceEpoch}',
+            ),
+          );
+          await unzipDir.create(recursive: true);
+
+          try {
+            // Unzip files
+            for (final fileEntry in archive) {
+              final filename = fileEntry.name;
+              if (fileEntry.isFile) {
+                final fileData = fileEntry.content as List<int>;
+                final outFile = File(path.join(unzipDir.path, filename));
+                await outFile.create(recursive: true);
+                await outFile.writeAsBytes(fileData);
+              }
+            }
+
+            token.throwIfCancelled();
+
+            // Import settings.json first if exists
+            final settingsFile = File(
+              path.join(unzipDir.path, 'settings.json'),
+            );
+            if (await settingsFile.exists()) {
+              final content = await settingsFile.readAsString();
+              final json = jsonDecode(content) as Map<String, dynamic>;
+              final appSettings = json['appSettings'];
+              final reminderSettings = json['reminderSettings'];
+              if (appSettings != null) {
+                await appSettingsRepository.restoreFromCloud(appSettings);
+              }
+              if (reminderSettings != null) {
+                await reminderSettingsRepository.restoreFromCloud(
+                  reminderSettings,
+                );
+              }
+            }
+
+            token.throwIfCancelled();
+
+            // Import expenses
+            final expensesFile = File(
+              path.join(unzipDir.path, 'expenses.xlsx'),
+            );
+            if (await expensesFile.exists()) {
+              await importService.importExpenseExcel(expensesFile.path);
+            }
+
+            token.throwIfCancelled();
+
+            // Import tasks
+            final tasksFile = File(path.join(unzipDir.path, 'tasks.xlsx'));
+            if (await tasksFile.exists()) {
+              await importService.importTaskExcel(tasksFile.path);
+            }
+
+            token.throwIfCancelled();
+
+            // Import credentials
+            final credentialsFile = File(
+              path.join(unzipDir.path, 'credentials.xlsx'),
+            );
+            if (await credentialsFile.exists()) {
+              // Retrieve or fallback the stored credentials encryption key
+              var masterKey = await credentialService.readStoredEncryptionKey();
+              if (masterKey == null || masterKey.isEmpty) {
+                masterKey = 'default_encryption_key';
+              }
+              await importService.importCredentialExcel(
+                credentialsFile.path,
+                encryptionKey: masterKey,
+              );
+            }
+
+            token.throwIfCancelled();
+
+            // Import investments
+            final investmentsFile = File(
+              path.join(unzipDir.path, 'investments.xlsx'),
+            );
+            if (await investmentsFile.exists()) {
+              final preview = await importService.importInvestmentExcel(
+                investmentsFile.path,
+              );
+              final validRows = preview.rows.where((r) => r.isValid).toList();
+              await importService.saveInvestmentImport(validRows);
+            }
+          } finally {
+            // Clean up temporary unzipped files
+            try {
+              if (await unzipDir.exists()) {
+                await unzipDir.delete(recursive: true);
+              }
+            } catch (_) {}
+          }
+
+          // Clean up downloaded ZIP
+          try {
+            if (await zipFile.exists()) {
+              await zipFile.delete();
+            }
+          } catch (_) {}
+        },
+      );
+
+      if (!mounted) return;
+      messenger.showSnackBar(
+        buildAppSnackBar(context, message: 'Data imported successfully.'),
+      );
+
+      // Refresh backup list
+      _refreshBackups();
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        buildAppSnackBar(
+          context,
+          message: 'Failed to import backup: $e',
+          type: AppSnackBarType.error,
+        ),
+      );
+    }
+  }
+
   void _showBackupDetails(GoogleDriveBackupFile file) {
     final theme = Theme.of(context);
 
@@ -481,6 +739,18 @@ class _GoogleDriveBackupsPageState extends State<GoogleDriveBackupsPage> {
                   },
                   icon: const Icon(Icons.download_rounded),
                   label: const Text('Download ZIP'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(modalContext).pop();
+                    unawaited(_importBackup(file));
+                  },
+                  icon: const Icon(Icons.settings_backup_restore_rounded),
+                  label: const Text('Import Backup'),
                 ),
               ),
             ],

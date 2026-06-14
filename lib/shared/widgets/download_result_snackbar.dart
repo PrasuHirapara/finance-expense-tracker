@@ -22,26 +22,24 @@ void showDownloadResultSnackBar(
     message: formattedMessage,
     actionLabel: 'View',
     onActionPressed: () {
-      unawaited(
-        _openDownloadedDirectory(context, directoryPath: directoryPath),
-      );
+      unawaited(_openDownloadedFile(context, path: path));
     },
   );
 }
 
-Future<void> _openDownloadedDirectory(
+Future<void> _openDownloadedFile(
   BuildContext context, {
-  required String directoryPath,
+  required String path,
 }) async {
   try {
-    await context.read<FileLauncherService>().openFile(directoryPath);
+    await context.read<FileLauncherService>().openFile(path);
   } catch (error) {
     if (!context.mounted) {
       return;
     }
     showAppSnackBar(
       context,
-      message: 'Unable to open location: $error',
+      message: 'Unable to open file: $error',
       type: AppSnackBarType.error,
     );
   }

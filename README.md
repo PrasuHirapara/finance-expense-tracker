@@ -1,20 +1,23 @@
 # Daily Use
 
-`Daily Use` is a Flutter app with four main tabs:
+`Daily Use` is a Flutter app with five main tabs:
 
 - `Credential`
 - `Expense`
 - `Task`
+- `Investment`
 - `Settings`
 
 It uses local storage, feature-based organization, and Bloc-driven UI flow to keep each module separated but still part of one app shell.
 
 ## What The App Does
 
-- `Credential`: stores encrypted credentials locally, asks for an encryption key only when the user first opens the Credential tab, and keeps credential settings inside the Credential area.
-- `Expense`: tracks money flow, banks, categories, analytics, and exports.
-- `Task`: manages daily tasks, categories, completion, and analytics.
-- `Settings`: keeps app-wide preferences such as theme, notifications, and export folder settings.
+- `Credential`: Stores encrypted credentials locally, asks for an encryption key only when the user first opens the Credential tab, and keeps credential settings inside the Credential area.
+- `Expense`: Tracks money flow, banks, categories, analytics, split expenses, lent/borrowed tracker, and Excel/CSV/PDF exports.
+- `Task`: Manages daily tasks, categories, checklist completion, priorities, and analytics.
+- `Investment`: Tracks stock and mutual fund investments, brokers, tax profiles, sell entries, and portfolio analytics.
+- `Settings`: Keeps app-wide preferences such as theme, notifications, export folder settings, and cloud sync/backup configuration.
+- `Cloud Sync & Backup`: Built-in secure cloud storage sync via Google Drive and Firebase Cloud Sync (backed by encrypted Firestore documents).
 
 ## Tech Stack
 
@@ -55,7 +58,7 @@ lib/
   core/         App-wide blocs, router, services, theme, shell widgets
   data/         Shared database and repository implementations
   domain/       Shared use-cases and entities
-  features/     Feature-first modules such as credential, expense, tasks, settings
+  features/     Feature-first modules such as credential, expense, tasks, investment, settings
   presentation/ Older shared finance presentation layer used by the app
   shared/       Reusable UI widgets
 ```
@@ -77,6 +80,7 @@ features/
 - `lib/features/credentials/`: encrypted credential flow and credential settings
 - `lib/features/expense/`: expense tracking, analytics, entries, and settings
 - `lib/features/tasks/`: task list, task editor, analytics, and settings
+- `lib/features/investment/`: stock and mutual fund investment tracking, buy/sell entries, brokers, tax profiles, and portfolio analytics
 - `lib/features/settings/`: app-wide settings UI
 
 ## Getting Started
@@ -94,4 +98,6 @@ features/
 
 - Credential data is stored locally and protected with an encryption key.
 - Biometric unlock can be enabled from Credential settings when supported on the device.
-- Expense, Credential, and Task settings are handled inside their own modules, while global app preferences stay in Settings.
+- Expense, Credential, Task, and Investment settings are handled inside their own modules, while global app preferences stay in Settings.
+- App data (including categories, bank details, settings, tasks, and investments) can be backed up to and restored from Google Drive (as `backup.zip`) or Firebase Cloud Sync (Firestore) with end-to-end encryption.
+
